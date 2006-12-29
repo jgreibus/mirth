@@ -188,9 +188,9 @@ public class MessageBrowser extends javax.swing.JPanel
         mirthDatePicker1.setDateInMillis(currentTime);
         mirthDatePicker2.setDateInMillis(currentTime);
         pageSizeField.setText("20");
-        //Clear the table first
-        //makeMessageTable(null, FIRST_PAGE);
+        
         filterButtonActionPerformed(null);
+        clearDescription();
         descriptionTabbedPane.setSelectedIndex(0);
     }
     
@@ -199,6 +199,7 @@ public class MessageBrowser extends javax.swing.JPanel
      */
     public void refresh()
     {
+        deselectRows();
         filterButtonActionPerformed(null);
     }
     
@@ -428,7 +429,7 @@ public class MessageBrowser extends javax.swing.JPanel
         eventTable.setRowHeight(UIConstants.ROW_HEIGHT);
         eventTable.setOpaque(true);
         eventTable.setRowSelectionAllowed(true);
-        deselectRows();
+        clearDescription();
         
         if(Preferences.systemNodeForPackage(Mirth.class).getBoolean("highlightRows", true))
         {
@@ -523,10 +524,8 @@ public class MessageBrowser extends javax.swing.JPanel
     {
         parent.setVisibleTasks(parent.messageTasks, parent.messagePopupMenu, 4, -1, false);
         parent.setVisibleTasks(parent.messageTasks, parent.messagePopupMenu, 5, 5, true);
-        if (eventTable != null){
-        	eventTable.clearSelection();
-        	clearDescription();
-        }
+        eventTable.clearSelection();
+        clearDescription();
     }
     
     /**
@@ -552,11 +551,7 @@ public class MessageBrowser extends javax.swing.JPanel
     {
         if (!evt.getValueIsAdjusting())
         {
-        	int row = -1;
-        	if (eventTable.getSelectedRow() > -1)
-            {
-        		row = eventTable.convertRowIndexToModel(eventTable.getSelectedRow());
-            }
+            int row = eventTable.convertRowIndexToModel(eventTable.getSelectedRow());
             
             if(row >= 0)
             {
@@ -1097,6 +1092,9 @@ public class MessageBrowser extends javax.swing.JPanel
             worker.pageSize = pageSize;
             worker.execute();
         }
+        
+        
+        
     }//GEN-LAST:event_filterButtonActionPerformed
     
     

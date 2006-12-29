@@ -44,10 +44,12 @@ public class LoginPanel extends javax.swing.JFrame
     {
         initComponents();
         setTitle("Mirth Administrator - Login");
+        client = new Client(mirthServer);
+        PlatformUI.SERVER_NAME = mirthServer;
         serverName.setText(mirthServer);
         jLabel2.setForeground(UIConstants.HEADER_TITLE_TEXT_COLOR);
         jLabel5.setForeground(UIConstants.HEADER_TITLE_TEXT_COLOR);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setIconImage(new ImageIcon(com.webreach.mirth.client.ui.Frame.class.getResource("images/mirthlogo1616.png")).getImage());
         setLocationRelativeTo(null);
         setVisible(true);
@@ -100,7 +102,7 @@ public class LoginPanel extends javax.swing.JFrame
         error.setAutoscrolls(false);
         errorPane.setViewportView(error);
 
-        closeButton.setText("Exit");
+        closeButton.setText("Close");
         closeButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 closeButtonActionPerformed(evt);
@@ -244,8 +246,6 @@ public class LoginPanel extends javax.swing.JFrame
                 .addContainerGap())
         );
 
-        loginProgress.setDoubleBuffered(true);
-
         status.setText("Please wait: Logging in...");
 
         org.jdesktop.layout.GroupLayout loggingInLayout = new org.jdesktop.layout.GroupLayout(loggingIn);
@@ -358,9 +358,6 @@ public class LoginPanel extends javax.swing.JFrame
     {        
         try
         {
-            String server = serverName.getText();
-            client = new Client(server);
-            PlatformUI.SERVER_NAME = server;
             if(client.login(username.getText(),String.valueOf(password.getPassword())))
             {
                 PlatformUI.USER_NAME = username.getText();

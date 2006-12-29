@@ -50,16 +50,13 @@ import javax.swing.text.Document;
 public class MirthPasswordField extends javax.swing.JPasswordField implements MirthTextInterface
 {
     private Frame parent;
-    private boolean visible = false;
     private JPopupMenu menu;
     private CutAction cutAction;
     private CopyAction copyAction;
     private PasteAction pasteAction;
     private DeleteAction deleteAction;
     private SelectAllAction selectAllAction;
-    public boolean isVisible(){
-    	return visible;
-    }
+    
     public MirthPasswordField()
     {
         super();
@@ -110,7 +107,6 @@ public class MirthPasswordField extends javax.swing.JPasswordField implements Mi
 			}
         	
         });
-        visible = true;
     }
     
     /**

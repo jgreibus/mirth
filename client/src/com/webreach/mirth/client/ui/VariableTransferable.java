@@ -48,12 +48,6 @@ public class VariableTransferable implements Transferable {
           this.data = "message.rawData";
       else if(data.equals("Transformed Data"))
           this.data = "message.transformedData";
-      else if(data.equals("Message Type"))
-          this.data = "message.type";
-      else if(data.equals("Message Version"))
-          this.data = "message.version";
-      else if(data.equals("Message Source"))
-          this.data = "message.source";
       else if(data.equals("Message ID"))
           this.data = "message.id";
       else if(data.equals("Encoded Data"))
@@ -64,8 +58,8 @@ public class VariableTransferable implements Transferable {
           this.data = "UUID";
       else if(data.equals("Date"))
           this.data = "DATE";
-      else if(data.equals("Original File Name"))
-          this.data = "ORIGINALNAME";
+      else if(data.equals("Original File"))
+          this.data = "ORIGINALFILE";
       else if(data.equals("Count"))
           this.data = "COUNT";
       else if(data.equals("Formatted Date"))

@@ -54,18 +54,16 @@ public class VariableList extends javax.swing.JPanel
     {
         ArrayList<String> variables = new ArrayList<String>();
         int i = 0;
-        variables.add("Message ID");
+        
         variables.add("Raw Data");
         variables.add("Transformed Data");
         variables.add("Encoded Data");
-        variables.add("Message Source");
-        variables.add("Message Type");
-        variables.add("Message Version");
+        variables.add("Message ID");
         variables.add("Date");
         variables.add("Formatted Date");
         variables.add("Timestamp");
         variables.add("Unique ID");
-        variables.add("Original File Name");
+        variables.add("Original File");
         variables.add("Count");
         variables.add("Entity Encoder");
         for (Iterator it = steps.iterator(); it.hasNext();)
