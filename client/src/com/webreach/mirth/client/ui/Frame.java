@@ -1535,7 +1535,7 @@ public class Frame extends JXFrame
             public void done()
             {
                 if (channelPanel.getSelectedChannel() == null)
-                    JOptionPane.showMessageDialog(Frame.this, "Channel no longer exists.");
+                    JOptionPane.showMessageDialog(getThis(), "Channel no longer exists.");
 				else
 					try {
 						editChannel((Channel)ObjectCloner.deepCopy(channelPanel.getSelectedChannel()));
@@ -2284,7 +2284,7 @@ public class Frame extends JXFrame
             
             try
             {
-                 importChannel = (Channel)serializer.fromXML(channelXML.replaceAll("\\&\\#x0D;\\n", "\n").replaceAll("\\&\\#x0D;",""));
+                 importChannel = (Channel)serializer.fromXML(channelXML.replaceAll("\\&\\#x0D;\\n", "\\&\\#x0D;").replaceAll("\\&\\#x0D","\\&\\#x0A"));
              }
             catch (Exception e)
             {
@@ -2808,6 +2808,11 @@ public class Frame extends JXFrame
             BareBonesBrowserLaunch.openURL(UIConstants.HELP_LOCATION);
     }
     
+    public Frame getThis()
+    {
+        return this;
+    }
+
     //ast: class for encoding information
     /*
      * class CharsetEncodingInformation
