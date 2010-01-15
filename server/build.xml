@@ -20,7 +20,7 @@
 		<property name="connectors.jms" value="${extensions}/jms" />
 		<property name="connectors.js" value="${extensions}/js" />
 		<property name="connectors.mllp" value="${extensions}/mllp" />
-		<property name="connectors.ws" value="${extensions}/ws" />
+		<property name="connectors.soap" value="${extensions}/soap" />
 		<property name="connectors.tcp" value="${extensions}/tcp" />
 		<property name="connectors.dicom" value="${extensions}/dicom" />
 		<property name="connectors.vm" value="${extensions}/vm" />
@@ -51,9 +51,6 @@
 
 		<delete dir="${client.lib}" />
 		<mkdir dir="${client.lib}" />
-		
-		<delete dir="${manager.lib}" />
-		<mkdir dir="${manager.lib}" />
 
 		<delete dir="${classes}" />
 		<delete dir="${setup}" />
@@ -270,25 +267,25 @@
 			</fileset>
 		</jar>
 
-		<!-- connectors.ws -->
-		<mkdir dir="${connectors.ws}" />
-		<copy todir="${connectors.ws}">
-			<fileset dir="${src}/com/webreach/mirth/connectors/ws">
+		<!-- connectors.soap -->
+		<mkdir dir="${connectors.soap}" />
+		<copy todir="${connectors.soap}">
+			<fileset dir="${src}/com/webreach/mirth/connectors/soap">
 				<include name="*.xml" />
 			</fileset>
 		</copy>
-		<copy todir="${connectors.ws}/lib" failonerror="false">
-			<fileset dir="${lib.extensions}/ws" />
+		<copy todir="${connectors.soap}/lib" failonerror="false">
+			<fileset dir="${lib.extensions}/soap" />
 		</copy>
-		<jar destfile="${connectors.ws}/ws-shared.jar" basedir="${classes}">
-			<include name="com/webreach/mirth/connectors/ws/WebServiceListenerProperties.class" />
-			<include name="com/webreach/mirth/connectors/ws/WebServiceSenderProperties.class" />
+		<jar destfile="${connectors.soap}/soap-shared.jar" basedir="${classes}">
+			<include name="com/webreach/mirth/connectors/soap/SOAPListenerProperties.class" />
+			<include name="com/webreach/mirth/connectors/soap/SOAPSenderProperties.class" />
 		</jar>
-		<jar destfile="${connectors.ws}/ws-server.jar">
+		<jar destfile="${connectors.soap}/soap-server.jar">
 			<fileset dir="${classes}">
-				<include name="com/webreach/mirth/connectors/ws/**" />
-				<exclude name="com/webreach/mirth/connectors/ws/WebServiceListenerProperties.class" />
-				<exclude name="com/webreach/mirth/connectors/ws/WebServiceSenderProperties.class" />
+				<include name="com/webreach/mirth/connectors/soap/**" />
+				<exclude name="com/webreach/mirth/connectors/soap/SOAPListenerProperties.class" />
+				<exclude name="com/webreach/mirth/connectors/soap/SOAPSenderProperties.class" />
 			</fileset>
 		</jar>
 
@@ -560,6 +557,7 @@
 		<!-- sign jars for webstart -->
 		<signjar alias="mirth" keystore="${basedir}/keystore" storepass="abc12345" keypass="abc12345">
 			<fileset dir="${client.lib}">
+				<exclude name="activation.jar" />
 				<include name="*.jar" />
 			</fileset>
 			<fileset dir="${extensions}" includes="**/*.jar" />
@@ -574,7 +572,6 @@
 		<mkdir dir="${setup.public_html}" />
 		<mkdir dir="${setup.lib}" />
 		<mkdir dir="${setup.client.lib}" />
-		<mkdir dir="${setup.manager.lib}" />
 		<mkdir dir="${setup.source}" />
 		<mkdir dir="${setup.logs}" />
 		<mkdir dir="${setup.licenses}" />
@@ -592,11 +589,6 @@
 		<!-- copy client-lib -->
 		<copy todir="${setup.client.lib}">
 			<fileset dir="${client.lib}" />
-		</copy>
-		
-		<!-- copy manager-lib -->
-		<copy todir="${setup.manager.lib}">
-			<fileset dir="${manager.lib}" />
 		</copy>
 
 		<!-- copy conf files -->
@@ -638,6 +630,7 @@
 			<fileset file="${basedir}/mirth-launcher.xml" />
 			<fileset file="${basedir}/shell-launcher.xml" />
 			<fileset file="${basedir}/mirth-client.jnlp" />
+			<fileset file="${basedir}/activation.jnlp" />
 			<fileset file="${basedir}/keystore" />
 
 			<!-- windows service files -->
@@ -691,7 +684,7 @@
 			<exclude name="com/webreach/mirth/server/launcher/ShellLauncher.class" />
 			<manifest>
 				<attribute name="Main-Class" value="com.webreach.mirth.server.launcher.MirthLauncher" />
-				<attribute name="Class-Path" value="lib/log4j-1.2.15.jar conf/" />
+				<attribute name="Class-Path" value="lib/log4j-1.2.13.jar conf/" />
 			</manifest>
 		</jar>
 
@@ -712,7 +705,7 @@
 			<exclude name="com/webreach/mirth/server/launcher/MirthLauncher.class" />
 			<manifest>
 				<attribute name="Main-Class" value="com.webreach.mirth.server.launcher.ShellLauncher" />
-				<attribute name="Class-Path" value="lib/log4j-1.2.15.jar conf/ extensions/connectors/" />
+				<attribute name="Class-Path" value="lib/log4j-1.2.13.jar conf/ extensions/connectors/" />
 			</manifest>
 		</jar>
 
@@ -733,9 +726,9 @@
 				<pathelement location="${setup}/mirth-server.jar" />
 				<pathelement location="${setup.conf}" />
 				<fileset dir="${lib}">
-					<include name="log4j-1.2.15.jar" />
-					<include name="derby-10.5.3.0.jar" />
-					<include name="derbytools-10.5.3.0.jar" />
+					<include name="log4j-1.2.13.jar" />
+					<include name="derby.jar" />
+					<include name="derbytools.jar" />
 				</fileset>
 			</classpath>
 			<arg value="derby-database.sql" />
@@ -770,7 +763,7 @@
 		<zip destfile="${dist.extensions}/jms-${version}.zip" basedir="${extensions}" includes="jms/**/*" />
 		<zip destfile="${dist.extensions}/js-${version}.zip" basedir="${extensions}" includes="js/**/*" />
 		<zip destfile="${dist.extensions}/mllp-${version}.zip" basedir="${extensions}" includes="mllp/**/*" />
-		<zip destfile="${dist.extensions}/ws-${version}.zip" basedir="${extensions}" includes="ws/**/*" />
+		<zip destfile="${dist.extensions}/soap-${version}.zip" basedir="${extensions}" includes="soap/**/*" />
 		<zip destfile="${dist.extensions}/tcp-${version}.zip" basedir="${extensions}" includes="tcp/**/*" />
 		<zip destfile="${dist.extensions}/dicom-${version}.zip" basedir="${extensions}" includes="dicom/**/*" />
 		<zip destfile="${dist.extensions}/vm-${version}.zip" basedir="${extensions}" includes="vm/**/*" />

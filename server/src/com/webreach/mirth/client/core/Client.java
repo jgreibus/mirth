@@ -47,6 +47,7 @@ import com.webreach.mirth.model.MessageObject;
 import com.webreach.mirth.model.MetaData;
 import com.webreach.mirth.model.PasswordRequirements;
 import com.webreach.mirth.model.PluginMetaData;
+import com.webreach.mirth.model.Preferences;
 import com.webreach.mirth.model.ServerConfiguration;
 import com.webreach.mirth.model.User;
 import com.webreach.mirth.model.converters.ObjectXMLSerializer;
@@ -514,28 +515,6 @@ public class Client {
     }
 
     /**
-     * Hot deploys specific channels.
-     * 
-     * @throws ClientException
-     */
-    public synchronized void hotDeployChannels(List<Channel> channels) throws ClientException {
-        logger.debug("deploying channels");
-        NameValuePair[] params = { new NameValuePair("op", "hotDeployChannels"), new NameValuePair("channels", serializer.toXML(channels)) };
-        serverConnection.executePostMethod(CONFIGURATION_SERVLET, params);
-    }
-    
-    /**
-     * Undeploys specific channels.
-     * 
-     * @throws ClientException
-     */
-    public synchronized void undeployChannels(List<String> channelIds) throws ClientException {
-        logger.debug("undeploying channels");
-        NameValuePair[] params = { new NameValuePair("op", "uneployChannels"), new NameValuePair("channelIds", serializer.toXML(channelIds)) };
-        serverConnection.executePostMethod(CONFIGURATION_SERVLET, params);
-    }
-    
-    /**
      * Starts the channel with the specified id.
      * 
      * @param channelId
@@ -801,10 +780,10 @@ public class Client {
      * @return
      * @throws ClientException
      */
-    public Properties getUserPreferences(User user) throws ClientException {
+    public Preferences getUserPreferences(User user) throws ClientException {
         logger.debug("retrieving user preferences");
         NameValuePair[] params = { new NameValuePair("op", "getUserPreferences"), new NameValuePair("user", serializer.toXML(user)) };
-        return (Properties) serializer.fromXML(serverConnection.executePostMethod(USER_SERVLET, params));
+        return (Preferences) serializer.fromXML(serverConnection.executePostMethod(USER_SERVLET, params));
     }
 
     /**

@@ -25,6 +25,7 @@
 
 package com.webreach.mirth.server.controllers;
 
+import java.io.File;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -60,11 +61,7 @@ public abstract class ConfigurationController extends Controller {
 
     public abstract void shutdown();
 
-    public abstract void deployAllChannels() throws ControllerException;
-    
-    public abstract void deployChannels(List<Channel> channels) throws ControllerException;
-    
-    public abstract void undeployChannels(List<String> channelIds) throws ControllerException;
+    public abstract void deployChannels() throws ControllerException;
     
     public abstract void loadEncryptionKey();
     
@@ -86,9 +83,21 @@ public abstract class ConfigurationController extends Controller {
 
     public abstract void executeGlobalScript(String scriptType);
 
+    // mule configs
+
+    public abstract File getLatestConfiguration() throws ControllerException;
+
+    public abstract String getDefaultConfiguration() throws Exception;
+
+    public abstract void deleteLatestConfiguration();
+
     // config parameters
     
     public abstract String getDatabaseType();
+
+    public abstract String getMuleConfigurationPath();
+
+    public abstract String getMuleBootPath();
 
     public abstract String getServerId();
 
@@ -119,7 +128,6 @@ public abstract class ConfigurationController extends Controller {
     public abstract void setServerConfiguration(ServerConfiguration serverConfiguration) throws ControllerException;
     
     public abstract PasswordRequirements getPasswordRequirements();
-    
     // status
     
     public abstract int getStatus();
@@ -127,14 +135,4 @@ public abstract class ConfigurationController extends Controller {
     public abstract boolean isEngineStarting();
 
     public abstract void setEngineStarting(boolean isEngineStarting);
-    
-    // properties
-    
-    public abstract Properties getPropertiesForGroup(String group);
-    
-    public abstract String getProperty(String group, String name);
-    
-    public abstract void saveProperty(String group, String name, String property);
-    
-    public abstract void removeProperty(String group, String name);
 }

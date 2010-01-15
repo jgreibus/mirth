@@ -472,19 +472,15 @@ public class MuleConfigurationBuilder {
 				
                 // list of keys whose values are actually lists
 				ArrayList<String> keysOfValuesThatAreLists = new ArrayList<String>();
-				keysOfValuesThatAreLists.add("dispatcherAttachmentNames");
-				keysOfValuesThatAreLists.add("dispatcherAttachmentContents");
-				keysOfValuesThatAreLists.add("dispatcherAttachmentTypes");
+				keysOfValuesThatAreLists.add("attachmentNames");
+				keysOfValuesThatAreLists.add("attachmentContents");
+				keysOfValuesThatAreLists.add("attachmentTypes");
 				
 				keysOfValuesThatAreLists.add("requestParamsName");
 				keysOfValuesThatAreLists.add("requestParamsKey");
 				keysOfValuesThatAreLists.add("requestParamsValue");
 				keysOfValuesThatAreLists.add("assertionParamsKey");
 				keysOfValuesThatAreLists.add("assertionParamsValue");
-				
-				// Webservice Listener
-				keysOfValuesThatAreLists.add("receiverUsernames");
-				keysOfValuesThatAreLists.add("receiverPasswords");
 
 				// only add non-null, non-empty, non-Mule properties to the list
 				// the getProperties method could not be used since this is a
@@ -679,7 +675,7 @@ public class MuleConfigurationBuilder {
 	// The format is: protocol://host|hostname|emtpy:port
 	private String getEndpointUri(Connector connector) {
 		// TODO: This is a hack.
-		if (connector.getProperties().getProperty("host") != null && connector.getProperties().getProperty("host").startsWith("http")) {
+		if (connector.getProperties().getProperty("host") != null && (connector.getProperties().getProperty("host").startsWith("axis:") || connector.getProperties().getProperty("host").startsWith("http"))) {
 			return connector.getProperties().getProperty("host");
 		}
 		StringBuilder builder = new StringBuilder();

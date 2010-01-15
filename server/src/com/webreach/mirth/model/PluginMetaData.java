@@ -98,8 +98,9 @@ public class PluginMetaData extends MetaData implements Serializable {
 		builder.append("pluginVersion=" + getPluginVersion() + ", ");
 		builder.append("mirthVersion=" + getMirthVersion() + ", ");
 		
-		for (ListIterator<ExtensionPoint> iter = extensionPoints.listIterator(); iter.hasNext();) {
-			builder.append("extention-point" + iter.nextIndex() + "=" + iter.next().toString() + ", ");
+		for (ListIterator iter = extensionPoints.listIterator(); iter.hasNext();) {
+			ExtensionPoint extensionPoint = (ExtensionPoint) iter.next();
+			builder.append("extention-point" + iter.nextIndex() + "=" + extensionPoint.toString() + ", ");
 		}
 		
 		builder.append("description=" + getDescription() + ", ");

@@ -550,9 +550,9 @@ public class JavaScriptTransformer extends AbstractEventAwareTransformer {
 		newScript.append("return attachment;\n");
 		newScript.append("}\n");
 
-		// Format the transformed XML so that line breaks are removed when those
-		// nodes are removed and indenting is cleaned up with two spaces.
-		newScript.append("XML.ignoreWhitespace=true;");
+        // Format the transformed XML so that line breaks are removed when those
+        // nodes are removed.
+        newScript.append("XML.ignoreWhitespace=true;");
         // Setting prettyPrinting to true causes HL7 to break when converting back from HL7.
         newScript.append("XML.prettyPrinting=false;");
 

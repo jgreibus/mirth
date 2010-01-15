@@ -65,7 +65,7 @@ public class DefaultTemplateController extends TemplateController {
         logger.debug("adding template: id=" + id);
 
         try {
-            Map<String, Object> parameterMap = new HashMap<String, Object>();
+            Map parameterMap = new HashMap();
             parameterMap.put("id", id);
             parameterMap.put("template", template);
 

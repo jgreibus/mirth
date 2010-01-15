@@ -44,6 +44,8 @@ import com.webreach.mirth.server.controllers.ControllerFactory;
 import com.webreach.mirth.server.controllers.EventController;
 import com.webreach.mirth.server.controllers.ScriptController;
 
+import java.io.IOException;
+
 public class JavaScriptUtil {
     private Logger logger = Logger.getLogger(this.getClass());
     private CompiledScriptCache compiledScriptCache = CompiledScriptCache.getInstance();
@@ -62,7 +64,7 @@ public class JavaScriptUtil {
         }
     }
 
-    private Context enterContext() {
+    public static Context enterContext() {
 		Context context = Context.enter();
 
         if (sealedSharedScope == null) {
@@ -77,7 +79,7 @@ public class JavaScriptUtil {
         return context;
     }
 
-    private String getJavascriptImportScript() {
+    public static String getJavascriptImportScript() {
         StringBuilder script = new StringBuilder();
         script.append("importPackage(Packages.com.webreach.mirth.server.util);\n");
         script.append("importPackage(Packages.com.webreach.mirth.model.converters);\n");
@@ -86,12 +88,12 @@ public class JavaScriptUtil {
         script.append("xmllist = new XMLList();\n");
         script.append("namespace = new Namespace();\n");
         script.append("qname = new QName();\n");
-        script.append("XML.ignoreWhitespace = false;\n");
-        script.append("XML.prettyPrinting = false;\n");
+        script.append("XML.ignoreWhitespace=false;");
+        script.append("XML.prettyPrinting=false;");
         return script.toString();
     }
 
-    private Scriptable getScope() {
+    public Scriptable getScope() {
         Scriptable scope = enterContext().newObject(sealedSharedScope);
         scope.setPrototype(sealedSharedScope);
         scope.setParentScope(null);
@@ -123,38 +125,33 @@ public class JavaScriptUtil {
         Script compiledScript = compiledScriptCache.getCompiledScript(scriptId);
         Logger scriptLogger = Logger.getLogger(scriptType.toLowerCase());
 
-        if (compiledScript == null) {
+        if (compiledScript == null)
             return;
-        }
 
         try {
             Context context = enterContext();
             Scriptable scope = getScope();
 
-            if (messageObject != null) {
+            if (messageObject != null)
                 JavaScriptScopeUtil.buildScope(scope, messageObject, scriptLogger);
-            } else if ((channelId != null) && (channelId.length() > 0)) {
+            else if (channelId != null && channelId.length() > 0)
                 JavaScriptScopeUtil.buildScope(scope, channelId, scriptLogger);
-            } else {
+            else
                 JavaScriptScopeUtil.buildScope(scope, scriptLogger);
-            }
 
             logger.debug("executing " + scriptType + " script. id=" + scriptId);
             compiledScript.exec(context, scope);
         } catch (Exception e) {
             if (e instanceof RhinoException) {
                 String connectorName = null;
-                
                 if (messageObject != null) {
                     connectorName = messageObject.getConnectorName();
                 }
-                
                 ScriptController scriptController = ControllerFactory.getFactory().createScriptController();
                 String script = scriptController.getScript(scriptId);
                 String sourceCode = JavaScriptUtil.getSourceCode(script, ((RhinoException) e).lineNumber(), 0);
                 e = new MirthJavascriptTransformerException((RhinoException) e, channelId, connectorName, 1, scriptType, sourceCode);
             }
-            
             throw e;
         } finally {
             Context.exit();
@@ -188,7 +185,7 @@ public class JavaScriptUtil {
             }
         } catch (EvaluatorException e) {
             if (e instanceof RhinoException) {
-                MirthJavascriptTransformerException mjte = new MirthJavascriptTransformerException((RhinoException) e, null, null, 1, scriptId, null);
+                MirthJavascriptTransformerException mjte = new MirthJavascriptTransformerException((RhinoException) e, null, null, 1, scriptId,null);
                 throw new Exception(mjte);
             } else {
                 throw new Exception(e);
@@ -202,16 +199,15 @@ public class JavaScriptUtil {
 
     public String generateScript(String script, boolean includeChannelMap) {
         StringBuilder builtScript = new StringBuilder();
+
         builtScript.append("String.prototype.trim = function() { return this.replace(/^\\s+|\\s+$/g,\"\").replace(/^\\t+|\\t+$/g,\"\"); };");
+
         builtScript.append("function $(string) { ");
-        
         if (includeChannelMap) {
             builtScript.append("if (channelMap.containsKey(string)) { return channelMap.get(string);} else ");
         }
-        
         builtScript.append("if (globalMap.containsKey(string)) { return globalMap.get(string);} else ");
         builtScript.append("{ return ''; }}");
-        
         if (includeChannelMap) {
             builtScript.append("function $c(key, value){");
             builtScript.append("if (arguments.length == 1){return channelMap.get(key); }");
@@ -234,7 +230,6 @@ public class JavaScriptUtil {
             builtScript.append("Packages.com.webreach.mirth.server.controllers.MessageObjectController.getInstance().insertAttachment(attachment); \n");
             builtScript.append("return attachment; }\n");
         }
-        
         builtScript.append("function $g(key, value){");
         builtScript.append("if (arguments.length == 1){return globalMap.get(key); }");
         builtScript.append("else if (arguments.length == 2){globalMap.put(key, value); }}");
@@ -259,29 +254,24 @@ public class JavaScriptUtil {
     }
 
     public void removeScriptFromCache(String scriptId) {
-        if (compiledScriptCache.getCompiledScript(scriptId) != null) {
+        if (compiledScriptCache.getCompiledScript(scriptId) != null)
             compiledScriptCache.removeCompiledScript(scriptId);
-        }
     }
-    
     // utility to get source code from script. Used to generate error report.
-    public static String getSourceCode(String script, int errorLineNumber, int offset){
+    public static String getSourceCode(String script, int lineNumber,int offset){
+        String lineSep = System.getProperty("line.separator");
         String[] lines = script.split("\n");
-        int startingLineNumber = errorLineNumber - offset;
-        
-        if (startingLineNumber < SOURCE_CODE_LINE_WRAPPER){
-            startingLineNumber = SOURCE_CODE_LINE_WRAPPER;
+        int linenumber = lineNumber - offset;
+        if (linenumber < SOURCE_CODE_LINE_WRAPPER){
+            linenumber = SOURCE_CODE_LINE_WRAPPER;
         }
-        
-        int currentLineNumber = startingLineNumber - SOURCE_CODE_LINE_WRAPPER;
-        StringBuilder source = new StringBuilder();
-        
-        while ((currentLineNumber < (startingLineNumber + SOURCE_CODE_LINE_WRAPPER)) && (currentLineNumber < lines.length)){
-        	source.append(System.getProperty("line.separator") + currentLineNumber + ": " + lines[currentLineNumber - 1]);
+        int currentLineNumber = linenumber - SOURCE_CODE_LINE_WRAPPER;
+        String sourceCode = "";
+        while ((currentLineNumber < (linenumber + SOURCE_CODE_LINE_WRAPPER)) && (currentLineNumber < lines.length)){
+        	sourceCode = sourceCode + lineSep + (currentLineNumber) + ": " + lines[currentLineNumber-1];
             currentLineNumber++;
         }
-        
-        return source.toString();
+        return sourceCode;
     }
 
 }

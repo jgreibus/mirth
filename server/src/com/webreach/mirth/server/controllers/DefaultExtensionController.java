@@ -26,6 +26,8 @@
 package com.webreach.mirth.server.controllers;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringReader;
@@ -109,15 +111,15 @@ public class DefaultExtensionController extends ExtensionController {
                     for (ExtensionPoint extensionPoint : metaData.getExtensionPoints()) {
                         if (extensionPoint.getMode() == ExtensionPoint.Mode.SERVER && extensionPoint.getType() == ExtensionPoint.Type.SERVER_PLUGIN && extensionPoint.getClassName() != null && extensionPoint.getClassName().length() > 0) {
                             ServerPlugin serverPlugin = (ServerPlugin) Class.forName(extensionPoint.getClassName()).newInstance();
-                            String pluginId = extensionPoint.getName();
+                            String pluginName = extensionPoint.getName();
                             Properties properties = null;
 
                             try {
-                                properties = getPluginProperties(pluginId);
+                                properties = getPluginProperties(pluginName);
                                 if (properties == null) {
                                     properties = serverPlugin.getDefaultProperties();
                                     if (properties != null) {
-                                        setPluginProperties(pluginId, properties);
+                                        setPluginProperties(pluginName, properties);
                                     }
                                 }
                             } catch (Exception e) {
@@ -125,10 +127,10 @@ public class DefaultExtensionController extends ExtensionController {
                                 if (properties == null) {
                                     properties = new Properties();
                                 }
-                                setPluginProperties(pluginId, properties);
+                                setPluginProperties(pluginName, properties);
                             }
                             serverPlugin.init(properties);
-                            loadedPlugins.put(pluginId, serverPlugin);
+                            loadedPlugins.put(pluginName, serverPlugin);
                         }
                     }
                 }
@@ -233,7 +235,10 @@ public class DefaultExtensionController extends ExtensionController {
 		                    List<String> uninstallScripts = getUninstallScripts();
 		                    uninstallScripts.addAll(scriptList);
 		                    setUninstallScripts(uninstallScripts);
-		                    ConfigurationController.getInstance().removeProperty(plugin.getName(), "schema");
+		                    
+		                    Properties extensionsProperties = getExtensionsProperties();
+		                    extensionsProperties.remove("schema." + plugin.getPath());
+		                    setExtensionsProperties(extensionsProperties);
 	                    }
                     }
 				}
@@ -265,15 +270,86 @@ public class DefaultExtensionController extends ExtensionController {
     }
 
     public void setPluginProperties(String pluginName, Properties properties) throws ControllerException {
-        for (Object name : properties.keySet()) {
-            ConfigurationController.getInstance().saveProperty(pluginName, (String) name, (String) properties.get(name));
+        logger.debug("setting " + pluginName + " properties");
+
+        FileOutputStream fileOutputStream = null;
+        
+        String packageName = getPackageName(pluginName);
+
+        try {
+            File propertiesFile = new File(getExtensionsPath() + packageName + System.getProperty("file.separator") + PLUGIN_PROPERTIES_FILE);
+            fileOutputStream = new FileOutputStream(propertiesFile);
+            properties.store(fileOutputStream, "Updated " + packageName + " properties");
+        } catch (Exception e) {
+            throw new ControllerException(e);
+        } finally {
+            try {
+                if (fileOutputStream != null) {
+                    fileOutputStream.flush();
+                    fileOutputStream.close();
+                }
+            } catch (IOException e) {
+                logger.warn(e);
+            }
         }
     }
 
     public Properties getPluginProperties(String pluginName) throws ControllerException {
-        return ConfigurationController.getInstance().getPropertiesForGroup(pluginName);
+        logger.debug("retrieving " + pluginName + " properties");
+
+        FileInputStream fileInputStream = null;
+        Properties properties = null;
+        
+        String packageName = getPackageName(pluginName);
+        
+        try {
+            File propertiesFile = new File(getExtensionsPath() + packageName + System.getProperty("file.separator") + PLUGIN_PROPERTIES_FILE);
+            if (!propertiesFile.exists()) {
+                return null;
+            }
+            fileInputStream = new FileInputStream(propertiesFile);
+            properties = new Properties();
+            properties.load(fileInputStream);
+        } catch (Exception e) {
+            throw new ControllerException(e);
+        } finally {
+            try {
+                if (fileInputStream != null)
+                    fileInputStream.close();
+            } catch (IOException e) {
+                logger.warn(e);
+            }
+        }
+
+        return properties;
     }
     
+    /**
+     * Sometimes the pluginName passed in is actually the 
+     * extensionPoint name.  In this case, we need to use 
+     * the extensionPoint name to search for the pluginName.
+     * 
+     * @param pluginName Plugin or Extension Point name
+     * @return The package name of the plugin/extension point
+     */
+    private String getPackageName(String pluginName) {
+        String packageName = null;
+        
+        if (plugins.get(pluginName) == null) {
+        	for (PluginMetaData metaData : plugins.values()) {
+        		for (ExtensionPoint extensionPoint : metaData.getExtensionPoints()) {
+        			if (extensionPoint.getName().equals(pluginName)) {
+        				packageName = metaData.getPath();
+        			}
+        		}
+        	}
+        } else {
+        	packageName = plugins.get(pluginName).getPath();
+        }
+        
+        return packageName;
+    }
+
     public Map<String, ConnectorMetaData> getConnectorMetaData() throws ControllerException {
         logger.debug("retrieving connector metadata");
         return this.connectors;
@@ -345,6 +421,56 @@ public class DefaultExtensionController extends ExtensionController {
 
     public Map<String, ServerPlugin> getLoadedPlugins() {
         return loadedPlugins;
+    }
+    
+    public void setExtensionsProperties(Properties properties) throws ControllerException {
+        logger.debug("setting extension properties");
+
+        FileOutputStream fileOutputStream = null;
+
+        try {
+            File propertiesFile = new File(getExtensionsPath() + EXTENSIONS_PROPERTIES_FILE);
+            fileOutputStream = new FileOutputStream(propertiesFile);
+            properties.store(fileOutputStream, "Updated extension properties");
+        } catch (Exception e) {
+            throw new ControllerException(e);
+        } finally {
+            try {
+                if (fileOutputStream != null) {
+                    fileOutputStream.flush();
+                    fileOutputStream.close();
+                }
+            } catch (IOException e) {
+                logger.warn(e);
+            }
+        }
+    }
+
+    public Properties getExtensionsProperties() throws ControllerException {
+        logger.debug("retrieving extension properties");
+
+        FileInputStream fileInputStream = null;
+        Properties properties = new Properties();
+
+        try {
+            File propertiesFile = new File(getExtensionsPath() + EXTENSIONS_PROPERTIES_FILE);
+            if (!propertiesFile.exists()) {
+                return properties;
+            }
+            fileInputStream = new FileInputStream(propertiesFile);
+            properties.load(fileInputStream);
+        } catch (Exception e) {
+            throw new ControllerException(e);
+        } finally {
+            try {
+                if (fileInputStream != null)
+                    fileInputStream.close();
+            } catch (IOException e) {
+                logger.warn(e);
+            }
+        }
+
+        return properties;
     }
     
     public void uninstallExtensions() {

@@ -28,6 +28,7 @@ package com.webreach.mirth.server.controllers;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -179,13 +180,15 @@ public class DefaultChannelController extends ChannelController {
              * list.
              * 
              */
-            for (String cachedChannelId : cachedChannels.keySet()) {
+            for (Iterator iter = cachedChannels.keySet().iterator(); iter.hasNext();) {
+                String cachedChannelId = (String) iter.next();
                 boolean channelExistsOnServer = false;
 
                 // iterate through all of the channels on the server
-                for (Entry<String, Integer> entry : serverChannels.entrySet()) {
-                    String id = entry.getKey();
-                    Integer revision = entry.getValue();
+                for (Iterator iterator = serverChannels.entrySet().iterator(); iterator.hasNext() && !channelExistsOnServer;) {
+                    Entry entry = (Entry) iterator.next();
+                    String id = (String) entry.getKey();
+                    Integer revision = (Integer) entry.getValue();
 
                     // if the channel with the cached id exists
                     if (id.equals(cachedChannelId)) {
@@ -217,8 +220,9 @@ public class DefaultChannelController extends ChannelController {
              * list as added.
              * 
              */
-            for (Entry<String, Integer> entry : serverChannels.entrySet()) {
-                String id = entry.getKey();
+            for (Iterator iter = serverChannels.entrySet().iterator(); iter.hasNext();) {
+                Entry entry = (Entry) iter.next();
+                String id = (String) entry.getKey();
 
                 if (!cachedChannels.keySet().contains(id)) {
                     ChannelSummary summary = new ChannelSummary();

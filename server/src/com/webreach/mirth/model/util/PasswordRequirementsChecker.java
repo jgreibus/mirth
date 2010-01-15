@@ -7,7 +7,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.webreach.mirth.model.PasswordRequirements;
-import com.webreach.mirth.server.controllers.ConfigurationController;
+import com.webreach.mirth.util.PropertyLoader;
 
 public class PasswordRequirementsChecker implements Serializable {
 	private static final String CHARACTERS = " characters";
@@ -21,7 +21,6 @@ public class PasswordRequirementsChecker implements Serializable {
 	private static final String PASSWORD_REQUIRE_UPPER = "password.require.upper";
 	private static final String PASSWORD_REQUIRE_SPECIAL = "password.require.special";
 	private static final String PASSWORD_MINLENGTH = "password.minlength";
-	private static final String PROPERTIES_SECURITY = "security";
 
 	private static PasswordRequirementsChecker instance = null;
 
@@ -42,17 +41,16 @@ public class PasswordRequirementsChecker implements Serializable {
 		PasswordRequirements passwordRequirements = new PasswordRequirements();
 		
 		// load the mirth properties
-		Properties securityProperties = ConfigurationController.getInstance().getPropertiesForGroup(PROPERTIES_SECURITY);
-		
-		if (securityProperties.getProperty(PASSWORD_REQUIRE_UPPER, "false").equalsIgnoreCase("true"))
+		Properties mirthProperties = PropertyLoader.loadProperties("mirth");
+		if (mirthProperties.getProperty(PASSWORD_REQUIRE_UPPER, "false").equalsIgnoreCase("true"))
 			passwordRequirements.setRequireUpper(true);
-		if (securityProperties.getProperty(PASSWORD_REQUIRE_LOWER, "false").equalsIgnoreCase("true"))
+		if (mirthProperties.getProperty(PASSWORD_REQUIRE_LOWER, "false").equalsIgnoreCase("true"))
 			passwordRequirements.setRequireLower(true);
-		if (securityProperties.getProperty(PASSWORD_REQUIRE_NUMERIC, "false").equalsIgnoreCase("true"))
+		if (mirthProperties.getProperty(PASSWORD_REQUIRE_NUMERIC, "false").equalsIgnoreCase("true"))
 			passwordRequirements.setRequireNumeric(true);
-		if (securityProperties.getProperty(PASSWORD_REQUIRE_SPECIAL, "false").equalsIgnoreCase("true"))
+		if (mirthProperties.getProperty(PASSWORD_REQUIRE_SPECIAL, "false").equalsIgnoreCase("true"))
 			passwordRequirements.setRequireSpecial(true);
-		String minlength = securityProperties.getProperty(PASSWORD_MINLENGTH, "0");
+		String minlength = mirthProperties.getProperty(PASSWORD_MINLENGTH, "0");
 		try {
 			int minLength = Integer.parseInt(minlength);
 			passwordRequirements.setMinLength(minLength);

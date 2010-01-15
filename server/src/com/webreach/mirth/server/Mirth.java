@@ -46,13 +46,10 @@ import org.mortbay.http.SslListener;
 import org.mortbay.http.handler.ResourceHandler;
 import org.mortbay.jetty.servlet.ServletHandler;
 import org.mule.MuleManager;
-import org.mule.impl.MuleDescriptor;
-import org.mule.umo.manager.UMOManager;
-import org.mule.umo.routing.UMOOutboundRouter;
+import org.mule.config.builders.MuleXmlConfigurationBuilder;
 
 import com.webreach.mirth.model.Channel;
 import com.webreach.mirth.model.SystemEvent;
-import com.webreach.mirth.server.builders.MuleManagerBuilder;
 import com.webreach.mirth.server.controllers.ChannelController;
 import com.webreach.mirth.server.controllers.ChannelStatisticsController;
 import com.webreach.mirth.server.controllers.ConfigurationController;
@@ -78,7 +75,7 @@ public class Mirth extends Thread {
     private boolean running = false;
     private Properties mirthProperties = null;
     private Properties versionProperties = null;
-    private UMOManager umoManager = null;
+    private MuleManager muleManager = null;
     private HttpServer httpServer = null;
     private HttpServer servletContainer = null;
     private CommandQueue commandQueue = CommandQueue.getInstance();
@@ -139,10 +136,6 @@ public class Mirth extends Thread {
                     stopMule();
                 } else if (command.getOperation().equals(Command.Operation.RESTART_ENGINE)) {
                     restartMule();
-                } else if (command.getOperation().equals(Command.Operation.DEPLOY_CHANNELS)) {
-                    deployChannels((List<Channel>) command.getParameter());
-                } else if (command.getOperation().equals(Command.Operation.UNDEPLOY_CHANNELS)) {
-                    undeployChannels((List<String>) command.getParameter());
                 }
             }
         } else {
@@ -215,57 +208,25 @@ public class Mirth extends Thread {
         startMule();
     }
 
-    private void deployChannels(List<Channel> channels) {
-        try {
-            // unregister existing channels
-            for (Channel channel : channels) {
-                MuleDescriptor oldDescriptor = (MuleDescriptor) umoManager.getModel().getDescriptor(channel.getId());
-
-                if (oldDescriptor != null) {
-                    channelController.getChannelCache().remove(channel);
-                    umoManager.getModel().unregisterComponent(oldDescriptor);
-                    MuleManagerBuilder.unregisterTransformers(umoManager, oldDescriptor.getInboundRouter().getEndpoints());
-                    UMOOutboundRouter outboundRouter = (UMOOutboundRouter) oldDescriptor.getOutboundRouter().getRouters().iterator().next();
-                    MuleManagerBuilder.unregisterTransformers(umoManager, outboundRouter.getEndpoints());
-                }
-            }
-
-            // TODO: delete old scripts from script table
-
-            // update the manager with the new classes
-            MuleManagerBuilder managerBuilder = new MuleManagerBuilder();
-            managerBuilder.getConfiguration(umoManager, channels, extensionController.getConnectorMetaData());
-            configurationController.executeChannelDeployScripts(channelController.getChannel(null));
-        } catch (Exception e) {
-            logger.error("Error deploying channels.", e);
-        }
-    }
-
-    private void undeployChannels(List<String> channelIds) {
-        try {
-            for (String channelId : channelIds) {
-                MuleDescriptor oldDescriptor = (MuleDescriptor) umoManager.getModel().getDescriptor(channelId);
-                channelController.getChannelCache().remove(channelController.getChannelCache().get(channelId));
-                umoManager.getModel().unregisterComponent(oldDescriptor);
-            }
-
-            // TODO: delete old scripts from script table
-        } catch (Exception e) {
-            logger.error("Error un-deploying channels.", e);
-        }
-    }
-
     /**
      * Starts the Mule server.
      * 
      */
     private void startMule() {
+        String configurationFilePath = null;
+
+        try {
+            configurationFilePath = configurationController.getLatestConfiguration().getAbsolutePath();
+        } catch (Exception e) {
+            logger.error("Could not retrieve latest configuration.", e);
+            return;
+        }
+
         try {
             // clear global map and do channel deploy scripts if the user
             // specified to
-            if (configurationController.getServerProperties().getProperty("server.resetglobalvariables") == null || configurationController.getServerProperties().getProperty("server.resetglobalvariables").equals("1")) {
+            if (configurationController.getServerProperties().getProperty("server.resetglobalvariables") == null || configurationController.getServerProperties().getProperty("server.resetglobalvariables").equals("1"))
                 GlobalVariableStore.getInstance().globalVariableMap.clear();
-            }
         } catch (Exception e) {
             logger.warn("Could not clear the global map.", e);
         }
@@ -273,24 +234,32 @@ public class Mirth extends Thread {
         configurationController.setEngineStarting(true);
 
         try {
+            logger.debug("starting mule with configuration file: " + configurationFilePath);
+
             // disables validation of Mule configuration files
             System.setProperty("org.mule.xml.validate", "false");
             VMRegistry.getInstance().rebuild();
+            MuleXmlConfigurationBuilder builder = new MuleXmlConfigurationBuilder();
+
             List<Channel> channels = channelController.getChannel(null);
             configurationController.compileScripts(channels);
+
             configurationController.executeGlobalDeployScript();
-            umoManager = MuleManager.getInstance();
-            MuleManagerBuilder managerBuilder = new MuleManagerBuilder();
-            managerBuilder.loadDefaultConfiguration(umoManager);
-            deployChannels(channelController.getChannel(null));
-            umoManager.start();
+            configurationController.executeChannelDeployScripts(channelController.getChannel(null));
+
+            muleManager = (MuleManager) builder.configure(configurationFilePath);
+
         } catch (Exception e) {
-            logger.error("Error starting engine.", e);
+            logger.warn("Error deploying channels.", e);
+
             // if deploy fails, log to system events
             SystemEvent event = new SystemEvent("Error deploying channels.");
             event.setLevel(SystemEvent.Level.HIGH);
             event.setDescription(StackTracePrinter.stackTraceToString(e));
             eventController.logSystemEvent(event);
+
+            // remove the errant configuration
+            configurationController.deleteLatestConfiguration();
         }
 
         configurationController.setEngineStarting(false);
@@ -303,18 +272,19 @@ public class Mirth extends Thread {
     private void stopMule() {
         logger.debug("stopping mule");
 
-        if (umoManager != null) {
+        if (muleManager != null) {
             try {
-                if (umoManager.isStarted()) {
+                if (muleManager.isStarted()) {
                     configurationController.executeChannelShutdownScripts(channelController.getChannel(null));
                     configurationController.executeGlobalShutdownScript();
-                    umoManager.stop();
+
+                    muleManager.stop();
                 }
             } catch (Exception e) {
                 logger.error(e);
             } finally {
                 logger.debug("disposing mule instance");
-                umoManager.dispose();
+                muleManager.dispose();
             }
         }
     }
@@ -363,7 +333,7 @@ public class Mirth extends Thread {
             // Load the context path property and remove the last char if it is
             // a '/'.
             String contextPath = PropertyLoader.getProperty(mirthProperties, "context.path");
-            if (contextPath.endsWith("/")) {
+            if (contextPath.lastIndexOf('/') == (contextPath.length() - 1)) {
                 contextPath = contextPath.substring(0, contextPath.length() - 1);
             }
 
@@ -405,8 +375,10 @@ public class Mirth extends Thread {
             servletContext.addHandler(servlets);
             httpServer.addContext(servletContext);
             servlets.addServlet("WebStart", "/webstart.jnlp", "com.webreach.mirth.server.servlets.WebStartServlet");
+            servlets.addServlet("Activation", "/activation.jnlp", "com.webreach.mirth.server.servlets.ActivationServlet");
             // Servlets for backwards compatibility
             servlets.addServlet("WebStart", "/webstart", "com.webreach.mirth.server.servlets.WebStartServlet");
+            servlets.addServlet("Activation", "/activation", "com.webreach.mirth.server.servlets.ActivationServlet");
 
             // Create a secure servlet container
             ServletHandler secureServlets = new ServletHandler();
@@ -414,7 +386,6 @@ public class Mirth extends Thread {
             secureServletContext.setContextPath(contextPath + "/");
             secureServletContext.addHandler(secureServlets);
             servletContainer.addContext(secureServletContext);
-            
             // Map a servlet onto the container
             secureServlets.addServlet("Alerts", "/alerts", "com.webreach.mirth.server.servlets.AlertServlet");
             secureServlets.addServlet("Channels", "/channels", "com.webreach.mirth.server.servlets.ChannelServlet");
@@ -461,7 +432,7 @@ public class Mirth extends Thread {
             try {
                 DriverManager.getConnection("jdbc:derby:;shutdown=true");
             } catch (SQLException sqle) {
-                if ((sqle.getSQLState() != null) && sqle.getSQLState().equals("XJ015")) {
+                if (sqle != null && sqle.getSQLState() != null && sqle.getSQLState().equals("XJ015")) {
                     gotException = true;
                 }
             }
@@ -502,7 +473,6 @@ public class Mirth extends Thread {
      */
     private boolean testPort(String port, String name) {
         ServerSocket socket = null;
-        
         try {
             socket = new ServerSocket(Integer.parseInt(port));
         } catch (NumberFormatException ex) {
@@ -521,7 +491,6 @@ public class Mirth extends Thread {
                 }
             }
         }
-        
         return true;
     }
 

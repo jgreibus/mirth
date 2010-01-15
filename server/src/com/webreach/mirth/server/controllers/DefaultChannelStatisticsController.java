@@ -98,16 +98,16 @@ public class DefaultChannelStatisticsController extends ChannelStatisticsControl
     
     public void reloadLocalCache() {
         try {
-            Map<String, Object> parameterMap = new HashMap<String, Object>();
+            Map parameterMap = new HashMap();
             parameterMap.put("serverId", configurationController.getServerId());
-            statsCache.setCache(SqlConfig.getSqlMapClient().queryForMap("Statistic.getStatistics", parameterMap, "channelId"));
+            statsCache.setCache((HashMap<String, ChannelStatistics>) SqlConfig.getSqlMapClient().queryForMap("Statistic.getStatistics", parameterMap, "channelId"));
         } catch (SQLException e) {
             logger.error("Could not initialize channel statistics.", e);
         }
     }
 
     public void createStatistics(String channelId) {
-        Map<String, Object> parameterMap = new HashMap<String, Object>();
+        Map parameterMap = new HashMap();
         parameterMap.put("serverId", configurationController.getServerId());
         parameterMap.put("channelId", channelId);
 
@@ -121,19 +121,16 @@ public class DefaultChannelStatisticsController extends ChannelStatisticsControl
     public boolean checkIfStatisticsExist(String channelId) {
         try {
 
-            Map<String, Object> parameterMap = new HashMap<String, Object>();
+            Map parameterMap = new HashMap();
             parameterMap.put("serverId", configurationController.getServerId());
             parameterMap.put("channelId", channelId);
 
-            Map<String, ChannelStatistics> tempStats = SqlConfig.getSqlMapClient().queryForMap("Statistic.getStatistics", parameterMap, "channelId");
-            
-            if (tempStats != null && tempStats.size() > 0) {
+            Map<String, ChannelStatistics> tempStats = (HashMap<String, ChannelStatistics>) SqlConfig.getSqlMapClient().queryForMap("Statistic.getStatistics", parameterMap, "channelId");
+            if (tempStats != null && tempStats.size() > 0)
                 return true;
-            }
         } catch (SQLException e) {
             logger.error("Could not get channel statistics.", e);
         }
-        
         return false;
     }
 

@@ -28,6 +28,7 @@ package com.webreach.mirth.server.controllers;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -199,7 +200,11 @@ public class DefaultChannelStatusController extends ChannelStatusController {
         List<ChannelStatus> channelStatusList = new ArrayList<ChannelStatus>();
 
         try {
-            for (String channelId : getDeployedIds()) {
+            List<String> deployedChannelIdList = getDeployedIds();
+
+            for (Iterator iter = deployedChannelIdList.iterator(); iter.hasNext();) {
+                String channelId = (String) iter.next();
+
                 ChannelStatus channelStatus = new ChannelStatus();
                 channelStatus.setChannelId(channelId);
 
@@ -240,19 +245,16 @@ public class DefaultChannelStatusController extends ChannelStatusController {
 
         try {
             jmxConnection = JMXConnectionFactory.createJMXConnection();
-            Set<ObjectName> beanObjectNames = jmxConnection.getMBeanNames();
+            Set beanObjectNames = jmxConnection.getMBeanNames();
 
-            for (ObjectName objectName : beanObjectNames) {
+            for (Iterator iter = beanObjectNames.iterator(); iter.hasNext();) {
+                ObjectName objectName = (ObjectName) iter.next();
+
                 // only add valid mirth channels
                 // format: MirthConfiguration:type=statistics,name=*
-                // We also don't want the "sink" channel showing up.
-                // Nor components which aren't registered
-                if ((objectName.getKeyProperty("type") != null)
-                        && objectName.getKeyProperty("type").equals("statistics")
-                        && (objectName.getKeyProperty("name") != null)
-                        && !objectName.getKeyProperty("name").startsWith("_")
-                        && !objectName.getKeyProperty("name").equals("MessageSink") && (objectName.getKeyProperty("router") == null)
-                        && isComponentRegistered(objectName.getKeyProperty("name"))) {
+                if ((objectName.getKeyProperty("type") != null) && objectName.getKeyProperty("type").equals("statistics") && (objectName.getKeyProperty("name") != null) && !objectName.getKeyProperty("name").startsWith("_")
+                // NOTE: We don't want the "sink" channel showing up.
+                && !objectName.getKeyProperty("name").equals("MessageSink") && (objectName.getKeyProperty("router") == null)) {
                     deployedChannelIdList.add(objectName.getKeyProperty("name"));
                 }
             }
@@ -293,26 +295,6 @@ public class DefaultChannelStatusController extends ChannelStatusController {
             } else {
                 return ChannelStatus.State.STARTED;
             }
-        } catch (Exception e) {
-            throw new ControllerException(e);
-        } finally {
-            jmxConnection.close();
-        }
-    }
-
-    private boolean isComponentRegistered(String id) throws ControllerException {
-        logger.debug("checking component registration state: id=" + id);
-
-        JMXConnection jmxConnection = null;
-
-        try {
-            jmxConnection = JMXConnectionFactory.createJMXConnection();
-            Hashtable<String, String> properties = new Hashtable<String, String>();
-            properties.put("type", "control");
-            properties.put("name", "ModelService");
-            String[] params = { id };
-            String[] signature = { "java.lang.String" };
-            return (Boolean) jmxConnection.invokeOperation(properties, "isComponentRegistered", params, signature);
         } catch (Exception e) {
             throw new ControllerException(e);
         } finally {
