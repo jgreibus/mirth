@@ -9,6 +9,7 @@
 
 package com.mirth.connect.server.controllers;
 
+import java.util.List;
 import java.util.Map;
 
 import com.mirth.connect.model.Channel;

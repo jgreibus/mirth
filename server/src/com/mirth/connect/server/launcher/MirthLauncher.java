@@ -10,32 +10,21 @@
 package com.mirth.connect.server.launcher;
 
 import java.io.File;
-import java.io.FileFilter;
-import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
 import java.util.Scanner;
 
-import javax.xml.parsers.DocumentBuilderFactory;
-
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOCase;
-import org.apache.commons.io.filefilter.FileFilterUtils;
-import org.apache.commons.io.filefilter.IOFileFilter;
-import org.apache.commons.io.filefilter.NameFileFilter;
-import org.apache.log4j.Logger;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
-
 public class MirthLauncher {
-    private static final String EXTENSIONS_DIR = "./extensions";
-    
-    private static Logger logger = Logger.getLogger(MirthLauncher.class);
+    private static final String INSTALL_TEMP = "install_temp";
+    private static final String UNINSTALL_FILE = "uninstall";
+    private static final String DEFAULT_LAUNCHER_FILE = "mirth-launcher.xml";
 
     public static void main(String[] args) {
+        String launcherFile = DEFAULT_LAUNCHER_FILE;
+        
+        if (args.length > 0) {
+            launcherFile = args[0];
+        }
+
         try {
             try {
                 uninstallExtensions();
@@ -43,12 +32,9 @@ public class MirthLauncher {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-
-            String[] manifest = new String[] { "mirth-server.jar", "lib", "custom-lib" };
-            List<URL> classpathUrls = new ArrayList<URL>();
-            addManifestToClasspath(manifest, classpathUrls);
-            addExtensionsToClasspath(classpathUrls);
-            URLClassLoader classLoader = new URLClassLoader(classpathUrls.toArray(new URL[classpathUrls.size()]));
+            
+            ClasspathBuilder builder = new ClasspathBuilder(launcherFile);
+            URLClassLoader classLoader = new URLClassLoader(builder.getClasspath());
             Class<?> mirthClass = classLoader.loadClass("com.mirth.connect.server.Mirth");
             Thread mirthThread = (Thread) mirthClass.newInstance();
             mirthThread.setContextClassLoader(classLoader);
@@ -58,117 +44,63 @@ public class MirthLauncher {
         }
     }
 
-    // if we have an uninstall file, uninstall the listed extensions
     private static void uninstallExtensions() throws Exception {
-        File extensionsDir = new File(EXTENSIONS_DIR);
-        File uninstallFile = new File(extensionsDir, "uninstall");
+        String extensionsLocation = new File(ClasspathBuilder.EXTENSION_PATH).getPath();
+        String uninstallFileLocation = extensionsLocation + File.separator + UNINSTALL_FILE;
 
+        File uninstallFile = new File(uninstallFileLocation);
+        // if we have an uninstall file, uninstall the listed extensions
         if (uninstallFile.exists()) {
             Scanner scanner = new Scanner(uninstallFile);
-            
             while (scanner.hasNextLine()) {
-                File extension = new File(extensionsDir, scanner.nextLine());
-                
-                if (extension.exists() && extension.isDirectory()) {
-                    logger.trace("uninstalling extension: " + extension.getName());
-                    FileUtils.deleteDirectory(extension);
+                String extension = scanner.nextLine();
+                File extensionDirectory = new File(extensionsLocation + File.separator + extension);
+                if (extensionDirectory.isDirectory()) {
+                    deleteDirectory(extensionDirectory);
                 }
             }
-            
             scanner.close();
-            FileUtils.deleteQuietly(uninstallFile);
+            uninstallFile.delete();
         }
     }
 
-    // if we have a temp folder, move the extensions over
     private static void installExtensions() throws Exception {
-        File extensionsDir = new File(EXTENSIONS_DIR);
-        File extensionsTempDir = new File(extensionsDir, "install_temp");
-        
-        if (extensionsTempDir.exists()) {
-            File[] extensions = extensionsTempDir.listFiles();
+        String extensionsLocation = new File(ClasspathBuilder.EXTENSION_PATH).getPath();
+        String extensionsTempLocation = extensionsLocation + File.separator + INSTALL_TEMP + File.separator;
 
+        File extensionsTemp = new File(extensionsTempLocation);
+        // if we have a temp folder, move the extensions over
+        if (extensionsTemp.exists()) {
+            File[] extensions = extensionsTemp.listFiles();
             for (int i = 0; i < extensions.length; i++) {
                 if (extensions[i].isDirectory()) {
-                    logger.trace("installing extension: " + extensions[i].getName());
-                    File target = new File(extensionsDir, extensions[i].getName());
-                    
-                    // delete it if it's already there
+                    File target = new File(extensionsLocation + File.separator + extensions[i].getName());
                     if (target.exists()) {
-                        FileUtils.deleteQuietly(target);    
+                        if (target.isDirectory()) {
+                            deleteDirectory(target);
+                        } else {
+                            target.delete();
+                        }
                     }
-                    
                     extensions[i].renameTo(target);
                 }
             }
-
-            FileUtils.deleteDirectory(extensionsTempDir);
+            deleteDirectory(extensionsTemp);
         }
     }
-    
-    private static void addManifestToClasspath(String[] manifestEntries, List<URL> urls) throws Exception {
-        IOFileFilter fileFileFilter = FileFilterUtils.fileFileFilter();
 
-        for (String manifestEntry : manifestEntries) {
-            File manifestEntryFile = new File(manifestEntry);
-
-            if (manifestEntryFile.exists()) {
-                if (manifestEntryFile.isDirectory()) {
-                    Collection<File> pathFiles = FileUtils.listFiles(manifestEntryFile, fileFileFilter, FileFilterUtils.trueFileFilter());
-
-                    for (File pathFile : pathFiles) {
-                        logger.trace("adding library to classpath: " + pathFile.getAbsolutePath());
-                        urls.add(pathFile.toURI().toURL());
-                    }
+    private static boolean deleteDirectory(File path) {
+        if (path.exists()) {
+            File[] files = path.listFiles();
+            for (int i = 0; i < files.length; i++) {
+                if (files[i].isDirectory()) {
+                    deleteDirectory(files[i]);
                 } else {
-                    logger.trace("adding library to classpath: " + manifestEntryFile.getAbsolutePath());
-                    urls.add(manifestEntryFile.toURI().toURL());
+                    files[i].delete();
                 }
-            } else {
-                logger.warn("manifest path not found: " + manifestEntryFile.getAbsolutePath());
             }
         }
+        return (path.delete());
     }
 
-    private static void addExtensionsToClasspath(List<URL> urls) throws Exception {
-        FileFilter extensionFileFilter = new NameFileFilter(new String[] { "plugin.xml", "source.xml", "destination.xml" }, IOCase.INSENSITIVE);
-        FileFilter directoryFilter = FileFilterUtils.directoryFileFilter();
-        File extensionPath = new File(EXTENSIONS_DIR);
-
-        if (extensionPath.exists() && extensionPath.isDirectory()) {
-            File[] directories = extensionPath.listFiles(directoryFilter);
-
-            for (File directory : directories) {
-                File[] extensionFiles = directory.listFiles(extensionFileFilter);
-
-                for (File extensionFile : extensionFiles) {
-                    try {
-                        Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(extensionFile);
-                        Element rootElement = document.getDocumentElement();
-                        NodeList libraries = rootElement.getElementsByTagName("library");
-
-                        for (int i = 0; i < libraries.getLength(); i++) {
-                            Element libraryElement = (Element) libraries.item(i);
-                            String type = libraryElement.getElementsByTagName("type").item(0).getTextContent();
-
-                            if (type.equalsIgnoreCase("server") || type.equalsIgnoreCase("shared")) {
-                                File pathFile = new File(directory, libraryElement.getAttribute("path"));
-
-                                if (pathFile.exists()) {
-                                    logger.trace("adding library to classpath: " + pathFile.getAbsolutePath());
-                                    urls.add(pathFile.toURI().toURL());
-                                } else {
-                                    logger.error("could not locate library: " + pathFile.getAbsolutePath());
-                                }
-                            }
-                        }
-                    } catch (Exception e) {
-                        logger.error("failed to parse extension metadata: " + extensionFile.getAbsolutePath(), e);
-                    }
-                }
-            }
-        } else {
-            logger.warn("no extensions found");
-        }
-    }    
 }

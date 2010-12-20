@@ -10,16 +10,20 @@
 package com.mirth.connect.server.servlets;
 
 import java.io.IOException;
+import java.net.URLDecoder;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import org.mortbay.http.HttpException;
+import org.mortbay.http.HttpRequest;
+import org.mortbay.http.HttpResponse;
+import org.mortbay.http.handler.ErrorPageHandler;
 
-import org.eclipse.jetty.server.Request;
-import org.eclipse.jetty.server.handler.ErrorHandler;
+public class MirthErrorPageHandler extends ErrorPageHandler {
 
-public class MirthErrorPageHandler extends ErrorHandler {
-    @Override
-    public void handle(String target, Request baseRequest, HttpServletRequest request, HttpServletResponse response) throws IOException {
-        super.handle(target, baseRequest, request, response);
+    private static final long serialVersionUID = 1L;
+
+    public void handle(String pathInContext, String pathParams, HttpRequest request, HttpResponse response) throws HttpException, IOException {
+        response.setReason(URLDecoder.decode(response.getReason(), "UTF-8"));
+        response.setField("X-Mirth-Error", response.getReason());
+        super.handle(pathInContext, pathParams, request, response);
     }
 }

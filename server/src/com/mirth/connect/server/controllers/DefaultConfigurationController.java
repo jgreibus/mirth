@@ -12,7 +12,6 @@ package com.mirth.connect.server.controllers;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.math.BigInteger;
 import java.nio.charset.Charset;
 import java.security.KeyPair;
@@ -45,7 +44,6 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.dbutils.DbUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DateUtils;
 import org.apache.log4j.Logger;
@@ -57,7 +55,6 @@ import org.w3c.dom.Element;
 import com.mirth.connect.model.Channel;
 import com.mirth.connect.model.DriverInfo;
 import com.mirth.connect.model.PasswordRequirements;
-import com.mirth.connect.model.PluginMetaData;
 import com.mirth.connect.model.ServerConfiguration;
 import com.mirth.connect.model.converters.ObjectXMLSerializer;
 import com.mirth.connect.model.util.PasswordRequirementsChecker;
@@ -65,9 +62,9 @@ import com.mirth.connect.server.tools.ClassPathResource;
 import com.mirth.connect.server.util.DatabaseUtil;
 import com.mirth.connect.server.util.JMXConnection;
 import com.mirth.connect.server.util.JMXConnectionFactory;
-import com.mirth.connect.server.util.ResourceUtil;
 import com.mirth.connect.server.util.SqlConfig;
 import com.mirth.connect.util.Encrypter;
+import com.mirth.connect.util.PropertyLoader;
 import com.mirth.connect.util.PropertyVerifier;
 
 /**
@@ -85,8 +82,8 @@ public class DefaultConfigurationController extends ConfigurationController {
     private boolean isEngineStarting = true;
     private ScriptController scriptController = ControllerFactory.getFactory().createScriptController();
     private PasswordRequirements passwordRequirements;
-    private static PropertiesConfiguration versionConfig = new PropertiesConfiguration();
-    private static PropertiesConfiguration mirthConfig = new PropertiesConfiguration();
+    private static PropertiesConfiguration versionConfig;
+    private static PropertiesConfiguration mirthConfig;
 
     private static final String CHARSET = "ca.uhn.hl7v2.llp.charset";
     private static final String PROPERTY_TEMP_DIR = "dir.tempdata";
@@ -114,12 +111,13 @@ public class DefaultConfigurationController extends ConfigurationController {
         try {
             // Disable delimiter parsing so getString() returns the whole
             // property, even if there are commas
+            mirthConfig = new PropertiesConfiguration();
             mirthConfig.setDelimiterParsingDisabled(true);
             mirthConfig.load("mirth.properties");
 
-            InputStream is = ResourceUtil.getResourceStream(this.getClass(), "version.properties");
-            versionConfig.load(is);
-            IOUtils.closeQuietly(is);
+            versionConfig = new PropertiesConfiguration();
+            versionConfig.setDelimiterParsingDisabled(true);
+            versionConfig.load("version.properties");
 
             if (mirthConfig.getString(PROPERTY_TEMP_DIR) != null) {
                 File tempDataDirFile = new File(mirthConfig.getString(PROPERTY_TEMP_DIR));
@@ -163,7 +161,7 @@ public class DefaultConfigurationController extends ConfigurationController {
             }
 
             // Check for server GUID and generate a new one if it doesn't exist
-            PropertiesConfiguration serverIdConfig = new PropertiesConfiguration(new File(getApplicationDataDir(), "server.id"));
+            PropertiesConfiguration serverIdConfig = new PropertiesConfiguration(new File(getApplicationDataDir() + File.separator + "server.id"));
 
             if ((serverIdConfig.getString("server.id") != null) && (serverIdConfig.getString("server.id").length() > 0)) {
                 serverId = serverIdConfig.getString("server.id");
@@ -399,22 +397,6 @@ public class DefaultConfigurationController extends ConfigurationController {
         serverConfiguration.setCodeTempaltes(codeTemplateController.getCodeTemplate(null));
         serverConfiguration.setProperties(getServerProperties());
         serverConfiguration.setGlobalScripts(scriptController.getGlobalScripts());
-
-        // Put the properties for every plugin with properties in a map.
-        Map<String, Properties> pluginProperties = new HashMap<String, Properties>();
-        ExtensionController extensionController = ControllerFactory.getFactory().createExtensionController();
-
-        for (PluginMetaData pluginMetaData : extensionController.getPluginMetaData().values()) {
-            String pluginName = pluginMetaData.getName();
-            Properties properties = extensionController.getPluginProperties(pluginName);
-
-            if (MapUtils.isNotEmpty(properties)) {
-                pluginProperties.put(pluginName, properties);
-            }
-        }
-
-        serverConfiguration.setPluginProperties(pluginProperties);
-
         return serverConfiguration;
     }
 
@@ -425,12 +407,13 @@ public class DefaultConfigurationController extends ConfigurationController {
         EngineController engineController = ControllerFactory.getFactory().createEngineController();
         ChannelStatusController channelStatusController = ControllerFactory.getFactory().createChannelStatusController();
 
+        
         setServerProperties(serverConfiguration.getProperties());
 
         if (serverConfiguration.getChannels() != null) {
             // Undeploy all channels before updating or removing them
             engineController.undeployChannels(channelStatusController.getDeployedIds());
-
+            
             // Remove channels that don't exist in the new configuration
             for (Channel channel : channelController.getChannel(null)) {
                 boolean found = false;
@@ -467,17 +450,7 @@ public class DefaultConfigurationController extends ConfigurationController {
         if (serverConfiguration.getGlobalScripts() != null) {
             scriptController.setGlobalScripts(serverConfiguration.getGlobalScripts());
         }
-
-        // Set the properties for all plugins in the server configuration,
-        // whether or not the plugin is actually installed on this server.
-        if (serverConfiguration.getPluginProperties() != null) {
-            ExtensionController extensionController = ControllerFactory.getFactory().createExtensionController();
-
-            for (Entry<String, Properties> pluginEntry : serverConfiguration.getPluginProperties().entrySet()) {
-                extensionController.setPluginProperties(pluginEntry.getKey(), pluginEntry.getValue());
-            }
-        }
-
+        
         // Redeploy all channels
         engineController.redeployAllChannels();
     }
@@ -592,28 +565,24 @@ public class DefaultConfigurationController extends ConfigurationController {
     public void generateKeyPair() {
         try {
             // load keystore properties
-            PropertiesConfiguration properties = new PropertiesConfiguration();
-            properties.setDelimiterParsingDisabled(true);
-            properties.load(ResourceUtil.getResourceStream(this.getClass(), "mirth.properties"));
-            
-            String alias = properties.getString("keystore.alias");
-            File keyStoreFile = new File(properties.getString("keystore.path"));
-            String keyStoreType = properties.getString("keystore.storetype");
-            char[] keyStorePassword = properties.getString("keystore.storepass").toCharArray();
-            char[] keyPassword = properties.getString("keystore.keypass").toCharArray();
+            Properties properties = PropertyLoader.loadProperties("mirth");
+            String alias = properties.getProperty("keystore.alias");
+            File keyStoreFile = new File(getApplicationDataDir() + File.separator + properties.getProperty("keystore.name"));
+            String keyStoreType = properties.getProperty("keystore.storetype");
+            char[] keyStorePassword = properties.getProperty("keystore.storepass").toCharArray();
+            char[] keyPassword = properties.getProperty("keystore.keypass").toCharArray();
 
             // load the keystore if it exists, otherwise create a new one
             KeyStore keyStore = KeyStore.getInstance(keyStoreType);
 
             if (keyStoreFile.exists()) {
-                keyStore.load(new FileInputStream(keyStoreFile), keyStorePassword);
+                keyStore.load(new FileInputStream(keyStoreFile), keyStorePassword);    
             } else {
                 keyStore.load(null, keyStorePassword);
             }
 
             if (keyStore.getCertificate(alias) == null) {
-                // add the BC provider that is used for generating keys and
-                // certificates
+                // add the BC provider that is used for generating keys and certificates
                 Security.addProvider(new BouncyCastleProvider());
 
                 // initialize the certificate attributes
@@ -623,7 +592,7 @@ public class DefaultConfigurationController extends ConfigurationController {
                 KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("DSA");
                 keyPairGenerator.initialize(1024);
                 KeyPair keyPair = keyPairGenerator.generateKeyPair();
-
+                
                 // set the certificate attributes
                 X509V1CertificateGenerator certificateGenerator = new X509V1CertificateGenerator();
                 X500Principal dnName = new X500Principal("CN=Mirth Connect");
@@ -631,8 +600,7 @@ public class DefaultConfigurationController extends ConfigurationController {
                 certificateGenerator.setIssuerDN(dnName);
                 certificateGenerator.setNotBefore(startDate);
                 certificateGenerator.setNotAfter(expiryDate);
-                certificateGenerator.setSubjectDN(dnName); // note: same as
-                                                           // issuer
+                certificateGenerator.setSubjectDN(dnName); // note: same as issuer
                 certificateGenerator.setPublicKey(keyPair.getPublic());
                 certificateGenerator.setSignatureAlgorithm("SHA1withDSA");
 
@@ -648,30 +616,6 @@ public class DefaultConfigurationController extends ConfigurationController {
             }
         } catch (Exception e) {
             logger.error("Could not generate certificate.", e);
-        }
-    }
-    
-    public void generateDefaultTrustStore() {
-        try {
-            PropertiesConfiguration properties = new PropertiesConfiguration();
-            properties.setDelimiterParsingDisabled(true);
-            properties.load(ResourceUtil.getResourceStream(this.getClass(), "mirth.properties"));
-            
-            File trustStoreFile = new File(properties.getString("truststore.path"));
-            String trustStoreType = properties.getString("truststore.storetype");
-            char[] trustStorePassword = properties.getString("truststore.storepass").toCharArray();
-            KeyStore keyStore = KeyStore.getInstance(trustStoreType);
-
-            if (!trustStoreFile.exists()) {
-                logger.debug("no truststore found, creating new one");
-                keyStore.load(null, trustStorePassword);
-                keyStore.store(new FileOutputStream(trustStoreFile), trustStorePassword);
-            } else {
-                logger.debug("truststore found: " + trustStoreFile.getAbsolutePath());
-            }
-
-        } catch (Exception e) {
-            logger.error("Could not generate new truststore.", e);
         }
     }
 }

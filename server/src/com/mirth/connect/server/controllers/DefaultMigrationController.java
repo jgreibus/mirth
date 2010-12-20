@@ -26,7 +26,6 @@ import java.util.TreeMap;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.commons.dbutils.DbUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -36,6 +35,7 @@ import org.w3c.dom.NodeList;
 import com.mirth.connect.model.Channel;
 import com.mirth.connect.model.PluginMetaData;
 import com.mirth.connect.model.util.ImportConverter;
+import com.mirth.connect.server.tools.ClassPathResource;
 import com.mirth.connect.server.util.DatabaseUtil;
 import com.mirth.connect.server.util.SqlConfig;
 import com.mirth.connect.util.PropertyVerifier;
@@ -45,6 +45,7 @@ import com.mirth.connect.util.PropertyVerifier;
  * 
  */
 public class DefaultMigrationController extends MigrationController {
+    private static final String DELTA_FOLDER = "deltas";
     private Logger logger = Logger.getLogger(this.getClass());
     private ChannelController channelController = ControllerFactory.getFactory().createChannelController();
     private ConfigurationController configurationController = ControllerFactory.getFactory().createConfigurationController();
@@ -240,18 +241,22 @@ public class DefaultMigrationController extends MigrationController {
     }
 
     private void createSchema(Connection conn) throws Exception {
-        String creationScript = IOUtils.toString(getClass().getResourceAsStream("/" + configurationController.getDatabaseType() + "/" + configurationController.getDatabaseType() + "-database.sql"));
+        File creationScript = new File(new File(configurationController.getConfigurationDir() + File.separator + configurationController.getDatabaseType()), configurationController.getDatabaseType() + "-database.sql");
         DatabaseUtil.executeScript(creationScript, true);
     }
 
     private void migrate(int oldSchemaVersion, int newSchemaVersion) throws Exception {
+        File deltaFolder = new File(ClassPathResource.getResourceURI(DELTA_FOLDER));
+        String deltaPath = deltaFolder.getPath() + File.separator;
+        String databaseType = configurationController.getDatabaseType();
+
         while (oldSchemaVersion < newSchemaVersion) {
             int nextSchemaVersion = oldSchemaVersion + 1;
 
             // gets and executes the correct migration script based on dbtype
             // and versions
-            String migrationScript = IOUtils.toString(getClass().getResourceAsStream("/deltas/" + configurationController.getDatabaseType() + "-" + oldSchemaVersion + "-" + nextSchemaVersion + ".sql"));
-            DatabaseUtil.executeScript(migrationScript, true);
+            File migrationFile = new File(deltaPath + databaseType + "-" + oldSchemaVersion + "-" + nextSchemaVersion + ".sql");
+            DatabaseUtil.executeScript(migrationFile, true);
 
             // executes any necessary database content migration
             migrateContents(oldSchemaVersion, nextSchemaVersion);

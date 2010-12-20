@@ -12,7 +12,6 @@ package com.mirth.connect.connectors.js;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.ImporterTopLevel;
@@ -146,32 +145,26 @@ public class JavaScriptMessageReceiver extends PollingMessageReceiver {
                     alertController.sendAlerts(((JavaScriptConnector) connector).getChannelId(), Constants.ERROR_414, null, e);
                     return null;
                 }
-
-                List<String> messages = new ArrayList<String>();
-
                 if (result instanceof NativeJavaObject) {
                     Object javaRetVal = ((NativeJavaObject) result).unwrap();
 
                     if (javaRetVal instanceof String) {
-                        // Only add a message if the String returned is not
-                        // empty
-                        if (StringUtils.isNotEmpty((String) javaRetVal)) {
-                            messages.add((String) javaRetVal);
-                        }
+                        List list = new ArrayList();
+                        list.add((String) javaRetVal);
+                        return list;
                     } else if (javaRetVal instanceof List) {
-                        messages = (List<String>) javaRetVal;
+                        return (List) javaRetVal;
                     } else {
-                        logger.error("Java message(s) object must be String or List<String>. Recevied result of: " + javaRetVal.toString());
+                        logger.error("Got a result of: " + javaRetVal.toString());
                     }
                 } else {
-                    // Only add the message if it's not a null object and it's
-                    // not an empty string
-                    if (result != null && StringUtils.isNotEmpty(result.toString())) {
-                        messages.add(result.toString());
-                    }
+                    List list = new ArrayList();
+                    list.add(result.toString());
+                    return list;
+                    // logger.error("Got a result of: " + result.toString());
                 }
 
-                return messages;
+                return null;
             }
 
         } catch (Exception e) {
@@ -184,13 +177,13 @@ public class JavaScriptMessageReceiver extends PollingMessageReceiver {
 
     @Override
     public void doConnect() throws Exception {
-        // TODO Auto-generated method stub
+    // TODO Auto-generated method stub
 
     }
 
     @Override
     public void doDisconnect() throws Exception {
-        // TODO Auto-generated method stub
+    // TODO Auto-generated method stub
 
     }
 

@@ -41,12 +41,6 @@ public abstract class ConfigurationController extends Controller {
      * 
      */
     public abstract void generateKeyPair();
-    
-    /**
-     * Generates a new empty truststore if one does not exist.
-     * 
-     */
-    public abstract void generateDefaultTrustStore();
 
     /**
      * Loads the encryption key from the database and stores it in memory.

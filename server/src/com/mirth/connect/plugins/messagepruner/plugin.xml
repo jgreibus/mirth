@@ -2,13 +2,13 @@
 	<name>Message Pruner</name>
 	<author>Mirth Corporation</author>
 	<pluginVersion>@mirthversion</pluginVersion>
-	<mirthVersion>2.1.0</mirthVersion>
+	<mirthVersion>2.0.1</mirthVersion>
 	<url>http://www.mirthcorp.com</url>
 	<description>This plugin provides a message pruning function for messages stored in Mirth</description>
 	<enabled>true</enabled>
 	<extensionPoint>
 		<name>Message Pruner</name>
-		<type>CLIENT_SETTINGS_PANEL</type>
+		<type>CLIENT_PANEL</type>
 		<className>com.mirth.connect.plugins.messagepruner.MessagePrunerClient</className>
 		<mode>CLIENT</mode>
 	</extensionPoint>

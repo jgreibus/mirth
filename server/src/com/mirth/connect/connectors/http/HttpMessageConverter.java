@@ -15,13 +15,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import javax.servlet.http.HttpServletRequest;
-
 import nu.xom.Document;
 import nu.xom.Element;
 
 import org.apache.commons.httpclient.Header;
 import org.apache.log4j.Logger;
+import org.mortbay.http.HttpRequest;
 
 public class HttpMessageConverter {
     private Logger logger = Logger.getLogger(this.getClass());
@@ -112,12 +111,12 @@ public class HttpMessageConverter {
         }
     }
 
-    public Map<String, String> convertFieldEnumerationToMap(HttpServletRequest request) {
+    public Map<String, String> convertFieldEnumerationToMap(HttpRequest request) {
         Map<String, String> headers = new HashMap<String, String>();
 
-        for (Enumeration<String> enumeration = request.getHeaderNames(); enumeration.hasMoreElements();) {
+        for (Enumeration<String> enumeration = request.getFieldNames(); enumeration.hasMoreElements();) {
             String name = enumeration.nextElement();
-            String value = request.getHeader(name);
+            String value = request.getField(name);
             headers.put(name, value);
         }
 

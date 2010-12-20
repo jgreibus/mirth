@@ -30,6 +30,7 @@
 		<!-- plugins -->
 		<property name="plugins.dashboardstatus" value="${extensions}/dashboardstatus" />
 		<property name="plugins.dicomviewer" value="${extensions}/dicomviewer" />
+		<property name="plugins.extensionmanager" value="${extensions}/extensionmanager" />
 		<property name="plugins.imageviewer" value="${extensions}/imageviewer" />
 		<property name="plugins.javascriptrule" value="${extensions}/javascriptrule" />
 		<property name="plugins.javascriptstep" value="${extensions}/javascriptstep" />
@@ -59,22 +60,16 @@
 		<!-- compile the source -->
 		<mkdir dir="${classes}" />
 
-		<javac srcdir="${src}" destdir="${classes}" debug="on" includeAntRuntime="false">
+		<javac srcdir="${src}" destdir="${classes}" debug="${javac.debug}" verbose="${javac.verbose}" deprecation="${javac.deprecation}" target="${javac.target}" source="${javac.source}" includeAntRuntime="false">
 			<classpath refid="classpath" />
 		</javac>
 
 		<!-- create version.properties file -->
-		<propertyfile file="version.properties">
+		<propertyfile file="${conf}/version.properties">
 			<entry key="mirth.version" value="${version}" />
 			<entry key="schema.version" value="${schemaVersion}" />
 			<entry key="mirth.date" type="date" value="today" pattern="MMMM d, yyyy" />
 		</propertyfile>
-
-		<!-- copy resource files to be placed in jars -->
-		<copy todir="${classes}">
-			<fileset file="version.properties" />
-			<fileset file="mirth-client.jnlp" />
-		</copy>
 
 		<!-- copy xml file for ant task -->
 		<copy todir="${classes}/com/mirth/connect/ant">
@@ -94,8 +89,6 @@
 			<include name="com/mirth/connect/util/**" />
 			<include name="com/thoughtworks/**" />
 			<include name="org/mozilla/**" />
-			
-			<include name="version.properties" />
 		</jar>
 	</target>
 
@@ -396,6 +389,17 @@
 			<fileset dir="${lib.extensions}/dicomviewer" />
 		</copy>
 
+		<!-- plugins.extensionmanager -->
+		<mkdir dir="${plugins.extensionmanager}" />
+		<copy todir="${plugins.extensionmanager}">
+			<fileset dir="${src}/com/mirth/connect/plugins/extensionmanager">
+				<include name="*.xml" />
+			</fileset>
+		</copy>
+		<copy todir="${plugins.extensionmanager}/lib" failonerror="false">
+			<fileset dir="${lib.extensions}/extensionmanager" />
+		</copy>
+
 		<!-- plugins.imageviewer -->
 		<mkdir dir="${plugins.imageviewer}" />
 		<copy todir="${plugins.imageviewer}">
@@ -572,7 +576,9 @@
 
 		<!-- copy conf files -->
 		<copy todir="${setup.conf}">
-			<fileset dir="${conf}" />
+			<fileset dir="${conf}">
+				<exclude name="mule-config.xml" />
+			</fileset>
 		</copy>
 
 		<!-- copy public html files -->
@@ -596,6 +602,19 @@
 			<fileset dir="${docs}" />
 		</copy>
 
+		<!-- create version.properties file -->
+		<propertyfile file="${setup.conf}/version.properties">
+			<entry key="mirth.version" value="${version}" />
+			<entry key="mirth.date" type="date" value="today" pattern="MMMM d, yyyy" />
+		</propertyfile>
+
+		<!-- copy misc files -->
+		<copy todir="${setup}">
+			<fileset file="${basedir}/mirth-launcher.xml" />
+			<fileset file="${basedir}/mirth-client.jnlp" />
+			<fileset file="${basedir}/truststore.jks" />
+		</copy>
+
 		<!-- create the server jar -->
 		<jar destfile="${setup}/${server.jar}" basedir="${classes}">
 			<include name="com/thoughtworks/**" />
@@ -606,14 +625,9 @@
 			<include name="com/mirth/connect/connectors/*.class" />
 			<include name="org/**" />
 
-			<include name="mirth-client.jnlp" />
-
 			<exclude name="com/mirth/connect/server/launcher/**" />
 			<exclude name="com/mirth/connect/server/mbeans/**" />
 		</jar>
-
-		<!-- create the dbconf jar -->
-		<jar destfile="${setup.lib}/${dbconf.jar}" basedir="${dbconf}" />
 
 		<!-- create the mirth-launcher jar -->
 		<jar destfile="${setup}/${mirth-launcher.jar}" basedir="${classes}">
@@ -621,7 +635,7 @@
 			
 			<manifest>
 				<attribute name="Main-Class" value="com.mirth.connect.server.launcher.MirthLauncher" />
-				<attribute name="Class-Path" value="lib/log4j-1.2.15.jar lib/commons/commons-io-2.0.jar conf/" />
+				<attribute name="Class-Path" value="lib/log4j-1.2.15.jar conf/" />
 			</manifest>
 		</jar>
 
@@ -640,10 +654,9 @@
 					<include name="log4j-1.2.15.jar" />
 					<include name="derby-10.5.3.0.jar" />
 					<include name="derbytools-10.5.3.0.jar" />
-					<include name="commons/commons-io-2.0.jar" />
 				</fileset>
 			</classpath>
-			<arg value="dbconf/derby/derby-database.sql" />
+			<arg value="conf/derby/derby-database.sql" />
 		</java>
 
 
@@ -670,7 +683,7 @@
 				<fileset dir="${setup.extensions}" includes="**/*.jar" />
 			</signjar>
 		</parallel>
-
+		
 		<!-- delete the compiled classes folder -->
 		<delete dir="${classes}" />
 	</target>
@@ -691,6 +704,7 @@
 		<zip destfile="${dist.extensions}/tcp-${version}.zip" basedir="${extensions}" includes="tcp/**/*" />
 		<zip destfile="${dist.extensions}/dicom-${version}.zip" basedir="${extensions}" includes="dicom/**/*" />
 		<zip destfile="${dist.extensions}/vm-${version}.zip" basedir="${extensions}" includes="vm/**/*" />
+		<zip destfile="${dist.extensions}/extensionmanager-${version}.zip" basedir="${extensions}" includes="extensionmanager/**/*" />
 		<zip destfile="${dist.extensions}/dashboardstatus-${version}.zip" basedir="${extensions}" includes="dashboardstatus/**/*" />
 		<zip destfile="${dist.extensions}/serverlog-${version}.zip" basedir="${extensions}" includes="serverlog/**/*" />
 		<zip destfile="${dist.extensions}/messagepruner-${version}.zip" basedir="${extensions}" includes="messagepruner/**/*" />
@@ -722,10 +736,9 @@
 					<include name="log4j-1.2.15.jar" />
 					<include name="derby-10.5.3.0.jar" />
 					<include name="derbytools-10.5.3.0.jar" />
-					<include name="commons/commons-io-2.0.jar" />
 				</fileset>
 			</classpath>
-			<arg value="dbconf/derby/derby-database.sql" />
+			<arg value="conf/derby/derby-database.sql" />
 		</java>
 	</target>
 

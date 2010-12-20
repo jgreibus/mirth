@@ -2,12 +2,12 @@
 	<name>Javascript Transformer Step</name>
 	<author>Mirth Corporation</author>
 	<pluginVersion>@mirthversion</pluginVersion>
-	<mirthVersion>2.1.0</mirthVersion>
+	<mirthVersion>2.0.1</mirthVersion>
 	<url>http://www.mirthcorp.com</url>
 	<description>This plugin provides a JavaScript step-type for Mirth transformers</description>
 	<enabled>true</enabled>
 	<extensionPoint>
-		<name>JavaScript</name>
+		<name>Javascript</name>
 		<type>CLIENT_TRANSFORMER_STEP</type>
 		<className>com.mirth.connect.plugins.javascriptstep.JavascriptStepPlugin</className>
 		<mode>CLIENT</mode>
