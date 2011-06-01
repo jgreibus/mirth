@@ -17,10 +17,10 @@ import java.util.Properties;
 import org.apache.commons.fileupload.FileItem;
 
 import com.mirth.connect.model.ConnectorMetaData;
+import com.mirth.connect.model.ExtensionPoint;
+import com.mirth.connect.model.ExtensionPointDefinition;
 import com.mirth.connect.model.PluginMetaData;
-import com.mirth.connect.plugins.ChannelPlugin;
-import com.mirth.connect.plugins.ConnectorStatusPlugin;
-import com.mirth.connect.plugins.ServicePlugin;
+import com.mirth.connect.plugins.ServerPlugin;
 import com.mirth.connect.server.tools.ClassPathResource;
 
 public abstract class ExtensionController extends Controller {
@@ -83,6 +83,8 @@ public abstract class ExtensionController extends Controller {
         return ControllerFactory.getFactory().createExtensionController();
     }
 
+    // Extension point for ExtensionPoint.Type.SERVER_PLUGIN
+    @ExtensionPointDefinition(mode = ExtensionPoint.Mode.SERVER, type = ExtensionPoint.Type.SERVER_PLUGIN)
     public abstract void initPlugins();
 
     /**
@@ -111,15 +113,23 @@ public abstract class ExtensionController extends Controller {
     public abstract void stopPlugins();
 
     /**
+     * Invokes the onDeploy method on all loaded server plugins.
+     */
+    public abstract void triggerDeploy();
+
+    /**
+     * Returns a map of all loaded server plugins ekeyed by plugin name.
+     */
+    public abstract Map<String, ServerPlugin> getLoadedServerPlugins();
+
+    /**
      * Returns a list of paths to extension libraries needed to WebStart the
      * administrator.
      */
     public abstract List<String> getClientExtensionLibraries();
 
-    // ************************************************************
-    // Plugins
-    // ************************************************************
-    
+    // plugins
+
     /**
      * Returns the metadata for all plugins.
      */
@@ -178,10 +188,8 @@ public abstract class ExtensionController extends Controller {
      */
     public abstract Object invokePluginService(String name, String method, Object object, String sessionId) throws Exception;
 
-    // ************************************************************
-    // Connectors
-    // ************************************************************
-    
+    // connectors
+
     public abstract Map<String, ConnectorMetaData> getConnectorMetaData();
 
     /**
@@ -213,10 +221,8 @@ public abstract class ExtensionController extends Controller {
      */
     public abstract Object invokeConnectorService(String name, String method, Object object, String sessionId) throws Exception;
 
-    // ************************************************************
-    // Extension installation and unistallation
-    // ************************************************************
-    
+    // installation and unistallation
+
     /**
      * Extracts the contents of the uploaded zip file into the installation temp
      * directory to be picked up by MirthLauncher on next restart.
@@ -238,21 +244,9 @@ public abstract class ExtensionController extends Controller {
      */
     public abstract void uninstallExtensions();
 
-    // ************************************************************
-    // Extension metadata
-    // ************************************************************
+    // metadata
 
     // public abstract void enableExtension(String name);
 
     // public abstract void disableExtension(String name);
-    
-    // ************************************************************
-    // Maps for different plugins
-    // ************************************************************
-    
-    public abstract Map<String, ServicePlugin> getServicePlugins();
-    
-    public abstract Map<String, ConnectorStatusPlugin> getConnectorStatusPlugins();
-    
-    public abstract Map<String, ChannelPlugin> getChannelPlugins();
 }

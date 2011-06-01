@@ -27,10 +27,6 @@ public abstract class MetaData {
     private String description;
     private boolean enabled;
 
-    @XStreamAlias("libraries")
-    @XStreamImplicit(itemFieldName = "library")
-    private List<ExtensionLibrary> libraries;
-
     public String getPath() {
         return path;
     }
@@ -38,6 +34,10 @@ public abstract class MetaData {
     public void setPath(String path) {
         this.path = path;
     }
+
+    @XStreamAlias("libraries")
+    @XStreamImplicit(itemFieldName = "library")
+    private List<ExtensionLibrary> libraries;
 
     public String getName() {
         return this.name;

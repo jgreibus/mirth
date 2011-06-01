@@ -4,10 +4,15 @@
 	<pluginVersion>@mirthversion</pluginVersion>
 	<mirthVersion>2.1.0</mirthVersion>
 	<url>http://www.mirthcorp.com</url>
-	<description>This plugin provides an External Script step-type for Mirth Connect filters</description>
+	<description>This plugin provides an External Script step-type for Mirth filters</description>
 	<enabled>true</enabled>
-	<clientClasses>
-		<string>com.mirth.connect.plugins.scriptfilerule.ExternalScriptRulePlugin</string>
-	</clientClasses>
-	<library type="CLIENT" path="scriptfilerule-client.jar" />
+	<extensionPoint>
+		<name>External Script</name>
+		<type>CLIENT_FILTER_RULE</type>
+		<className>com.mirth.connect.plugins.scriptfilerule.ExternalScriptRulePlugin</className>
+		<mode>CLIENT</mode>
+	</extensionPoint>
+	<library path="scriptfilerule-client.jar">
+		<type>CLIENT</type>
+	</library>
 </pluginMetaData>

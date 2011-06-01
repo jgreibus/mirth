@@ -55,37 +55,37 @@ public class HttpMessageReceiver extends AbstractMessageReceiver {
 
     private class RequestHandler extends AbstractHandler {
         @Override
-        public void handle(String target, Request baseRequest, HttpServletRequest servletRequest, HttpServletResponse servletResponse) throws IOException, ServletException {
+        public void handle(String target, Request baseRequest, HttpServletRequest servletRequest, HttpServletResponse serveltResponse) throws IOException, ServletException {
             logger.debug("received HTTP request");
             monitoringController.updateStatus(connector, connectorType, Event.CONNECTED);
 
             try {
-                servletResponse.setContentType(connector.getReceiverResponseContentType());
+                serveltResponse.setContentType(connector.getReceiverResponseContentType());
                 Response response = processData(baseRequest);
 
                 if (response != null) {
-                    servletResponse.getOutputStream().write(response.getMessage().getBytes(connector.getReceiverCharset()));
+                    serveltResponse.getOutputStream().write(response.getMessage().getBytes(connector.getReceiverCharset()));
 
                     /*
                      * If the destination sends a failure response, the listener
                      * should return a 500 error, otherwise 200.
                      */
                     if (response.getStatus().equals(Response.Status.FAILURE)) {
-                        servletResponse.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+                        serveltResponse.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
                     } else {
-                        servletResponse.setStatus(HttpStatus.SC_OK);
+                        serveltResponse.setStatus(HttpStatus.SC_OK);
                     }
                 } else {
-                    servletResponse.setStatus(HttpStatus.SC_OK);
+                    serveltResponse.setStatus(HttpStatus.SC_OK);
                 }
             } catch (Exception e) {
-                servletResponse.setContentType("text/plain");
-                servletResponse.getOutputStream().write(ExceptionUtils.getFullStackTrace(e).getBytes());
-                servletResponse.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
+                serveltResponse.setContentType("text/plain");
+                serveltResponse.getOutputStream().write(ExceptionUtils.getFullStackTrace(e).getBytes());
+                serveltResponse.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
             } finally {
                 monitoringController.updateStatus(connector, connectorType, Event.DONE);
             }
-
+            
             baseRequest.setHandled(true);
         }
     };
@@ -118,14 +118,12 @@ public class HttpMessageReceiver extends AbstractMessageReceiver {
         HttpRequestMessage message = new HttpRequestMessage();
         message.setMethod(request.getMethod());
         message.setHeaders(converter.convertFieldEnumerationToMap(request));
-        
         /*
-         * XXX: extractParameters must be called before the parameters are
-         * accessed, otherwise the map will be null.
+         * XXX: The HttpRequest#getParameters should be the first method to be
+         * called to avoid problems with the treatement of the input stream in
+         * Jetty
          */
-        request.extractParameters();
-        message.setParameters(request.getParameters());
-        
+        message.setParameters(request.getParameterMap());
         message.setContent(IOUtils.toString(request.getInputStream(), converter.getDefaultHttpCharset(request.getCharacterEncoding())));
         message.setIncludeHeaders(!connector.isReceiverBodyOnly());
         message.setContentType(request.getContentType());

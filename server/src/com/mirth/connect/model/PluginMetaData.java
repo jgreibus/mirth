@@ -18,34 +18,25 @@ import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
 import com.thoughtworks.xstream.annotations.XStreamAlias;
+import com.thoughtworks.xstream.annotations.XStreamImplicit;
 
 @XStreamAlias("pluginMetaData")
 public class PluginMetaData extends MetaData implements Serializable {
-    @XStreamAlias("serverClasses")
-    private List<String> serverClasses;
-    
-    @XStreamAlias("clientClasses")
-    private List<String> clientClasses;
-    
+    @XStreamAlias("extensionsPoints")
+    @XStreamImplicit(itemFieldName = "extensionPoint")
+    private List<ExtensionPoint> extensionPoints;
+
     private String sqlScript;
 
     @XStreamAlias("sqlMapConfigs")
     private Map<String, String> sqlMapConfigs;
 
-    public List<String> getServerClasses() {
-        return serverClasses;
+    public List<ExtensionPoint> getExtensionPoints() {
+        return extensionPoints;
     }
 
-    public void setServerClasses(List<String> serverClasses) {
-        this.serverClasses = serverClasses;
-    }
-
-    public List<String> getClientClasses() {
-        return clientClasses;
-    }
-
-    public void setClientClasses(List<String> clientClasses) {
-        this.clientClasses = clientClasses;
+    public void setExtensionPoints(List<ExtensionPoint> plugins) {
+        this.extensionPoints = plugins;
     }
 
     public String getSqlScript() {

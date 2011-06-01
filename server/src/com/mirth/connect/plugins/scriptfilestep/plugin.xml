@@ -4,10 +4,15 @@
 	<pluginVersion>@mirthversion</pluginVersion>
 	<mirthVersion>2.1.0</mirthVersion>
 	<url>http://www.mirthcorp.com</url>
-	<description>This plugin provides an External Script step-type for Mirth Connect transformers</description>
+	<description>This plugin provides an External Script step-type for Mirth transformers</description>
 	<enabled>true</enabled>
-	<clientClasses>
-		<string>com.mirth.connect.plugins.scriptfilestep.ExternalScriptStepPlugin</string>
-	</clientClasses>
-	<library type="CLIENT" path="scriptfilestep-client.jar" />
+	<extensionPoint>
+		<name>External Script</name>
+		<type>CLIENT_TRANSFORMER_STEP</type>
+		<className>com.mirth.connect.plugins.scriptfilestep.ExternalScriptStepPlugin</className>
+		<mode>CLIENT</mode>
+	</extensionPoint>
+	<library path="scriptfilestep-client.jar">
+		<type>CLIENT</type>
+	</library>
 </pluginMetaData>

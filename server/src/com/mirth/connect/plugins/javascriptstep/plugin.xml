@@ -4,10 +4,15 @@
 	<pluginVersion>@mirthversion</pluginVersion>
 	<mirthVersion>2.1.0</mirthVersion>
 	<url>http://www.mirthcorp.com</url>
-	<description>This plugin provides a JavaScript step-type for Mirth Connect transformers</description>
+	<description>This plugin provides a JavaScript step-type for Mirth transformers</description>
 	<enabled>true</enabled>
-	<clientClasses>
-		<string>com.mirth.connect.plugins.javascriptstep.JavascriptStepPlugin</string>
-	</clientClasses>
-	<library type="CLIENT" path="javascriptstep-client.jar" />
+	<extensionPoint>
+		<name>JavaScript</name>
+		<type>CLIENT_TRANSFORMER_STEP</type>
+		<className>com.mirth.connect.plugins.javascriptstep.JavascriptStepPlugin</className>
+		<mode>CLIENT</mode>
+	</extensionPoint>
+	<library path="javascriptstep-client.jar">
+		<type>CLIENT</type>	
+	</library>
 </pluginMetaData>

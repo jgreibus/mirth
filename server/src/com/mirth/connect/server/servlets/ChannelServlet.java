@@ -27,7 +27,6 @@ import com.mirth.connect.client.core.Operation;
 import com.mirth.connect.client.core.Operations;
 import com.mirth.connect.model.Channel;
 import com.mirth.connect.model.ChannelSummary;
-import com.mirth.connect.model.ServerEventContext;
 import com.mirth.connect.model.converters.ObjectXMLSerializer;
 import com.mirth.connect.server.controllers.ChannelController;
 import com.mirth.connect.server.controllers.ControllerFactory;
@@ -45,8 +44,6 @@ public class ChannelServlet extends MirthServlet {
                 PrintWriter out = response.getWriter();
                 Operation operation = Operations.getOperation(request.getParameter("op"));
                 Map<String, Object> parameterMap = new HashMap<String, Object>();
-                ServerEventContext context = new ServerEventContext();
-                context.setUserId(getCurrentUserId(request));
                 
                 if (operation.equals(Operations.CHANNEL_GET)) {
                     response.setContentType(APPLICATION_XML);
@@ -73,7 +70,7 @@ public class ChannelServlet extends MirthServlet {
                         response.setContentType(TEXT_PLAIN);
                         // NOTE: This needs to be print rather than println to
                         // avoid the newline
-                        out.print(channelController.updateChannel(channel, context, override));
+                        out.print(channelController.updateChannel(channel, override));
                     }
                 } else if (operation.equals(Operations.CHANNEL_REMOVE)) {
                     Channel channel = (Channel) serializer.fromXML(request.getParameter("channel"));
@@ -82,7 +79,7 @@ public class ChannelServlet extends MirthServlet {
                     if (!isUserAuthorized(request, parameterMap)) {
                         response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
                     } else {
-                        channelController.removeChannel(channel, context);
+                        channelController.removeChannel(channel);
                     }
                 } else if (operation.equals(Operations.CHANNEL_GET_SUMMARY)) {
                     response.setContentType(APPLICATION_XML);

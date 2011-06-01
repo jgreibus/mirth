@@ -49,6 +49,7 @@ import com.mirth.connect.server.controllers.EventController;
 import com.mirth.connect.server.controllers.ExtensionController;
 import com.mirth.connect.server.controllers.MessageObjectController;
 import com.mirth.connect.server.controllers.MigrationController;
+import com.mirth.connect.server.controllers.MonitoringController;
 import com.mirth.connect.server.controllers.ScriptController;
 import com.mirth.connect.server.controllers.UserController;
 import com.mirth.connect.server.servlets.AlertServlet;
@@ -85,6 +86,7 @@ public class Mirth extends Thread {
     private ChannelStatisticsController channelStatisticsController = ControllerFactory.getFactory().createChannelStatisticsController();
     private ExtensionController extensionController = ControllerFactory.getFactory().createExtensionController();
     private MigrationController migrationController = ControllerFactory.getFactory().createMigrationController();
+    private MonitoringController monitoringController = ControllerFactory.getFactory().createMonitoringController();
     private EventController eventController = ControllerFactory.getFactory().createEventController();
     private ScriptController scriptController = ControllerFactory.getFactory().createScriptController();
 
@@ -158,28 +160,22 @@ public class Mirth extends Thread {
      *         successfully loaded
      */
     public boolean initResources() {
-        InputStream mirthPropertiesStream = null;
-        
         try {
-            mirthPropertiesStream = ResourceUtil.getResourceStream(this.getClass(), "mirth.properties");
+            InputStream mirthPropertiesStream = ResourceUtil.getResourceStream(this.getClass(), "mirth.properties");
             mirthProperties.setDelimiterParsingDisabled(true);
             mirthProperties.load(mirthPropertiesStream);
+            IOUtils.closeQuietly(mirthPropertiesStream);
         } catch (Exception e) {
             logger.error("could not load mirth.properties", e);
-        } finally {
-            IOUtils.closeQuietly(mirthPropertiesStream);
         }
 
-        InputStream versionPropertiesStream = null;
-        
         try {
-            versionPropertiesStream = ResourceUtil.getResourceStream(this.getClass(), "version.properties");
+            InputStream versionPropertiesStream = ResourceUtil.getResourceStream(this.getClass(), "version.properties");
             versionProperties.setDelimiterParsingDisabled(true);
             versionProperties.load(versionPropertiesStream);
+            IOUtils.closeQuietly(versionPropertiesStream);
         } catch (Exception e) {
             logger.error("could not load version.properties", e);
-        } finally {
-            IOUtils.closeQuietly(versionPropertiesStream);
         }
 
         return (!mirthProperties.isEmpty());
@@ -205,6 +201,7 @@ public class Mirth extends Thread {
         migrationController.migrateChannels();
         configurationController.loadEncryptionKey();
         userController.resetUserStatus();
+        monitoringController.initPlugins();
         extensionController.startPlugins();
         scriptController.compileGlobalScripts();
 
@@ -281,6 +278,10 @@ public class Mirth extends Thread {
         logger.debug("starting jetty web server");
 
         try {
+            // this disables a "form too large" error for occuring by setting
+            // form size to infinite
+            System.setProperty("org.eclipse.jetty.server.Request.maxFormContentSize", "0");
+            
             webServer = new Server();
 
             // add HTTP listener
@@ -345,7 +346,6 @@ public class Mirth extends Thread {
             
             // Create the ssl servlet handler
             ServletContextHandler sslServletContextHandler = new ServletContextHandler();
-            sslServletContextHandler.setMaxFormContentSize(0);
             sslServletContextHandler.setSessionHandler(new SessionHandler());
             sslServletContextHandler.setContextPath(contextPath);
 

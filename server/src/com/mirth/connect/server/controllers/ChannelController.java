@@ -17,7 +17,6 @@ import org.apache.log4j.Logger;
 import com.mirth.connect.model.Channel;
 import com.mirth.connect.model.ChannelSummary;
 import com.mirth.connect.model.DeployedChannelInfo;
-import com.mirth.connect.model.ServerEventContext;
 
 public abstract class ChannelController extends Controller {
 
@@ -31,9 +30,9 @@ public abstract class ChannelController extends Controller {
 
     public abstract List<ChannelSummary> getChannelSummary(Map<String, Integer> cachedChannels) throws ControllerException;
 
-    public abstract boolean updateChannel(Channel channel, ServerEventContext context, boolean override) throws ControllerException;
+    public abstract boolean updateChannel(Channel channel, boolean override) throws ControllerException;
 
-    public abstract void removeChannel(Channel channel, ServerEventContext context) throws ControllerException;
+    public abstract void removeChannel(Channel channel) throws ControllerException;
 
     // channel cache
 

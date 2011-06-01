@@ -59,7 +59,6 @@ import com.mirth.connect.model.DriverInfo;
 import com.mirth.connect.model.PasswordRequirements;
 import com.mirth.connect.model.PluginMetaData;
 import com.mirth.connect.model.ServerConfiguration;
-import com.mirth.connect.model.ServerEventContext;
 import com.mirth.connect.model.ServerSettings;
 import com.mirth.connect.model.UpdateSettings;
 import com.mirth.connect.model.converters.ObjectXMLSerializer;
@@ -445,7 +444,7 @@ public class DefaultConfigurationController extends ConfigurationController {
 
         if (serverConfiguration.getChannels() != null) {
             // Undeploy all channels before updating or removing them
-            engineController.undeployChannels(channelStatusController.getDeployedIds(), ServerEventContext.SYSTEM_USER_EVENT_CONTEXT);
+            engineController.undeployChannels(channelStatusController.getDeployedIds());
 
             // Remove channels that don't exist in the new configuration
             for (Channel channel : channelController.getChannel(null)) {
@@ -458,7 +457,7 @@ public class DefaultConfigurationController extends ConfigurationController {
                 }
 
                 if (!found) {
-                    channelController.removeChannel(channel, ServerEventContext.SYSTEM_USER_EVENT_CONTEXT);
+                    channelController.removeChannel(channel);
                 }
             }
 
@@ -466,7 +465,7 @@ public class DefaultConfigurationController extends ConfigurationController {
             for (Channel channel : serverConfiguration.getChannels()) {
                 PropertyVerifier.checkChannelProperties(channel);
                 PropertyVerifier.checkConnectorProperties(channel, ControllerFactory.getFactory().createExtensionController().getConnectorMetaData());
-                channelController.updateChannel(channel, ServerEventContext.SYSTEM_USER_EVENT_CONTEXT, true);
+                channelController.updateChannel(channel, true);
             }
         }
 
@@ -503,7 +502,7 @@ public class DefaultConfigurationController extends ConfigurationController {
         }
 
         // Redeploy all channels
-        engineController.redeployAllChannels(ServerEventContext.SYSTEM_USER_EVENT_CONTEXT);
+        engineController.redeployAllChannels();
     }
 
     public boolean isEngineStarting() {

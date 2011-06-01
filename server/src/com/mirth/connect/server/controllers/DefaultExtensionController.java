@@ -17,7 +17,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.StringReader;
-import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Enumeration;
@@ -53,32 +52,24 @@ import com.mirth.connect.connectors.ConnectorService;
 import com.mirth.connect.model.ConnectorMetaData;
 import com.mirth.connect.model.ExtensionLibrary;
 import com.mirth.connect.model.ExtensionPermission;
+import com.mirth.connect.model.ExtensionPoint;
+import com.mirth.connect.model.ExtensionPointDefinition;
 import com.mirth.connect.model.MetaData;
 import com.mirth.connect.model.PluginMetaData;
 import com.mirth.connect.model.converters.ObjectXMLSerializer;
-import com.mirth.connect.plugins.ChannelPlugin;
-import com.mirth.connect.plugins.ConnectorStatusPlugin;
 import com.mirth.connect.plugins.ServerPlugin;
-import com.mirth.connect.plugins.ServicePlugin;
 import com.mirth.connect.server.util.DatabaseUtil;
 import com.mirth.connect.server.util.UUIDGenerator;
 
 public class DefaultExtensionController extends ExtensionController {
     private Logger logger = Logger.getLogger(this.getClass());
-    private ObjectXMLSerializer serializer = new ObjectXMLSerializer();
+
+    private Map<String, PluginMetaData> plugins = null;
+    private Map<String, ServerPlugin> serverPlugins = null;
+    private Map<String, ConnectorMetaData> connectors = null;
+    private Map<String, ConnectorMetaData> protocols = null;
+
     private ConfigurationController configurationController = ControllerFactory.getFactory().createConfigurationController();
-
-    // these maps store the metadata for all extensions
-    private Map<String, PluginMetaData> pluginMetaDataMap = null;
-    private Map<String, ConnectorMetaData> connectorMetaDataMap = null;
-    private Map<String, ConnectorMetaData> connectorProtocolsMap = null;
-
-    // these are plugins for specific extension points, keyed by plugin name
-    // (not path)
-    private List<ServerPlugin> serverPlugins = new ArrayList<ServerPlugin>();
-    private Map<String, ServicePlugin> servicePlugins = new HashMap<String, ServicePlugin>();
-    private Map<String, ConnectorStatusPlugin> connectorStatusPlugins = new HashMap<String, ConnectorStatusPlugin>();
-    private Map<String, ChannelPlugin> channelPlugins = new HashMap<String, ChannelPlugin>();
 
     // singleton pattern
     private static DefaultExtensionController instance = null;
@@ -106,115 +97,61 @@ public class DefaultExtensionController extends ExtensionController {
         }
     }
 
-    /**
-     * This method iterates through all of the plugin metadata that was loaded on startup, 
-     * 
-     */
+    // Extension point for ExtensionPoint.Type.SERVER_PLUGIN
+    @ExtensionPointDefinition(mode = ExtensionPoint.Mode.SERVER, type = ExtensionPoint.Type.SERVER_PLUGIN)
     public void initPlugins() {
-        for (PluginMetaData pmd : pluginMetaDataMap.values()) {
-            if (pmd.isEnabled() && isExtensionCompatible(pmd) && (pmd.getServerClasses() != null)) {
-                for (String clazzName : pmd.getServerClasses()) {
-                    try {
-                        ServerPlugin serverPlugin = (ServerPlugin) Class.forName(clazzName).newInstance();
+        serverPlugins = new HashMap<String, ServerPlugin>();
 
-                        if (serverPlugin instanceof ServicePlugin) {
-                            ServicePlugin servicePlugin = (ServicePlugin) serverPlugin;
-                            /*
-                             * load any properties that may currently be in the
-                             * database
-                             */
-                            Properties currentProperties = getPluginProperties(pmd.getName());
-                            /* get the default properties for the plugin */
-                            Properties defaultProperties = servicePlugin.getDefaultProperties();
+        for (PluginMetaData metaData : plugins.values()) {
+            try {
+                if (metaData.isEnabled() && isExtensionCompatible(metaData)) {
+                    for (ExtensionPoint extensionPoint : metaData.getExtensionPoints()) {
+                        if ((extensionPoint.getMode() == ExtensionPoint.Mode.SERVER) && (extensionPoint.getType() == ExtensionPoint.Type.SERVER_PLUGIN) && StringUtils.isNotBlank(extensionPoint.getClassName())) {
+                            ServerPlugin serverPlugin = (ServerPlugin) Class.forName(extensionPoint.getClassName()).newInstance();
+                            String pluginName = extensionPoint.getName();
 
-                            /*
-                             * if there are any properties that not currently
-                             * set, set them to the the default
-                             */
+                            // load any properties that may currently be in the
+                            // database
+                            Properties currentProperties = getPluginProperties(pluginName);
+                            // get the default properties for the plugin
+                            Properties defaultProperties = serverPlugin.getDefaultProperties();
+
+                            // if there are any properties that not currently
+                            // set, set them to the the default
                             for (Object key : defaultProperties.keySet()) {
                                 if (!currentProperties.containsKey(key)) {
                                     currentProperties.put(key, defaultProperties.get(key));
                                 }
                             }
 
-                            /* save the properties to the database */
-                            setPluginProperties(pmd.getName(), currentProperties);
+                            // save the properties to the database
+                            setPluginProperties(pluginName, currentProperties);
 
-                            /*
-                             * initialize the plugin with those properties and
-                             * add it to the list of loaded plugins
-                             */
-                            servicePlugin.init(currentProperties);
-                            servicePlugins.put(servicePlugin.getPluginPointName(), servicePlugin);
-                            serverPlugins.add(servicePlugin);
-                            logger.debug("sucessfully loaded server plugin: " + serverPlugin.getPluginPointName());
+                            // initialize the plugin with those properties and
+                            // add it to the list of loaded plugins
+                            serverPlugin.init(currentProperties);
+
+                            serverPlugins.put(pluginName, serverPlugin);
+                            logger.debug("loaded server plugin: " + pluginName);
                         }
-
-                        if (serverPlugin instanceof ConnectorStatusPlugin) {
-                            /*
-                             * This is needed in case you add a second
-                             * constructor to your plugin. Java is not able to
-                             * find the default one for the plugin.
-                             */
-                            Constructor<?>[] constructors = Class.forName(clazzName).getDeclaredConstructors();
-
-                            for (int i = 0; i < constructors.length; i++) {
-                                Class<?> parameters[] = constructors[i].getParameterTypes();
-
-                                // load plugin if the number of
-                                // parameters is 0
-                                if (parameters.length == 0) {
-                                    ConnectorStatusPlugin connectorStatusPlugin = (ConnectorStatusPlugin) constructors[i].newInstance(new Object[] {});
-                                    connectorStatusPlugins.put(connectorStatusPlugin.getPluginPointName(), connectorStatusPlugin);
-                                    serverPlugins.add(connectorStatusPlugin);
-                                    i = constructors.length;
-                                }
-                            }
-
-                            logger.debug("sucessfully loaded connector status plugin: " + serverPlugin.getPluginPointName());
-                        }
-
-                        if (serverPlugin instanceof ChannelPlugin) {
-                            ChannelPlugin channelPlugin = (ChannelPlugin) serverPlugin;
-                            channelPlugins.put(channelPlugin.getPluginPointName(), channelPlugin);
-                            serverPlugins.add(channelPlugin);
-                            logger.debug("sucessfully loaded server channel plugin: " + serverPlugin.getPluginPointName());
-                        }
-                    } catch (Exception e) {
-                        logger.error("Error instantiating plugin: " + pmd.getName(), e);
                     }
+                } else {
+                    logger.warn("Server plugin \"" + metaData.getName() + "\" is not enabled or is not compatible with this version of Mirth Connect.");
                 }
-            } else {
-                logger.warn("Plugin \"" + pmd.getName() + "\" is not enabled or is not compatible with this version of Mirth Connect.");
+            } catch (Exception e) {
+                logger.error("Error initializing server plugin \"" + metaData.getName() + "\" with properties.", e);
             }
         }
     }
 
-    /* These are the maps for the different types of plugins */
-    /* ********************************************************************** */
-    
-    public Map<String, ServicePlugin> getServicePlugins() {
-        return servicePlugins;
-    }
-
-    public Map<String, ConnectorStatusPlugin> getConnectorStatusPlugins() {
-        return connectorStatusPlugins;
-    }
-
-    public Map<String, ChannelPlugin> getChannelPlugins() {
-        return channelPlugins;
-    }
-
-    /* ********************************************************************** */
-    
     public boolean isExtensionEnabled(String name) {
-        for (PluginMetaData plugin : pluginMetaDataMap.values()) {
+        for (PluginMetaData plugin : plugins.values()) {
             if (plugin.isEnabled() && plugin.getName().equals(name)) {
                 return true;
             }
         }
 
-        for (ConnectorMetaData connector : connectorMetaDataMap.values()) {
+        for (ConnectorMetaData connector : connectors.values()) {
             if (connector.isEnabled() && connector.getName().equals(name)) {
                 return true;
             }
@@ -224,15 +161,16 @@ public class DefaultExtensionController extends ExtensionController {
     }
 
     public void startPlugins() {
-        for (ServerPlugin serverPlugin : serverPlugins) {
-            serverPlugin.start();
+        // Call all of the server plugin start methods
+        for (ServerPlugin plugin : serverPlugins.values()) {
+            plugin.start();
         }
 
         // Get all of the server plugin extension permissions and add those to
         // the authorization controller.
         AuthorizationController authorizationController = ControllerFactory.getFactory().createAuthorizationController();
 
-        for (ServicePlugin plugin : servicePlugins.values()) {
+        for (ServerPlugin plugin : serverPlugins.values()) {
             if (plugin.getExtensionPermissions() != null) {
                 for (ExtensionPermission extensionPermission : plugin.getExtensionPermissions()) {
                     authorizationController.addExtensionPermission(extensionPermission);
@@ -241,35 +179,28 @@ public class DefaultExtensionController extends ExtensionController {
         }
     }
 
-    public void stopPlugins() {
-        for (ServerPlugin serverPlugin : serverPlugins) {
-            serverPlugin.stop();
+    public void updatePluginProperties(String name, Properties properties) {
+        serverPlugins.get(name).update(properties);
+    }
+
+    public void triggerDeploy() {
+        for (ServerPlugin plugin : serverPlugins.values()) {
+            plugin.onDeploy();
         }
     }
 
-    public void updatePluginProperties(String name, Properties properties) {
-        ServicePlugin servicePlugin = servicePlugins.get(name);
-        
-        if (servicePlugin != null) {
-            servicePlugin.update(properties);    
-        } else {
-            logger.error("Error setting properties for service plugin that has not been loaded: name=" + name);
+    public void stopPlugins() {
+        for (ServerPlugin plugin : serverPlugins.values()) {
+            plugin.stop();
         }
     }
 
     public Object invokePluginService(String name, String method, Object object, String sessionId) throws Exception {
-        ServicePlugin servicePlugin = servicePlugins.get(name);
-        
-        if (servicePlugin != null) {
-            return servicePlugins.get(name).invoke(method, object, sessionId);    
-        } else {
-            logger.error("Error invoking service plugin that has not been loaded: name=" + name + ", method=" + method);
-            return null;
-        }
+        return serverPlugins.get(name).invoke(method, object, sessionId);
     }
 
     public Object invokeConnectorService(String name, String method, Object object, String sessionsId) throws Exception {
-        ConnectorMetaData connectorMetaData = connectorMetaDataMap.get(name);
+        ConnectorMetaData connectorMetaData = connectors.get(name);
 
         if (StringUtils.isNotBlank(connectorMetaData.getServiceClassName())) {
             ConnectorService connectorService = (ConnectorService) Class.forName(connectorMetaData.getServiceClassName()).newInstance();
@@ -311,6 +242,8 @@ public class DefaultExtensionController extends ExtensionController {
                 String entryName = entry.getName();
 
                 if (entryName.endsWith(pluginFilename) || entryName.endsWith(destinationFilename) || entryName.endsWith(sourceFilename)) {
+                    ObjectXMLSerializer serializer = new ObjectXMLSerializer();
+
                     // parse the extension metadata xml file
                     MetaData extensionMetaData = (MetaData) serializer.fromXML(IOUtils.toString(zipFile.getInputStream(entry)));
 
@@ -359,19 +292,11 @@ public class DefaultExtensionController extends ExtensionController {
         }
     }
 
-    /**
-     * Adds the specified plugin path to a list of plugins that should be
-     * deleted on next server startup. Also deletes the schema version property
-     * from the database. If this function fails to add the extension path to
-     * the uninstall file, it will still continue to remove add the database
-     * uninstall scripts, and the folder must be deleted manually.
-     * 
-     */
     public void prepareExtensionForUninstallation(String pluginPath) throws ControllerException {
         try {
             addExtensionToUninstallFile(pluginPath);
 
-            for (PluginMetaData plugin : pluginMetaDataMap.values()) {
+            for (PluginMetaData plugin : plugins.values()) {
                 if (plugin.getPath().equals(pluginPath) && plugin.getSqlScript() != null) {
                     String pluginSqlScripts = FileUtils.readFileToString(new File(ExtensionController.getExtensionsPath() + plugin.getPath() + File.separator + plugin.getSqlScript()));
                     String script = getUninstallScriptForCurrentDatabase(pluginSqlScripts);
@@ -430,18 +355,11 @@ public class DefaultExtensionController extends ExtensionController {
      * append the extension path name to a list of extensions that should be
      * deleted on next startup by MirthLauncher
      */
-    private void addExtensionToUninstallFile(String pluginPath) {
+    private void addExtensionToUninstallFile(String pluginPath) throws IOException {
         File uninstallFile = new File(getExtensionsPath(), EXTENSIONS_UNINSTALL_FILE);
-        FileWriter writer = null;
-
-        try {
-            writer = new FileWriter(uninstallFile, true);
-            writer.write(pluginPath + System.getProperty("line.separator"));
-        } catch (IOException e) {
-            logger.error("Error adding extension to uninstall file: " + pluginPath, e);
-        } finally {
-            IOUtils.closeQuietly(writer);
-        }
+        FileWriter writer = new FileWriter(uninstallFile, true);
+        writer.write(pluginPath + System.getProperty("line.separator"));
+        writer.close();
     }
 
     private String getUninstallScriptForCurrentDatabase(String pluginSqlScripts) throws Exception {
@@ -479,27 +397,36 @@ public class DefaultExtensionController extends ExtensionController {
     }
 
     public Map<String, ConnectorMetaData> getConnectorMetaData() {
-        return connectorMetaDataMap;
+        return connectors;
     }
 
     private void loadConnectorMetaData() throws ControllerException {
         logger.debug("loading connector metadata");
-        connectorMetaDataMap = (Map<String, ConnectorMetaData>) getMetaDataForExtensionType(ExtensionType.CONNECTOR);
-        connectorProtocolsMap = new HashMap<String, ConnectorMetaData>();
 
-        for (ConnectorMetaData connectorMetaData : connectorMetaDataMap.values()) {
-            if (StringUtils.contains(connectorMetaData.getProtocol(), ":")) {
-                for (String protocol : connectorMetaData.getProtocol().split(":")) {
-                    connectorProtocolsMap.put(protocol, connectorMetaData);
+        try {
+            connectors = (Map<String, ConnectorMetaData>) getMetaDataForExtensionType(ExtensionType.CONNECTOR);
+            protocols = new HashMap<String, ConnectorMetaData>();
+
+            for (ConnectorMetaData connectorMetaData : connectors.values()) {
+                String protocol = connectorMetaData.getProtocol();
+
+                if (protocol.indexOf(':') > -1) {
+                    String[] protocolStrings = protocol.split(":");
+
+                    for (int i = 0; i < protocolStrings.length; i++) {
+                        protocols.put(protocolStrings[i], connectorMetaData);
+                    }
+                } else {
+                    protocols.put(connectorMetaData.getProtocol(), connectorMetaData);
                 }
-            } else {
-                connectorProtocolsMap.put(connectorMetaData.getProtocol(), connectorMetaData);
             }
+        } catch (IOException e) {
+            throw new ControllerException("Error loading connector metadata.");
         }
     }
 
     public void saveConnectorMetaData(Map<String, ConnectorMetaData> metaData) throws ControllerException {
-        connectorMetaDataMap = metaData;
+        connectors = metaData;
 
         try {
             saveExtensionMetaData(metaData);
@@ -511,8 +438,8 @@ public class DefaultExtensionController extends ExtensionController {
     public List<String> getClientExtensionLibraries() {
         List<String> clientLibraries = new ArrayList<String>();
         List<MetaData> extensionMetaData = new ArrayList<MetaData>();
-        extensionMetaData.addAll(pluginMetaDataMap.values());
-        extensionMetaData.addAll(connectorMetaDataMap.values());
+        extensionMetaData.addAll(plugins.values());
+        extensionMetaData.addAll(connectors.values());
 
         for (MetaData metaData : extensionMetaData) {
             // Only add enabled extension libraries to the classpath
@@ -529,11 +456,11 @@ public class DefaultExtensionController extends ExtensionController {
     }
 
     public Map<String, PluginMetaData> getPluginMetaData() {
-        return pluginMetaDataMap;
+        return plugins;
     }
 
     public void savePluginMetaData(Map<String, PluginMetaData> metaData) throws ControllerException {
-        pluginMetaDataMap = metaData;
+        plugins = metaData;
 
         try {
             saveExtensionMetaData(metaData);
@@ -543,24 +470,25 @@ public class DefaultExtensionController extends ExtensionController {
     }
 
     private void loadPluginMetaData() throws ControllerException {
-        pluginMetaDataMap = (Map<String, PluginMetaData>) getMetaDataForExtensionType(ExtensionType.PLUGIN);
+        try {
+            plugins = (Map<String, PluginMetaData>) getMetaDataForExtensionType(ExtensionType.PLUGIN);
+        } catch (IOException e) {
+            throw new ControllerException("Error loading plugin metadata.");
+        }
     }
 
     public ConnectorMetaData getConnectorMetaDataByProtocol(String protocol) {
-        return connectorProtocolsMap.get(protocol);
+        return protocols.get(protocol);
     }
 
     public ConnectorMetaData getConnectorMetaDataByTransportName(String transportName) {
-        return connectorMetaDataMap.get(transportName);
+        return connectors.get(transportName);
     }
 
-    /**
-     * Executes the script that removes that database tables for plugins that
-     * are marked for removal. The actual removal of the plugin directory
-     * happens in MirthLauncher.java, before they can be added to the server
-     * classpath.
-     * 
-     */
+    public Map<String, ServerPlugin> getLoadedServerPlugins() {
+        return serverPlugins;
+    }
+
     public void uninstallExtensions() {
         try {
             DatabaseUtil.executeScript(readUninstallScript(), true);
@@ -574,6 +502,7 @@ public class DefaultExtensionController extends ExtensionController {
 
     private void writeUninstallScript(List<String> uninstallScripts) throws IOException {
         File uninstallScriptsFile = new File(getExtensionsPath(), EXTENSIONS_UNINSTALL_SCRIPTS_FILE);
+        ObjectXMLSerializer serializer = new ObjectXMLSerializer();
         FileUtils.writeStringToFile(uninstallScriptsFile, serializer.toXML(uninstallScripts));
     }
 
@@ -582,6 +511,7 @@ public class DefaultExtensionController extends ExtensionController {
      */
     private List<String> readUninstallScript() throws IOException {
         File uninstallScriptsFile = new File(getExtensionsPath(), EXTENSIONS_UNINSTALL_SCRIPTS_FILE);
+        ObjectXMLSerializer serializer = new ObjectXMLSerializer();
         List<String> scripts = new ArrayList<String>();
 
         if (uninstallScriptsFile.exists()) {
@@ -593,14 +523,13 @@ public class DefaultExtensionController extends ExtensionController {
 
     /**
      * Returns the metadata files (plugin.xml, source.xml, destination.xml) for
-     * all extensions of the specified type. If this function fails to parse the
-     * metadata file for an extension, it will skip it and continue.
+     * all extensions of the specified type.
      * 
      * @param extensionType
      * @return
      * @throws ControllerException
      */
-    private Map<String, ? extends MetaData> getMetaDataForExtensionType(ExtensionType extensionType) {
+    private Map<String, ? extends MetaData> getMetaDataForExtensionType(ExtensionType extensionType) throws IOException {
         // match all of the file names for the extension (plugin.xml,
         // source.xml, destination.xml)
         IOFileFilter nameFileFilter = new NameFileFilter(extensionType.getFileNames());
@@ -613,14 +542,11 @@ public class DefaultExtensionController extends ExtensionController {
         Collection<File> extensionFiles = FileUtils.listFiles(extensionPath, andFileFilter, FileFilterUtils.trueFileFilter());
 
         Map<String, MetaData> extensionMetaDataMap = new HashMap<String, MetaData>();
+        ObjectXMLSerializer serializer = new ObjectXMLSerializer();
 
         for (File extensionFile : extensionFiles) {
-            try {
-                MetaData extensionMetaData = (MetaData) serializer.fromXML(FileUtils.readFileToString(extensionFile));
-                extensionMetaDataMap.put(extensionMetaData.getName(), extensionMetaData);
-            } catch (Exception e) {
-                logger.error("Error reading or parsing extension metadata file: " + extensionFile.getName(), e);
-            }
+            MetaData extensionMetaData = (MetaData) serializer.fromXML(FileUtils.readFileToString(extensionFile));
+            extensionMetaDataMap.put(extensionMetaData.getName(), extensionMetaData);
         }
 
         return extensionMetaDataMap;
@@ -633,6 +559,8 @@ public class DefaultExtensionController extends ExtensionController {
      * @throws ControllerException
      */
     private void saveExtensionMetaData(Map<String, ? extends MetaData> metaData) throws IOException {
+        ObjectXMLSerializer serializer = new ObjectXMLSerializer();
+
         for (Entry<String, ? extends MetaData> entry : metaData.entrySet()) {
             MetaData extensionMetaData = entry.getValue();
             String fileName = ExtensionType.PLUGIN.getFileNames()[0];

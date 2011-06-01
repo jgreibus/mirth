@@ -37,15 +37,15 @@ import com.mirth.connect.connectors.ws.WebServiceSenderProperties;
 import com.mirth.connect.model.Channel;
 import com.mirth.connect.model.Connector;
 import com.mirth.connect.model.ExtensionPermission;
-import com.mirth.connect.plugins.ServicePlugin;
+import com.mirth.connect.plugins.ServerPlugin;
 import com.mirth.connect.server.controllers.ControllerFactory;
 import com.mirth.connect.server.controllers.MonitoringController.ConnectorType;
 import com.mirth.connect.server.controllers.MonitoringController.Event;
 
-public class DashboardConnectorStatusMonitor implements ServicePlugin {
+public class DashboardConnectorStatusMonitor implements ServerPlugin {
     private Logger logger = Logger.getLogger(this.getClass());
 
-    public static final String PLUGINPOINT = "Dashboard Connector Service";
+    private static final String PLUGIN_NAME = "Dashboard Connector Status Monitor";
 
     private static final String COLOR_BLACK = "black";
     private static final String COLOR_YELLOW = "yellow";
@@ -83,12 +83,6 @@ public class DashboardConnectorStatusMonitor implements ServicePlugin {
     // is used to signal clients to clear out all the Dashboard Monitoring Logs.
     private ConcurrentHashMap<String, Boolean> channelsDeployedFlagForEachClient = new ConcurrentHashMap<String, Boolean>();
 
-    @Override
-    public String getPluginPointName() {
-        return PLUGINPOINT;
-    }
-    
-    @Override
     public void init(Properties properties) {
         socketSetMap = new HashMap<String, Set<Socket>>();
         connectorStateMap = new HashMap<String, String[]>();
@@ -98,17 +92,18 @@ public class DashboardConnectorStatusMonitor implements ServicePlugin {
         channelsDeployedFlagForEachClient.clear();
     }
 
-    @Override
+    public void onDeploy() {
+
+    }
+
     public void start() {
 
     }
 
-    @Override
     public void stop() {
 
     }
 
-    @Override
     public void update(Properties properties) {
 
     }
@@ -560,7 +555,7 @@ public class DashboardConnectorStatusMonitor implements ServicePlugin {
 
     @Override
     public ExtensionPermission[] getExtensionPermissions() {
-        ExtensionPermission viewPermission = new ExtensionPermission(PLUGINPOINT, "View Connection Status", "Displays the connection status and history of the selected channel on the Dashboard.", new String[] { METHOD_GET_STATES, METHOD_GET_CONNECTION_INFO_LOGS }, new String[] { });
+        ExtensionPermission viewPermission = new ExtensionPermission(PLUGIN_NAME, "View Connection Status", "Displays the connection status and history of the selected channel on the Dashboard.", new String[] { METHOD_GET_STATES, METHOD_GET_CONNECTION_INFO_LOGS }, new String[] { });
         
         return new ExtensionPermission[] { viewPermission };
     }

@@ -10,7 +10,6 @@
 package com.mirth.connect.plugins.dashboardstatus;
 
 import java.net.Socket;
-import java.util.Properties;
 
 import com.mirth.connect.plugins.ConnectorStatusPlugin;
 import com.mirth.connect.server.controllers.ControllerFactory;
@@ -18,30 +17,15 @@ import com.mirth.connect.server.controllers.MonitoringController.ConnectorType;
 import com.mirth.connect.server.controllers.MonitoringController.Event;
 
 public class DashboardConnectorStatusMonitorLogger implements ConnectorStatusPlugin {
+    private static final String SERVER_PLUGIN_NAME = "Dashboard Connector Status Monitor";
     private DashboardConnectorStatusMonitor monitor;
-    
-    @Override
-    public String getPluginPointName() {
-        return "Dashboard Connector Status";
+
+    public DashboardConnectorStatusMonitorLogger() {
+        monitor = (DashboardConnectorStatusMonitor) ControllerFactory.getFactory().createExtensionController().getLoadedServerPlugins().get(SERVER_PLUGIN_NAME);
     }
 
-    @Override
-    public void start() {
-        monitor = (DashboardConnectorStatusMonitor) ControllerFactory.getFactory().createExtensionController().getServicePlugins().get(DashboardConnectorStatusMonitor.PLUGINPOINT);
-    }
-
-    @Override
     public void updateStatus(String connectorName, ConnectorType type, Event event, Socket socket) {
         monitor.updateStatus(connectorName, type, event, socket);
     }
 
-    @Override
-    public void stop() {
-
-    }
-
-    @Override
-    public void init(Properties properties) {
-        
-    }
 }
