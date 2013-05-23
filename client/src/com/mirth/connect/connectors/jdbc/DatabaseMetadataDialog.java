@@ -1,7 +1,7 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
  * http://www.mirthcorp.com
- * 
+ *
  * The software in this package is published under the terms of the MPL
  * license a copy of which has been included with this distribution in
  * the LICENSE.txt file.
@@ -11,6 +11,8 @@ package com.mirth.connect.connectors.jdbc;
 
 import java.awt.Dimension;
 import java.awt.Point;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.HashMap;
@@ -19,6 +21,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.Set;
 import java.util.prefs.Preferences;
 
@@ -36,14 +39,14 @@ import com.mirth.connect.client.ui.PlatformUI;
 import com.mirth.connect.client.ui.RefreshTableModel;
 import com.mirth.connect.client.ui.UIConstants;
 import com.mirth.connect.client.ui.components.MirthTable;
-import com.mirth.connect.client.ui.panels.connectors.ConnectorSettingsPanel;
+import com.mirth.connect.connectors.ConnectorClass;
 
 public class DatabaseMetadataDialog extends javax.swing.JDialog {
 
     private Frame parent;
-    private ConnectorSettingsPanel parentConnector;
+    private ConnectorClass parentConnector;
     private STATEMENT_TYPE type;
-    private DatabaseConnectionInfo databaseConnectionInfo = null;
+    private Properties connectionProperties = null;
     private final String INCLUDED_COLUMN_NAME_COLUMN_NAME = "Table/Column Name";
     private final String INCLUDED_STATUS_COLUMN_NAME = "Include";
     private final String INCLUDED_TYPE_COLUMN_NAME = "Type";
@@ -58,13 +61,13 @@ public class DatabaseMetadataDialog extends javax.swing.JDialog {
         SELECT_TYPE, UPDATE_TYPE, INSERT_TYPE
     };
 
-    public DatabaseMetadataDialog(ConnectorSettingsPanel parentConnector, STATEMENT_TYPE type, DatabaseConnectionInfo databaseConnectionInfo) {
+    public DatabaseMetadataDialog(ConnectorClass parentConnector, STATEMENT_TYPE type, Properties connectionProperties) {
         super(PlatformUI.MIRTH_FRAME);
         this.parent = PlatformUI.MIRTH_FRAME;
         this.parentConnector = parentConnector;
         this.type = type;
         initComponents();
-        this.databaseConnectionInfo = databaseConnectionInfo;
+        this.connectionProperties = connectionProperties;
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         
         this.addWindowListener(new WindowAdapter() {
@@ -494,7 +497,7 @@ public class DatabaseMetadataDialog extends javax.swing.JDialog {
 	 */
 	private void filterButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_filterButtonActionPerformed
 		// retrieve the table pattern filter
-	    databaseConnectionInfo.setTableNamePatternExpression(filterTableTextField.getText());
+		connectionProperties.put(DatabaseReaderProperties.DATABASE_TABLE_NAME_PATTERN_EXPRESSION, filterTableTextField.getText());
 		
 		final String workingId = parent.startWorking("Retrieving tables...");
 		
@@ -509,7 +512,7 @@ public class DatabaseMetadataDialog extends javax.swing.JDialog {
             public Void doInBackground() {
                 try {
                     // method "getInformationSchema" will return Set<Table>
-                    metaData = (Set<Table>) parent.mirthClient.invokeConnectorService("Database Reader", "getInformationSchema", databaseConnectionInfo);
+                    metaData = (Set<Table>) parent.mirthClient.invokeConnectorService("Database Reader", "getInformationSchema", connectionProperties);
                 } catch (ClientException e) {
                     // Handle in the done method
                 }

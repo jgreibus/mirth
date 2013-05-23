@@ -1,7 +1,7 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
  * http://www.mirthcorp.com
- * 
+ *
  * The software in this package is published under the terms of the MPL
  * license a copy of which has been included with this distribution in
  * the LICENSE.txt file.
@@ -11,10 +11,6 @@ package com.mirth.connect.client.ui;
 
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
-import java.util.Map;
-import java.util.regex.Pattern;
-
-import com.mirth.connect.client.ui.VariableListHandler.TransferMode;
 
 /**
  * Package Database Variables for movement.
@@ -22,30 +18,67 @@ import com.mirth.connect.client.ui.VariableListHandler.TransferMode;
 public class VariableTransferable implements Transferable {
 
     private static DataFlavor[] flavors = null;
-    private static final Pattern VALID_VELOCITY_VARIABLE_PATTERN = Pattern.compile("[a-zA-Z][a-zA-Z0-9_-]*");
     private String data = null;
-    private TransferMode transferMode;
-    private Map<String, Integer> metaDataMap;
-
-    public VariableTransferable(String data, TransferMode transferMode) {
-        this(data, transferMode, null);
-    }
+    private String _prefix = "msg['";
+    private String _suffix = "']";
 
     /**
      * @param data
      *            the type of Ant element being transferred, e.g., target, task,
      *            type, etc.
      */
-    public VariableTransferable(String data, TransferMode transferMode, Map<String, Integer> metaDataMap) {
-        this.transferMode = transferMode;
-        this.metaDataMap = metaDataMap;
-
-        if (data.equals("CDATA Tag")) {
+    public VariableTransferable(String data, String prefix, String suffix) {
+        if (data.equals("Any")) {
+            this.data = "ERROR";
+        } else if (data.equals("Server")) {
+            this.data = "ERROR-000";
+        } else if (data.equals("Client")) {
+            this.data = "ERROR-100";
+        } else if (data.equals("200: Filter")) {
+            this.data = "ERROR-200";
+        } else if (data.equals("300: Transformer")) {
+            this.data = "ERROR-300";
+        } else if (data.equals("301: Transformer conversion")) {
+            this.data = "ERROR-301";
+        } else if (data.equals("302: Custom transformer")) {
+            this.data = "ERROR-302";
+        } else if (data.equals("400: Connector")) {
+            this.data = "ERROR-400";
+        } else if (data.equals("401: Document connector")) {
+            this.data = "ERROR-401";
+        } else if (data.equals("402: SMTP connector")) {
+            this.data = "ERROR-402";
+        } else if (data.equals("403: File connector")) {
+            this.data = "ERROR-403";
+        } else if (data.equals("404: HTTP connector")) {
+            this.data = "ERROR-404";
+        } else if (data.equals("405: FTP connector")) {
+            this.data = "ERROR-405";
+        } else if (data.equals("406: JDBC Connector")) {
+            this.data = "ERROR-406";
+        } else if (data.equals("407: JMS Connector")) {
+            this.data = "ERROR-407";
+        } else if (data.equals("408: MLLP Connector")) {
+            this.data = "ERROR-408";
+        } else if (data.equals("409: SFTP Connector")) {
+            this.data = "ERROR-409";
+        } else if (data.equals("410: SOAP Connector")) {
+            this.data = "ERROR-410";
+        } else if (data.equals("411: TCP Connector")) {
+            this.data = "ERROR-411";
+        } else if (data.equals("412: VM Connector")) {
+            this.data = "ERROR-412";
+        } else if (data.equals("413: Email Connector")) {
+            this.data = "ERROR-413";
+        } else if (data.equals("CDATA Tag")) {
             this.data = "<![CDATA[]]>";
-            this.transferMode = TransferMode.RAW;
+            prefix = "";
+            suffix = "";
         } else {
             this.data = data;
         }
+        _prefix = prefix;
+        _suffix = suffix;
         init();
     }
 
@@ -76,31 +109,8 @@ public class VariableTransferable implements Transferable {
         }
 
         if (data != null) {
-            String replacedData = data;
-            String prefix = transferMode.getPrefix();
-            String suffix = transferMode.getSuffix();
 
-            if (transferMode != TransferMode.RAW) {
-                // Replace connector names with metadata IDs
-                if (metaDataMap != null && metaDataMap.containsKey(data)) {
-                    replacedData = "d" + String.valueOf(metaDataMap.get(data));
-                    if (transferMode == TransferMode.VELOCITY) {
-                        suffix = ".message" + suffix;
-                    }
-                }
-
-                if (transferMode == TransferMode.VELOCITY && !VALID_VELOCITY_VARIABLE_PATTERN.matcher(replacedData).matches()) {
-                    prefix += "maps.get('";
-                    suffix = "')" + suffix;
-                }
-
-                if (replacedData.contains("'")) {
-                    prefix = prefix.replaceAll("'", "\"");
-                    suffix = suffix.replaceAll("'", "\"");
-                }
-            }
-
-            return prefix + replacedData + suffix;
+            return _prefix + data + _suffix;
         }
         return null;
     }

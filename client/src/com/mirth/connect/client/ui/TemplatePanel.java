@@ -1,7 +1,7 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
  * http://www.mirthcorp.com
- * 
+ *
  * The software in this package is published under the terms of the MPL
  * license a copy of which has been included with this distribution in
  * the LICENSE.txt file.
@@ -22,37 +22,45 @@ import java.awt.event.MouseListener;
 import java.io.File;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
 
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.StringUtils;
 import org.syntax.jedit.SyntaxDocument;
+import org.syntax.jedit.tokenmarker.EDITokenMarker;
 import org.syntax.jedit.tokenmarker.HL7TokenMarker;
-import org.syntax.jedit.tokenmarker.TokenMarker;
+import org.syntax.jedit.tokenmarker.X12TokenMarker;
+import org.syntax.jedit.tokenmarker.XMLTokenMarker;
 
-import com.mirth.connect.client.ui.editors.DataTypePropertiesDialog;
+import com.mirth.connect.client.ui.beans.DelimitedProperties;
+import com.mirth.connect.client.ui.beans.EDIProperties;
+import com.mirth.connect.client.ui.beans.HL7Properties;
+import com.mirth.connect.client.ui.beans.HL7V3Properties;
+import com.mirth.connect.client.ui.beans.NCPDPProperties;
+import com.mirth.connect.client.ui.beans.X12Properties;
+import com.mirth.connect.client.ui.beans.XMLProperties;
+import com.mirth.connect.client.ui.editors.BoundPropertiesSheetDialog;
 import com.mirth.connect.client.ui.editors.MirthEditorPane;
-import com.mirth.connect.model.datatype.DataTypeProperties;
-import com.mirth.connect.plugins.DataTypeClientPlugin;
+import com.mirth.connect.model.MessageObject;
+import com.mirth.connect.model.converters.DICOMSerializer;
+import com.mirth.connect.model.converters.DefaultSerializerPropertiesFactory;
 
 public class TemplatePanel extends javax.swing.JPanel implements DropTargetListener {
-    private static final String MESSAGE_TEMPLATES_BOLD = "<html><b>Message Templates</b></html>";
-    private static final String MESSAGE_TEMPLATES = "Message Templates";
     public final String DEFAULT_TEXT = "Paste a sample message here.";
     protected MirthEditorPane parent;
     private SyntaxDocument hl7Document;
     private TreePanel treePanel;
     private String currentMessage = "";
     private String currentDataType;
-    private DataTypeProperties dataProperties;
+    private Properties dataProperties;
     private Timer timer;
     private String lastWorkingId = null;
-    private boolean inbound = false;
-    private TransformerType transformerType;
 
     public TemplatePanel() {
         initComponents();
@@ -65,7 +73,7 @@ public class TemplatePanel extends javax.swing.JPanel implements DropTargetListe
         openFileButton.setIcon(UIConstants.ICON_FILE_PICKER);
 
         if (PlatformUI.MIRTH_FRAME != null) {
-            dataTypeComboBox.setModel(new javax.swing.DefaultComboBoxModel(PlatformUI.MIRTH_FRAME.dataTypeToDisplayName.values().toArray()));
+            dataType.setModel(new javax.swing.DefaultComboBoxModel(PlatformUI.MIRTH_FRAME.protocols.values().toArray()));
         }
 
         hl7Document = new SyntaxDocument();
@@ -95,11 +103,14 @@ public class TemplatePanel extends javax.swing.JPanel implements DropTargetListe
                 }
             }
 
-            public void mouseEntered(MouseEvent e) {}
+            public void mouseEntered(MouseEvent e) {
+            }
 
-            public void mouseExited(MouseEvent e) {}
+            public void mouseExited(MouseEvent e) {
+            }
 
-            public void mousePressed(MouseEvent e) {}
+            public void mousePressed(MouseEvent e) {
+            }
 
             public void mouseReleased(MouseEvent e) {
                 if (e.getButton() == MouseEvent.BUTTON2) {
@@ -121,7 +132,7 @@ public class TemplatePanel extends javax.swing.JPanel implements DropTargetListe
                 dtde.acceptDrag(DnDConstants.ACTION_COPY_OR_MOVE);
                 List<File> fileList = (List<File>) tr.getTransferData(DataFlavor.javaFileListFlavor);
                 Iterator<File> iterator = fileList.iterator();
-
+                
                 while (iterator.hasNext()) {
                     iterator.next();
                 }
@@ -133,27 +144,25 @@ public class TemplatePanel extends javax.swing.JPanel implements DropTargetListe
         }
     }
 
-    public void dragOver(DropTargetDragEvent dtde) {}
+    public void dragOver(DropTargetDragEvent dtde) {
+    }
 
-    public void dropActionChanged(DropTargetDragEvent dtde) {}
+    public void dropActionChanged(DropTargetDragEvent dtde) {
+    }
 
-    public void dragExit(DropTargetEvent dte) {}
+    public void dragExit(DropTargetEvent dte) {
+    }
 
     public void drop(DropTargetDropEvent dtde) {
         try {
             Transferable tr = dtde.getTransferable();
-
+            
             if (tr.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
                 dtde.acceptDrop(DnDConstants.ACTION_COPY_OR_MOVE);
                 File file = ((List<File>) tr.getTransferData(DataFlavor.javaFileListFlavor)).get(0);
 
-                String dataType = PlatformUI.MIRTH_FRAME.displayNameToDataType.get(getDataType());
-                DataTypeClientPlugin dataTypePlugin = LoadedExtensions.getInstance().getDataTypePlugins().get(dataType);
-                if (dataTypePlugin.isBinary()) {
-                    byte[] content = FileUtils.readFileToByteArray(file);
-
-                    // The plugin should decide how to convert the byte array to string
-                    pasteBox.setText(dataTypePlugin.getTemplateString(content));
+                if (getProtocol().equals(PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.DICOM))) {
+                    pasteBox.setText(new DICOMSerializer().toXML(new String(Base64.encodeBase64Chunked(FileUtils.readFileToByteArray(file)))));
                 } else {
                     pasteBox.setText(FileUtils.readFileToString(file, UIConstants.CHARSET));
                 }
@@ -165,14 +174,9 @@ public class TemplatePanel extends javax.swing.JPanel implements DropTargetListe
         }
     }
 
-    public void setDataTypeEnabled(boolean dataTypeEnabled, boolean propertiesEnabled, TransformerType transformerType) {
-        dataTypeComboBox.setEnabled(dataTypeEnabled);
+    public void setDataTypeEnabled(boolean dataTypeEnabled, boolean propertiesEnabled) {
+        dataType.setEnabled(dataTypeEnabled);
         properties.setEnabled(propertiesEnabled);
-        this.transformerType = transformerType;
-    }
-
-    public void setInbound(boolean inbound) {
-        this.inbound = inbound;
     }
 
     public void setTreePanel(TreePanel tree) {
@@ -192,12 +196,12 @@ public class TemplatePanel extends javax.swing.JPanel implements DropTargetListe
                     lastWorkingId = workingId;
                     String message = pasteBox.getText();
                     currentMessage = message;
-
+                    
                     // Some invalid message templates cause this method to throw a NullPointer.
                     // Catch it so that we can still stop the "Parsing..." working status.
                     // TODO: Fix the possible null pointers inside of the setMessage method.
                     try {
-                        treePanel.setMessage(dataProperties, (String) dataTypeComboBox.getSelectedItem(), message, DEFAULT_TEXT);
+                        treePanel.setMessage(dataProperties, (String) dataType.getSelectedItem(), message, DEFAULT_TEXT, dataProperties);
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -205,7 +209,7 @@ public class TemplatePanel extends javax.swing.JPanel implements DropTargetListe
                 }
             }
         }
-
+        
         if (timer == null) {
             timer = new Timer();
             timer.schedule(new UpdateTimer(), 1000);
@@ -214,17 +218,6 @@ public class TemplatePanel extends javax.swing.JPanel implements DropTargetListe
             PlatformUI.MIRTH_FRAME.stopWorking(lastWorkingId);
             timer = new Timer();
             timer.schedule(new UpdateTimer(), 1000);
-        }
-
-        // Change the message tab display when the outbound template is modified
-        if (!inbound) {
-            if (StringUtils.isBlank(pasteBox.getText())) {
-                if (!parent.tabTemplatePanel.tabPanel.getTitleAt(2).equals(MESSAGE_TEMPLATES)) {
-                    parent.tabTemplatePanel.tabPanel.setTitleAt(2, MESSAGE_TEMPLATES);
-                }
-            } else if (!parent.tabTemplatePanel.tabPanel.getTitleAt(2).equals(MESSAGE_TEMPLATES_BOLD)) {
-                parent.tabTemplatePanel.tabPanel.setTitleAt(2, MESSAGE_TEMPLATES_BOLD);
-            }
         }
     }
 
@@ -248,35 +241,39 @@ public class TemplatePanel extends javax.swing.JPanel implements DropTargetListe
         updateText();
     }
 
-    public void setDataType(String dataType) {
-        currentDataType = dataType;
-        dataTypeComboBox.setSelectedItem(dataType);
-        setDocType(dataType);
+    public void setProtocol(String protocol) {
+        currentDataType = protocol;
+        dataType.setSelectedItem(protocol);
+        setDocType(protocol);
     }
 
-    private void setDocType(String dataType) {
-        TokenMarker tokenMarker = LoadedExtensions.getInstance().getDataTypePlugins().get(PlatformUI.MIRTH_FRAME.displayNameToDataType.get(dataType)).getTokenMarker();
-
-        if (tokenMarker != null) {
-            hl7Document.setTokenMarker(tokenMarker);
+    private void setDocType(String protocol) {
+        if (protocol.equals("HL7 v2.x")) {
+            hl7Document.setTokenMarker(new HL7TokenMarker());
+        } else if (protocol.equals("EDI")) {
+            hl7Document.setTokenMarker(new EDITokenMarker());
+        } else if (protocol.equals("X12")) {
+            hl7Document.setTokenMarker(new X12TokenMarker());
+        } else if (protocol.equals("HL7 v3.0") || protocol.equals("XML")) {
+            hl7Document.setTokenMarker(new XMLTokenMarker());
         }
-
+        
         pasteBox.setDocument(hl7Document);
     }
 
-    public String getDataType() {
-        return (String) dataTypeComboBox.getSelectedItem();
+    public String getProtocol() {
+        return (String) dataType.getSelectedItem();
     }
 
-    public DataTypeProperties getDataProperties() {
+    public Properties getDataProperties() {
         return dataProperties;
     }
 
-    public void setDataProperties(DataTypeProperties p) {
+    public void setDataProperties(Properties p) {
         if (p != null) {
             dataProperties = p;
         } else {
-            dataProperties = null;
+            dataProperties = new Properties();
         }
     }
 
@@ -289,7 +286,7 @@ public class TemplatePanel extends javax.swing.JPanel implements DropTargetListe
     private void initComponents() {
 
         jLabel5 = new javax.swing.JLabel();
-        dataTypeComboBox = new javax.swing.JComboBox();
+        dataType = new javax.swing.JComboBox();
         properties = new javax.swing.JButton();
         pasteBox = new com.mirth.connect.client.ui.components.MirthSyntaxTextArea();
         openFileButton = new javax.swing.JButton();
@@ -299,11 +296,10 @@ public class TemplatePanel extends javax.swing.JPanel implements DropTargetListe
 
         jLabel5.setText("Data Type:");
 
-        dataTypeComboBox.setMaximumRowCount(20);
-        dataTypeComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
-        dataTypeComboBox.addActionListener(new java.awt.event.ActionListener() {
+        dataType.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+        dataType.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                dataTypeComboBoxActionPerformed(evt);
+                dataTypeActionPerformed(evt);
             }
         });
 
@@ -343,7 +339,7 @@ public class TemplatePanel extends javax.swing.JPanel implements DropTargetListe
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(jLabel5)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(dataTypeComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(dataType, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(properties)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -355,10 +351,10 @@ public class TemplatePanel extends javax.swing.JPanel implements DropTargetListe
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(properties, javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(dataTypeComboBox, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(dataType, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(openFileButton, javax.swing.GroupLayout.Alignment.TRAILING))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(pasteBox, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(pasteBox, javax.swing.GroupLayout.DEFAULT_SIZE, 185, Short.MAX_VALUE)
                 .addContainerGap())
             .addGroup(layout.createSequentialGroup()
                 .addGap(4, 4, 4)
@@ -366,25 +362,22 @@ public class TemplatePanel extends javax.swing.JPanel implements DropTargetListe
                 .addGap(207, 207, 207))
         );
 
-        layout.linkSize(javax.swing.SwingConstants.VERTICAL, new java.awt.Component[] {dataTypeComboBox, openFileButton, properties});
+        layout.linkSize(javax.swing.SwingConstants.VERTICAL, new java.awt.Component[] {dataType, openFileButton, properties});
 
     }// </editor-fold>//GEN-END:initComponents
 
     private void openFileButtonActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_openFileButtonActionPerformed
     {//GEN-HEADEREND:event_openFileButtonActionPerformed
         try {
-            String dataType = PlatformUI.MIRTH_FRAME.displayNameToDataType.get(getDataType());
-            DataTypeClientPlugin dataTypePropertiesPlugin = LoadedExtensions.getInstance().getDataTypePlugins().get(dataType);
-            if (dataTypePropertiesPlugin.isBinary()) {
+            if (getProtocol().equals(PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.DICOM))) {
                 byte[] content = PlatformUI.MIRTH_FRAME.browseForFileBytes(null);
-
+                
                 if (content != null) {
-                    // The plugin should decide how to convert the byte array to string
-                    pasteBox.setText(dataTypePropertiesPlugin.getTemplateString(content));
+                    pasteBox.setText(new DICOMSerializer().toXML(new String(Base64.encodeBase64Chunked(content))));
                 }
             } else {
                 String content = PlatformUI.MIRTH_FRAME.browseForFileString(null);
-
+                
                 if (content != null) {
                     pasteBox.setText(content);
                 }
@@ -409,47 +402,61 @@ public class TemplatePanel extends javax.swing.JPanel implements DropTargetListe
 
     private void propertiesActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_propertiesActionPerformed
     {//GEN-HEADEREND:event_propertiesActionPerformed
+        PlatformUI.MIRTH_FRAME.setSaveEnabled(true);
         currentMessage = "";
-
-        String displayName = (String) dataTypeComboBox.getSelectedItem();
-
-        if (dataProperties != null) {
-            DataTypeProperties lastDataTypeProperties = dataProperties.clone();
-            DataTypePropertiesDialog dialog = new DataTypePropertiesDialog(inbound, displayName, dataProperties, transformerType);
-            if (dialog.isRevert()) {
-                dataProperties = lastDataTypeProperties;
-            } else {
-                dataProperties = dialog.getDataTypeProperties();
-                if (!dataProperties.equals(lastDataTypeProperties)) {
-                    PlatformUI.MIRTH_FRAME.setSaveEnabled(true);
-                }
-            }
+        if (((String) dataType.getSelectedItem()).equals(PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.EDI))) {
+            new BoundPropertiesSheetDialog(dataProperties, new EDIProperties());
+        } else if (((String) dataType.getSelectedItem()).equals(PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.X12))) {
+            new BoundPropertiesSheetDialog(dataProperties, new X12Properties());
+        } else if (((String) dataType.getSelectedItem()).equals(PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.HL7V2))) {
+            new BoundPropertiesSheetDialog(dataProperties, new HL7Properties());
+        } else if (((String) dataType.getSelectedItem()).equals(PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.HL7V3))) {
+            new BoundPropertiesSheetDialog(dataProperties, new HL7V3Properties());
+        } else if (((String) dataType.getSelectedItem()).equals(PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.NCPDP))) {
+            new BoundPropertiesSheetDialog(dataProperties, new NCPDPProperties());
+        } else if (((String) dataType.getSelectedItem()).equals(PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.DELIMITED))) {
+            new BoundPropertiesSheetDialog(dataProperties, new DelimitedProperties(), 550, 370);
+        } else if (((String) dataType.getSelectedItem()).equals(PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.XML))) {
+            new BoundPropertiesSheetDialog(dataProperties, new XMLProperties());
         }
-
         updateText();
     }//GEN-LAST:event_propertiesActionPerformed
 
-    private void dataTypeComboBoxActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_dataTypeComboBoxActionPerformed
-    {//GEN-HEADEREND:event_dataTypeComboBoxActionPerformed
+    private void dataTypeActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_dataTypeActionPerformed
+    {//GEN-HEADEREND:event_dataTypeActionPerformed
         PlatformUI.MIRTH_FRAME.setSaveEnabled(true);
         currentMessage = "";
-
-        // Only set the default properties if the data type is changing
-        if (!currentDataType.equals(dataTypeComboBox.getSelectedItem())) {
-            // Update the current data type display name
-            currentDataType = (String) dataTypeComboBox.getSelectedItem();
-
-            // Set the default properties for the data type selected
-            String dataType = PlatformUI.MIRTH_FRAME.displayNameToDataType.get(currentDataType);
-
-            dataProperties = LoadedExtensions.getInstance().getDataTypePlugins().get(dataType).getDefaultProperties();
+        
+        // Only conditionally enable the properties if the data type is enabled.
+        if (dataType.isEnabled()) {
+            if (((String) dataType.getSelectedItem()).equals(PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.X12))
+                    || ((String) dataType.getSelectedItem()).equals(PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.EDI))
+                    || ((String) dataType.getSelectedItem()).equals(PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.HL7V2))
+                    || ((String) dataType.getSelectedItem()).equals(PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.HL7V3))
+                    || ((String) dataType.getSelectedItem()).equals(PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.NCPDP))
+                    || ((String) dataType.getSelectedItem()).equals(PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.DELIMITED))
+                    || ((String) dataType.getSelectedItem()).equals(PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.XML))) {
+                properties.setEnabled(true);
+            } else {
+                properties.setEnabled(false);
+            }
         }
-
-        setDocType(currentDataType);
+        
+        // Only set the default properties if the data type is changing
+        if (!currentDataType.equals(dataType.getSelectedItem())) {
+            // Set the default properties for the data type selected
+            for (MessageObject.Protocol protocol : MessageObject.Protocol.values()) {
+                if (PlatformUI.MIRTH_FRAME.protocols.get(protocol).equals(dataType.getSelectedItem())) {
+                    dataProperties = MapUtils.toProperties(DefaultSerializerPropertiesFactory.getDefaultSerializerProperties(protocol));
+                }
+            }
+        }
+        
+        setDocType((String) dataType.getSelectedItem());
         updateText();
-    }//GEN-LAST:event_dataTypeComboBoxActionPerformed
+    }//GEN-LAST:event_dataTypeActionPerformed
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JComboBox dataTypeComboBox;
+    private javax.swing.JComboBox dataType;
     private javax.swing.JLabel jLabel5;
     private javax.swing.JButton openFileButton;
     private com.mirth.connect.client.ui.components.MirthSyntaxTextArea pasteBox;

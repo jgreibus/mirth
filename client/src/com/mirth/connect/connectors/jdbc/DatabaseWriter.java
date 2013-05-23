@@ -1,7 +1,7 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
  * http://www.mirthcorp.com
- * 
+ *
  * The software in this package is published under the terms of the MPL
  * license a copy of which has been included with this distribution in
  * the LICENSE.txt file.
@@ -9,8 +9,8 @@
 
 package com.mirth.connect.connectors.jdbc;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.UUID;
 
 import org.mozilla.javascript.Context;
@@ -20,24 +20,24 @@ import org.syntax.jedit.tokenmarker.JavaScriptTokenMarker;
 import org.syntax.jedit.tokenmarker.TSQLTokenMarker;
 
 import com.mirth.connect.client.core.ClientException;
-import com.mirth.connect.client.ui.Frame;
-import com.mirth.connect.client.ui.PlatformUI;
 import com.mirth.connect.client.ui.UIConstants;
-import com.mirth.connect.client.ui.VariableListHandler.TransferMode;
-import com.mirth.connect.client.ui.panels.connectors.ConnectorSettingsPanel;
+import com.mirth.connect.connectors.ConnectorClass;
 import com.mirth.connect.connectors.jdbc.DatabaseMetadataDialog.STATEMENT_TYPE;
-import com.mirth.connect.donkey.model.channel.ConnectorProperties;
 import com.mirth.connect.model.DriverInfo;
 
-public class DatabaseWriter extends ConnectorSettingsPanel {
+/**
+ * A form that extends from ConnectorClass. All methods implemented are
+ * described in ConnectorClass.
+ */
+public class DatabaseWriter extends ConnectorClass {
 
+    /** Creates new form DatabaseWriter */
     private static SyntaxDocument sqlMappingDoc;
     private static SyntaxDocument jsMappingDoc;
     private List<DriverInfo> drivers;
-    private Frame parent;
 
     public DatabaseWriter() {
-        this.parent = PlatformUI.MIRTH_FRAME;
+        name = DatabaseWriterProperties.name;
 
         try {
             drivers = this.parent.mirthClient.getDatabaseDrivers();
@@ -47,7 +47,7 @@ public class DatabaseWriter extends ConnectorSettingsPanel {
 
         initComponents();
 
-        drivers.add(0, new DriverInfo(DatabaseDispatcherProperties.DRIVER_DEFAULT, DatabaseDispatcherProperties.DRIVER_DEFAULT, "", ""));
+        drivers.add(0, new DriverInfo("Please Select One", "Please Select One", "", ""));
         String[] driverNames = new String[drivers.size()];
 
         for (int i = 0; i < drivers.size(); i++) {
@@ -62,88 +62,84 @@ public class DatabaseWriter extends ConnectorSettingsPanel {
         jsMappingDoc.setTokenMarker(new JavaScriptTokenMarker());
     }
 
-    @Override
-    public String getConnectorName() {
-        return new DatabaseDispatcherProperties().getName();
-    }
-
-    @Override
-    public ConnectorProperties getProperties() {
-        DatabaseDispatcherProperties properties = new DatabaseDispatcherProperties();
+    public Properties getProperties() {
+        Properties properties = new Properties();
+        properties.put(DatabaseWriterProperties.DATATYPE, name);
+        properties.put(DatabaseWriterProperties.DATABASE_HOST, DatabaseWriterProperties.DATABASE_HOST_VALUE);
 
         for (int i = 0; i < drivers.size(); i++) {
             DriverInfo driver = drivers.get(i);
             if (driver.getName().equalsIgnoreCase(((String) databaseDriverCombobox.getSelectedItem()))) {
-                properties.setDriver(driver.getClassName());
+                properties.put(DatabaseWriterProperties.DATABASE_DRIVER, driver.getClassName());
             }
         }
 
-        properties.setUrl(databaseURLField.getText());
-        properties.setUsername(databaseUsernameField.getText());
-        properties.setPassword(new String(databasePasswordField.getPassword()));
+        properties.put(DatabaseWriterProperties.DATABASE_URL, databaseURLField.getText());
+        properties.put(DatabaseWriterProperties.DATABASE_USERNAME, databaseUsernameField.getText());
+        properties.put(DatabaseWriterProperties.DATABASE_PASSWORD, new String(databasePasswordField.getPassword()));
 
-        properties.setUseScript(useJavaScriptYes.isSelected());
-        properties.setQuery(databaseSQLTextPane.getText());
+        if (useJavaScriptYes.isSelected()) {
+            properties.put(DatabaseWriterProperties.DATABASE_USE_JS, UIConstants.YES_OPTION);
+            properties.put(DatabaseWriterProperties.DATABASE_JS_SQL_STATEMENT, databaseSQLTextPane.getText());
+            properties.put(DatabaseWriterProperties.DATABASE_SQL_STATEMENT, "");
+        } else {
+            properties.put(DatabaseWriterProperties.DATABASE_USE_JS, UIConstants.NO_OPTION);
+            properties.put(DatabaseWriterProperties.DATABASE_SQL_STATEMENT, databaseSQLTextPane.getText());
+            properties.put(DatabaseWriterProperties.DATABASE_JS_SQL_STATEMENT, "");
+        }
 
         return properties;
     }
 
-    @Override
-    public void setProperties(ConnectorProperties properties) {
-        DatabaseDispatcherProperties props = (DatabaseDispatcherProperties) properties;
+    public void setProperties(Properties props) {
+        resetInvalidProperties();
 
         boolean enabled = parent.isSaveEnabled();
 
         for (int i = 0; i < drivers.size(); i++) {
             DriverInfo driver = drivers.get(i);
-            if (driver.getClassName().equalsIgnoreCase(props.getDriver())) {
+            if (driver.getClassName().equalsIgnoreCase(((String) props.get(DatabaseWriterProperties.DATABASE_DRIVER)))) {
                 databaseDriverCombobox.setSelectedItem(driver.getName());
             }
         }
 
         parent.setSaveEnabled(enabled);
-
-        databaseURLField.setText(props.getUrl());
-        databaseUsernameField.setText(props.getUsername());
-        databasePasswordField.setText(props.getPassword());
-
-        if (props.isUseScript()) {
+        databaseURLField.setText((String) props.get(DatabaseWriterProperties.DATABASE_URL));
+        databaseUsernameField.setText((String) props.get(DatabaseWriterProperties.DATABASE_USERNAME));
+        databasePasswordField.setText((String) props.get(DatabaseWriterProperties.DATABASE_PASSWORD));
+        if (((String) props.get(DatabaseWriterProperties.DATABASE_USE_JS)).equals(UIConstants.YES_OPTION)) {
             useJavaScriptYes.setSelected(true);
             useJavaScriptYesActionPerformed(null);
-
+            databaseSQLTextPane.setText((String) props.get(DatabaseWriterProperties.DATABASE_JS_SQL_STATEMENT));
         } else {
             useJavaScriptNo.setSelected(true);
             useJavaScriptNoActionPerformed(null);
+            databaseSQLTextPane.setText((String) props.get(DatabaseWriterProperties.DATABASE_SQL_STATEMENT));
         }
 
-        databaseSQLTextPane.setText(props.getQuery());
-
     }
 
-    @Override
-    public ConnectorProperties getDefaults() {
-        return new DatabaseDispatcherProperties();
+    public Properties getDefaults() {
+        return new DatabaseWriterProperties().getDefaults();
     }
 
-    @Override
-    public boolean checkProperties(ConnectorProperties properties, boolean highlight) {
-        DatabaseDispatcherProperties props = (DatabaseDispatcherProperties) properties;
-
+    public boolean checkProperties(Properties props, boolean highlight) {
+        resetInvalidProperties();
         boolean valid = true;
 
-        if (!props.isUseScript() && props.getUrl().length() == 0) {
+        if (((String) props.get(DatabaseWriterProperties.DATABASE_URL)).length() == 0) {
             valid = false;
             if (highlight) {
                 databaseURLField.setBackground(UIConstants.INVALID_COLOR);
             }
         }
-        if (props.getQuery().length() == 0) {
+        if ((((String) props.get(DatabaseWriterProperties.DATABASE_SQL_STATEMENT)).length() == 0) && (((String) props.get(DatabaseWriterProperties.DATABASE_JS_SQL_STATEMENT)).length() == 0)) {
             valid = false;
             if (highlight) {
                 databaseSQLTextPane.setBackground(UIConstants.INVALID_COLOR);
             }
         }
-        if (props.getDriver().equals(DatabaseDispatcherProperties.DRIVER_DEFAULT)) {
+        if ((((String) props.get(DatabaseWriterProperties.DATABASE_DRIVER)).equals("Please Select One"))) {
             valid = false;
             if (highlight) {
                 databaseDriverCombobox.setBackground(UIConstants.INVALID_COLOR);
@@ -153,61 +149,49 @@ public class DatabaseWriter extends ConnectorSettingsPanel {
         return valid;
     }
 
-    @Override
-    public TransferMode getTransferMode() {
-        return ((DatabaseDispatcherProperties) getProperties()).isUseScript() ? TransferMode.JAVASCRIPT : TransferMode.VELOCITY;
+    public String[] getDragAndDropCharacters(Properties props) {
+        if (((String) props.get(DatabaseWriterProperties.DATABASE_USE_JS)).equals(UIConstants.YES_OPTION)) {
+            return new String[]{"$('", "')"};
+        } else {
+            return new String[]{"${", "}"};
+        }
     }
 
-    @Override
-    public void resetInvalidProperties() {
+    private void resetInvalidProperties() {
         databaseURLField.setBackground(null);
         databaseSQLTextPane.setBackground(null);
         databaseDriverCombobox.setBackground(UIConstants.COMBO_BOX_BACKGROUND);
     }
 
-    @Override
-    public String doValidate(ConnectorProperties properties, boolean highlight) {
-        DatabaseDispatcherProperties props = (DatabaseDispatcherProperties) properties;
-
+    public String doValidate(Properties props, boolean highlight) {
         String error = null;
 
-        if (props.isUseScript()) {
-            String script = props.getQuery();
+        if (!checkProperties(props, highlight)) {
+            error = "Error in the form for connector \"" + getName() + "\".\n\n";
+        }
 
-            if (script.length() != 0) {
-                Context context = Context.enter();
-                try {
-                    context.compileString("function rhinoWrapper() {" + script + "\n}", UUID.randomUUID().toString(), 1, null);
-                } catch (EvaluatorException e) {
-                    if (error == null) {
-                        error = "";
-                    }
-                    error += "Error in connector \"" + getConnectorName() + "\" at Javascript:\nError on line " + e.lineNumber() + ": " + e.getMessage() + ".\n\n";
-                } catch (Exception e) {
-                    if (error == null) {
-                        error = "";
-                    }
-                    error += "Error in connector \"" + getConnectorName() + "\" at Javascript:\nUnknown error occurred during validation.";
+        String script = ((String) props.get(DatabaseWriterProperties.DATABASE_JS_SQL_STATEMENT));
+
+        if (script.length() != 0) {
+            Context context = Context.enter();
+            try {
+                context.compileString("function rhinoWrapper() {" + script + "\n}", UUID.randomUUID().toString(), 1, null);
+            } catch (EvaluatorException e) {
+                if (error == null) {
+                    error = "";
                 }
-
-                Context.exit();
+                error += "Error in connector \"" + getName() + "\" at Javascript:\nError on line " + e.lineNumber() + ": " + e.getMessage() + ".\n\n";
+            } catch (Exception e) {
+                if (error == null) {
+                    error = "";
+                }
+                error += "Error in connector \"" + getName() + "\" at Javascript:\nUnknown error occurred during validation.";
             }
+
+            Context.exit();
         }
 
         return error;
-    }
-
-    @Override
-    public List<String> getScripts(ConnectorProperties properties) {
-        DatabaseDispatcherProperties props = (DatabaseDispatcherProperties) properties;
-
-        List<String> scripts = new ArrayList<String>();
-
-        if (props.isUseScript()) {
-            scripts.add(props.getQuery());
-        }
-
-        return scripts;
     }
 
     /**
@@ -393,49 +377,49 @@ public class DatabaseWriter extends ConnectorSettingsPanel {
         );
     }// </editor-fold>//GEN-END:initComponents
 
-    private void generateInsertActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_generateInsertActionPerformed
-        showDatabaseMetaData(STATEMENT_TYPE.INSERT_TYPE);
-    }//GEN-LAST:event_generateInsertActionPerformed
+private void generateInsertActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_generateInsertActionPerformed
+    showDatabaseMetaData(STATEMENT_TYPE.INSERT_TYPE);
+}//GEN-LAST:event_generateInsertActionPerformed
 
-    private void insertURLTemplateButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_insertURLTemplateButtonActionPerformed
+private void insertURLTemplateButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_insertURLTemplateButtonActionPerformed
 
-        if (!databaseURLField.getText().equals("")) {
-            if (!parent.alertOption(parent, "Are you sure you would like to replace your current connection URL with the template URL?")) {
-                return;
-            }
+    if (!databaseURLField.getText().equals("")) {
+        if (!parent.alertOption(parent, "Are you sure you would like to replace your current connection URL with the template URL?")) {
+            return;
         }
+    }
 
-        String template = "";
+    String template = "";
 
-        for (int i = 0; i < drivers.size(); i++) {
-            DriverInfo driverInfo = drivers.get(i);
-            if (driverInfo.getName().equalsIgnoreCase(((String) databaseDriverCombobox.getSelectedItem()))) {
-                template = driverInfo.getTemplate();
-            }
+    for (int i = 0; i < drivers.size(); i++) {
+        DriverInfo driverInfo = drivers.get(i);
+        if (driverInfo.getName().equalsIgnoreCase(((String) databaseDriverCombobox.getSelectedItem()))) {
+            template = driverInfo.getTemplate();
         }
+    }
 
-        databaseURLField.setText(template);
-        databaseURLField.grabFocus();
-        parent.setSaveEnabled(true);
+    databaseURLField.setText(template);
+    databaseURLField.grabFocus();
+    parent.setSaveEnabled(true);
 
-    }//GEN-LAST:event_insertURLTemplateButtonActionPerformed
+}//GEN-LAST:event_insertURLTemplateButtonActionPerformed
 
     public void showDatabaseMetaData(STATEMENT_TYPE type) {
-        DatabaseDispatcherProperties properties = (DatabaseDispatcherProperties) getProperties();
-
-        if (properties.getUrl().length() == 0 || properties.getDriver().equals(DatabaseReceiverProperties.DRIVER_DEFAULT)) {
+        Properties connectionProperties = getProperties();
+        if (((String) connectionProperties.get(DatabaseWriterProperties.DATABASE_URL)).length() == 0 || (((String) connectionProperties.get(DatabaseWriterProperties.DATABASE_DRIVER)).equals("Please Select One"))) {
             parent.alertError(parent, "A valid Driver and URL are required to perform this operation.");
         } else {
-            String selectLimit = null;
-
+            
+            // Add the selectLimit to the connectionProperties
             for (int i = 0; i < drivers.size(); i++) {
                 DriverInfo driver = drivers.get(i);
                 if (driver.getName().equalsIgnoreCase(((String) databaseDriverCombobox.getSelectedItem()))) {
-                    selectLimit = driver.getSelectLimit();
+                    // Although this property is not persisted, it is used by the JdbcConnectorService
+                    connectionProperties.put(DatabaseWriterProperties.DATABASE_SELECT_LIMIT, driver.getSelectLimit());
                 }
             }
-
-            new DatabaseMetadataDialog(this, type, new DatabaseConnectionInfo(properties.getDriver(), properties.getUrl(), properties.getUsername(), properties.getPassword(), "", selectLimit));
+            
+            new DatabaseMetadataDialog(this, type, connectionProperties);
         }
     }
 
@@ -490,7 +474,7 @@ public class DatabaseWriter extends ConnectorSettingsPanel {
         databaseSQLTextPane.setDocument(jsMappingDoc);
         databaseSQLTextPane.setText(generateConnectionString());
         generateConnection.setEnabled(true);
-        parent.channelEditPanel.destinationVariableList.setTransferMode(TransferMode.JAVASCRIPT);
+        parent.channelEditPanel.destinationVariableList.setPrefixAndSuffix("$('", "')");
     }// GEN-LAST:event_useJavaScriptYesActionPerformed
 
     private void useJavaScriptNoActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_useJavaScriptNoActionPerformed
@@ -499,7 +483,7 @@ public class DatabaseWriter extends ConnectorSettingsPanel {
         databaseSQLTextPane.setDocument(sqlMappingDoc);
         databaseSQLTextPane.setText("");
         generateConnection.setEnabled(false);
-        parent.channelEditPanel.destinationVariableList.setTransferMode(TransferMode.VELOCITY);
+        parent.channelEditPanel.destinationVariableList.setPrefixAndSuffix("${", "}");
     }// GEN-LAST:event_useJavaScriptNoActionPerformed
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.ButtonGroup buttonGroup1;

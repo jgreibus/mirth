@@ -41,7 +41,8 @@
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" alignment="0" attributes="0">
               <EmptySpace max="-2" attributes="0"/>
-              <Component id="clientSettings" max="32767" attributes="0"/>
+              <Component id="clientSettings" min="-2" max="-2" attributes="0"/>
+              <EmptySpace pref="52" max="32767" attributes="0"/>
           </Group>
       </Group>
     </DimensionLayout>
@@ -88,7 +89,7 @@
                       </Group>
                       <Component id="eventBrowserPageSizeField" min="-2" pref="30" max="-2" attributes="0"/>
                   </Group>
-                  <EmptySpace pref="228" max="32767" attributes="0"/>
+                  <EmptySpace pref="45" max="32767" attributes="0"/>
               </Group>
           </Group>
         </DimensionLayout>

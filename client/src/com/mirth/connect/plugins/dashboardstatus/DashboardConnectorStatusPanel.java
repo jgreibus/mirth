@@ -1,7 +1,7 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
  * http://www.mirthcorp.com
- * 
+ *
  * The software in this package is published under the terms of the MPL
  * license a copy of which has been included with this distribution in
  * the LICENSE.txt file.
@@ -17,7 +17,6 @@ import java.awt.event.MouseListener;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.prefs.Preferences;
 
 import javax.swing.ImageIcon;
@@ -55,8 +54,8 @@ public class DashboardConnectorStatusPanel extends javax.swing.JPanel {
     private ImageIcon blueBullet;       //  INITIALIZED
     private ImageIcon blackBullet;	    //  DONE
     private static final String NO_CHANNEL_SELECTED = "No Channel Selected";
-    private String selectedChannelId;
-    private Map<String, List<Integer>> selectedConnectors;
+    private String selectedChannel;
+    private List<String> selectedChannels;
     private DashboardConnectorStatusClient dcsc;
     private Preferences userPreferences;
     private Frame parent;
@@ -163,12 +162,12 @@ public class DashboardConnectorStatusPanel extends javax.swing.JPanel {
     class PauseResumeActionListener implements ActionListener {
 
         public void actionPerformed(ActionEvent e) {
-            if (!isPaused(selectedChannelId)) {
-                channelStates.put(selectedChannelId, PAUSED);
+            if (!isPaused(selectedChannel)) {
+                channelStates.put(selectedChannel, PAUSED);
             } else {
-                channelStates.put(selectedChannelId, RESUMED);
+                channelStates.put(selectedChannel, RESUMED);
             }
-            adjustPauseResumeButton(selectedChannelId);
+            adjustPauseResumeButton(selectedChannel);
         }
     }
 
@@ -178,7 +177,7 @@ public class DashboardConnectorStatusPanel extends javax.swing.JPanel {
             // "clear log" only affects on the client side.
             // because clearing log on one client should NOT affect other clients' logs.
             // clear logs on client side only.
-            dcsc.clearLog(selectedChannelId);
+            dcsc.clearLog(selectedChannel);
         }
     }
 
@@ -213,20 +212,20 @@ public class DashboardConnectorStatusPanel extends javax.swing.JPanel {
         return currentDashboardLogSize;
     }
 
-    public void setSelectedChannelId(String channelId) {
-        selectedChannelId = channelId;
-    }
-    
-    public void setSelectedConnectors(Map<String, List<Integer>> selectedConnectors) {
-        this.selectedConnectors = selectedConnectors;
+    public void setSelectedChannel(String channelName) {
+        selectedChannel = channelName;
     }
 
-    public boolean isPaused(String channelId) {
-        if (channelStates.containsKey(channelId)) {
-            return channelStates.get(channelId) == PAUSED;
+    public void setSelectedChannels(List<String> channelNames) {
+        selectedChannels = channelNames;
+    }
+
+    public boolean isPaused(String channelName) {
+        if (channelStates.containsKey(channelName)) {
+            return channelStates.get(channelName) == PAUSED;
         } else {
             // first time viewing the channel log. default to RESUME.
-            channelStates.put(channelId, RESUMED);
+            channelStates.put(channelName, RESUMED);
             return false;
         }
     }
@@ -235,8 +234,8 @@ public class DashboardConnectorStatusPanel extends javax.swing.JPanel {
         channelStates.clear();
     }
 
-    public void adjustPauseResumeButton(String channelId) {
-        if (isPaused(channelId)) {
+    public void adjustPauseResumeButton(String channelName) {
+        if (isPaused(channelName)) {
             pauseResume.setIcon(UIConstants.ICON_RESUME);
             pauseResume.setToolTipText("Resume Log");
             rightclickPopup.getComponent(0).setVisible(false);
@@ -259,12 +258,6 @@ public class DashboardConnectorStatusPanel extends javax.swing.JPanel {
             tableData = new Object[channelLogs.size()][6];
             int tableSize = 0;
             for (int i = 0; i < channelLogs.size(); i++) {
-                String[] row = channelLogs.get(i);
-                
-                String channelId = row[6];
-                String metaDataIdString = row[7];
-                Integer metaDataId = Integer.parseInt(metaDataIdString);
-                
                 // If there are multiple selected channels defined (not null), then 
                 // check to make sure this channel log row is one of those channels.
                 //
@@ -272,38 +265,30 @@ public class DashboardConnectorStatusPanel extends javax.swing.JPanel {
                 // This means pausing the list for multi-select would also pause the 
                 // list for no selection.  The log size will also not be correct for
                 // multi-select because it is enforcing the size on the larger list.
-                if (selectedConnectors != null) {
-                    List<Integer> selectedMetaDataIds = selectedConnectors.get(channelId);
-                    
-                    if (selectedMetaDataIds != null && (selectedMetaDataIds.contains(null) || selectedMetaDataIds.contains(metaDataId))) {
-                        tableSize++;
-    
-                        tableData[i][0] = row[0];       // Id (hidden)
-                        tableData[i][1] = row[2];       // Timestamp
-                        tableData[i][2] = row[1];       // Channel Name (hidden when viewing a specific channel)
-                        tableData[i][3] = row[3];       // Connector Info
-    
-                        // Event State - INITIALIZED (blue), CONNECTED (green), BUSY (yellow), DONE (black), DISCONNECTED (red)
-                        if (row[4].equalsIgnoreCase("INITIALIZED")) {
-                            tableData[i][4] = new CellData(blueBullet, "Initialized");
-                        } else if (row[4].equalsIgnoreCase("CONNECTING")) {
-                            tableData[i][4] = new CellData(yellowBullet, "Attempting to Connect");
-                        } else if (row[4].equalsIgnoreCase("CONNECTED")) {
-                            tableData[i][4] = new CellData(greenBullet, "Connected");
-                        } else if (row[4].equalsIgnoreCase("BUSY")) {
-                            tableData[i][4] = new CellData(yellowBullet, "Busy");
-                        } else if (row[4].equalsIgnoreCase("DONE")) {
-                            tableData[i][4] = new CellData(blackBullet, "Done");
-                        } else if (row[4].equalsIgnoreCase("DISCONNECTED")) {
-                            tableData[i][4] = new CellData(redBullet, "Disconnected");
-                        } else if (row[4].equalsIgnoreCase("INFO")) {
-                            tableData[i][4] = new CellData(yellowBullet, "Info");
-                        } else if (row[4].equalsIgnoreCase("FAILURE")) {
-                            tableData[i][4] = new CellData(redBullet, "Failure");
-                        }
-    
-                        tableData[i][5] = row[5];       // Infomation
+                if (selectedChannels == null || (selectedChannels != null && selectedChannels.contains(channelLogs.get(i)[1]))) {
+                    tableSize++;
+
+                    tableData[i][0] = channelLogs.get(i)[0];       // Id (hidden)
+                    tableData[i][1] = channelLogs.get(i)[2];       // Timestamp
+                    tableData[i][2] = channelLogs.get(i)[1];       // Channel Name (hidden when viewing a specific channel)
+                    tableData[i][3] = channelLogs.get(i)[3];       // Connector Info
+
+                    // Event State - INITIALIZED (blue), CONNECTED (green), BUSY (yellow), DONE (black), DISCONNECTED (red)
+                    if (channelLogs.get(i)[4].equalsIgnoreCase("INITIALIZED")) {
+                        tableData[i][4] = new CellData(blueBullet, "Initialized");
+                    } else if (channelLogs.get(i)[4].equalsIgnoreCase("ATTEMPTING")) {
+                        tableData[i][4] = new CellData(yellowBullet, "Attempting to Connect");
+                    } else if (channelLogs.get(i)[4].equalsIgnoreCase("CONNECTED")) {
+                        tableData[i][4] = new CellData(greenBullet, "Connected");
+                    } else if (channelLogs.get(i)[4].equalsIgnoreCase("BUSY")) {
+                        tableData[i][4] = new CellData(yellowBullet, "Busy");
+                    } else if (channelLogs.get(i)[4].equalsIgnoreCase("DONE")) {
+                        tableData[i][4] = new CellData(blackBullet, "Done");
+                    } else if (channelLogs.get(i)[4].equalsIgnoreCase("DISCONNECTED")) {
+                        tableData[i][4] = new CellData(redBullet, "Disconnected");
                     }
+
+                    tableData[i][5] = channelLogs.get(i)[5];       // Infomation
                 }
             }
 
@@ -473,19 +458,19 @@ public class DashboardConnectorStatusPanel extends javax.swing.JPanel {
     }// </editor-fold>//GEN-END:initComponents
 
     private void pauseResumeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pauseResumeActionPerformed
-        if (!isPaused(selectedChannelId)) {
-            channelStates.put(selectedChannelId, PAUSED);
+        if (!isPaused(selectedChannel)) {
+            channelStates.put(selectedChannel, PAUSED);
         } else {
-            channelStates.put(selectedChannelId, RESUMED);
+            channelStates.put(selectedChannel, RESUMED);
         }
-        adjustPauseResumeButton(selectedChannelId);
+        adjustPauseResumeButton(selectedChannel);
     }//GEN-LAST:event_pauseResumeActionPerformed
 
     private void clearLogActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_clearLogActionPerformed
         // "clear log" only affects on the client side.
         // because clearing log on one client should NOT affect other clients' logs.
         // clear logs on client side only.
-        dcsc.clearLog(selectedChannelId);
+        dcsc.clearLog(selectedChannel);
     }//GEN-LAST:event_clearLogActionPerformed
 
     private void logSizeChangeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_logSizeChangeActionPerformed
@@ -503,7 +488,7 @@ public class DashboardConnectorStatusPanel extends javax.swing.JPanel {
             } else {
                 userPreferences.putInt("dashboardLogSize", newDashboardLogSize);
                 currentDashboardLogSize = newDashboardLogSize;
-                dcsc.resetLogSize(newDashboardLogSize, selectedChannelId);
+                dcsc.resetLogSize(newDashboardLogSize, selectedChannel);
             }
         }
     }//GEN-LAST:event_logSizeChangeActionPerformed

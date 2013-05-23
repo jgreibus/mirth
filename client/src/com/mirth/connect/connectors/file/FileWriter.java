@@ -1,111 +1,153 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
  * http://www.mirthcorp.com
- * 
+ *
  * The software in this package is published under the terms of the MPL
  * license a copy of which has been included with this distribution in
  * the LICENSE.txt file.
  */
-
 package com.mirth.connect.connectors.file;
+
+import java.util.Properties;
 
 import javax.swing.SwingWorker;
 
 import org.apache.log4j.Logger;
 
 import com.mirth.connect.client.core.ClientException;
-import com.mirth.connect.client.ui.Frame;
-import com.mirth.connect.client.ui.PlatformUI;
 import com.mirth.connect.client.ui.UIConstants;
-import com.mirth.connect.client.ui.panels.connectors.ConnectorSettingsPanel;
-import com.mirth.connect.donkey.model.channel.ConnectorProperties;
+import com.mirth.connect.connectors.ConnectorClass;
 import com.mirth.connect.util.ConnectionTestResponse;
 
-public class FileWriter extends ConnectorSettingsPanel {
+/**
+ * A form that extends from ConnectorClass. All methods implemented are
+ * described in ConnectorClass.
+ */
+public class FileWriter extends ConnectorClass {
 
     private Logger logger = Logger.getLogger(this.getClass());
-    private Frame parent;
 
+    /** Creates new form FileWriter */
     public FileWriter() {
-        this.parent = PlatformUI.MIRTH_FRAME;
+        name = FileWriterProperties.name;
         initComponents();
-
         parent.setupCharsetEncodingForConnector(charsetEncodingCombobox);
     }
 
-    @Override
-    public String getConnectorName() {
-        return new FileDispatcherProperties().getName();
-    }
+    public Properties getProperties() {
+        Properties properties = new Properties();
+        properties.put(FileWriterProperties.DATATYPE, name);
 
-    @Override
-    public ConnectorProperties getProperties() {
-        FileDispatcherProperties properties = new FileDispatcherProperties();
-
-        properties.setScheme(FileScheme.fromDisplayName((String) schemeComboBox.getSelectedItem()));
-
-        if (schemeComboBox.getSelectedItem().equals(FileScheme.FILE.getDisplayName())) {
-            properties.setHost(directoryField.getText().replace('\\', '/'));
+        if (((String) schemeComboBox.getSelectedItem()).equals("file")) {
+            properties.put(FileWriterProperties.FILE_SCHEME, FileWriterProperties.SCHEME_FILE);
+        } else if (((String) schemeComboBox.getSelectedItem()).equals("ftp")) {
+            properties.put(FileWriterProperties.FILE_SCHEME, FileWriterProperties.SCHEME_FTP);
+        } else if (((String) schemeComboBox.getSelectedItem()).equals("sftp")) {
+            properties.put(FileWriterProperties.FILE_SCHEME, FileWriterProperties.SCHEME_SFTP);
+        } else if (((String) schemeComboBox.getSelectedItem()).equals("smb")) {
+            properties.put(FileWriterProperties.FILE_SCHEME, FileWriterProperties.SCHEME_SMB);
+        } else if (((String) schemeComboBox.getSelectedItem()).equals("webdav")) {
+            properties.put(FileWriterProperties.FILE_SCHEME, FileWriterProperties.SCHEME_WEBDAV);
         } else {
-            properties.setHost(hostField.getText() + "/" + pathField.getText());
+            // This "can't happen"
+            logger.error("Unrecognized this.schemeComboBox value '" + schemeComboBox.getSelectedItem() + "', using 'file' instead");
+            properties.put(FileWriterProperties.FILE_SCHEME, FileWriterProperties.SCHEME_FILE);
         }
 
-        properties.setOutputPattern(fileNameField.getText());
+        if (schemeComboBox.getSelectedItem().equals("file")) {
+            properties.put(FileWriterProperties.FILE_HOST, directoryField.getText().replace('\\', '/'));
+        } else {
+            properties.put(FileWriterProperties.FILE_HOST, hostField.getText() + "/" + pathField.getText());
+        }
 
-        properties.setAnonymous(anonymousYes.isSelected());
+        properties.put(FileWriterProperties.FILE_NAME, fileNameField.getText());
 
-        properties.setUsername(usernameField.getText());
-        properties.setPassword(new String(passwordField.getPassword()));
+        if (anonymousYes.isSelected()) {
+            properties.put(FileWriterProperties.FILE_ANONYMOUS, UIConstants.YES_OPTION);
+            if (((String) schemeComboBox.getSelectedItem()).equals(FileWriterProperties.SCHEME_WEBDAV)) {
+                properties.put(FileWriterProperties.FILE_USERNAME, "null");
+                properties.put(FileWriterProperties.FILE_PASSWORD, "null");
+            }
+        } else {
+            properties.put(FileWriterProperties.FILE_ANONYMOUS, UIConstants.NO_OPTION);
+        }
 
-        properties.setTimeout(timeoutField.getText());
+        properties.put(FileWriterProperties.FILE_USERNAME, usernameField.getText());
+        properties.put(FileWriterProperties.FILE_PASSWORD, new String(passwordField.getPassword()));
 
-        properties.setSecure(secureModeYes.isSelected());
-        properties.setPassive(passiveModeYes.isSelected());
-        properties.setValidateConnection(validateConnectionYes.isSelected());
+        properties.put(FileWriterProperties.FILE_TIMEOUT, timeoutField.getText());
+
+        if (secureModeYes.isSelected()) {
+            properties.put(FileWriterProperties.FILE_SECURE_MODE, UIConstants.YES_OPTION);
+        } else {
+            properties.put(FileWriterProperties.FILE_SECURE_MODE, UIConstants.NO_OPTION);
+        }
+
+        if (passiveModeYes.isSelected()) {
+            properties.put(FileWriterProperties.FILE_PASSIVE_MODE, UIConstants.YES_OPTION);
+        } else {
+            properties.put(FileWriterProperties.FILE_PASSIVE_MODE, UIConstants.NO_OPTION);
+        }
+
+        if (validateConnectionYes.isSelected()) {
+            properties.put(FileWriterProperties.FILE_VALIDATE_CONNECTION, UIConstants.YES_OPTION);
+        } else {
+            properties.put(FileWriterProperties.FILE_VALIDATE_CONNECTION, UIConstants.NO_OPTION);
+        }
 
         if (fileExistsAppendRadio.isSelected()) {
-            properties.setOutputAppend(true);
-            properties.setErrorOnExists(false);
+            properties.put(FileWriterProperties.FILE_APPEND, UIConstants.YES_OPTION);
+            properties.put(FileWriterProperties.FILE_ERROR_ON_EXISTS, UIConstants.NO_OPTION);
         } else if (fileExistsErrorRadio.isSelected()) {
-            properties.setOutputAppend(false);
-            properties.setErrorOnExists(true);
+            properties.put(FileWriterProperties.FILE_APPEND, UIConstants.NO_OPTION);
+            properties.put(FileWriterProperties.FILE_ERROR_ON_EXISTS, UIConstants.YES_OPTION);
         } else { // overwrite
-            properties.setOutputAppend(false);
-            properties.setErrorOnExists(false);
+            properties.put(FileWriterProperties.FILE_APPEND, UIConstants.NO_OPTION);
+            properties.put(FileWriterProperties.FILE_ERROR_ON_EXISTS, UIConstants.NO_OPTION);
+        }
+        
+        if (tempFileYesRadio.isSelected()) {
+            properties.put(FileWriterProperties.FILE_TEMPORARY, UIConstants.YES_OPTION);
+        } else {
+            properties.put(FileWriterProperties.FILE_TEMPORARY, UIConstants.NO_OPTION);
         }
 
-        properties.setTemporary(tempFileYesRadio.isSelected());
-        properties.setTemplate(fileContentsTextPane.getText());
+        properties.put(FileWriterProperties.FILE_CONTENTS, fileContentsTextPane.getText());
 
-        properties.setCharsetEncoding(parent.getSelectedEncodingForConnector(charsetEncodingCombobox));
+        properties.put(FileWriterProperties.CONNECTOR_CHARSET_ENCODING, parent.getSelectedEncodingForConnector(charsetEncodingCombobox));
 
-        properties.setBinary(fileTypeBinary.isSelected());
+        if (fileTypeBinary.isSelected()) {
+            properties.put(FileWriterProperties.FILE_TYPE, UIConstants.YES_OPTION);
+        } else {
+            properties.put(FileWriterProperties.FILE_TYPE, UIConstants.NO_OPTION);
+        }
 
         logger.debug("getProperties: properties=" + properties);
 
         return properties;
     }
 
-    /**
-     * Parses the scheme and URL to determine the values for the directory, host
-     * and path fields, optionally storing them to the fields, highlighting
-     * field errors, or just testing for valid values.
-     *
-     * @param props The connector properties from which to take the values.
-     * @param store If true, the parsed values are stored to the corresponding
-     * form controls.
-     * @param highlight If true, fields for which the parsed values are invalid
-     * are highlighted.
+    /** Parses the scheme and URL to determine the values for the
+     * directory, host and path fields, optionally storing them to
+     * the fields, highlighting field errors, or just testing for
+     * valid values.
+     * 
+     * @param props The connector properties from which to take the
+     * values.
+     * @param store If true, the parsed values are stored to the
+     * corresponding form controls.
+     * @param highlight If true, fields for which the parsed values
+     * are invalid are highlighted.
      */
-    public boolean setDirHostPath(FileDispatcherProperties props, boolean store, boolean highlight) {
+    public boolean setDirHostPath(Properties props, boolean store, boolean highlight) {
 
         boolean valid = true;
-        FileScheme scheme = props.getScheme();
-        String hostPropValue = props.getHost();
+        Object schemeValue = props.get(FileWriterProperties.FILE_SCHEME);
+        String hostPropValue = (String) props.get(FileWriterProperties.FILE_HOST);
         String directoryValue = "";
         String hostValue = "";
         String pathValue = "";
-        if (scheme.equals(FileScheme.FILE)) {
+        if (schemeValue.equals(FileWriterProperties.SCHEME_FILE)) {
 
             directoryValue = hostPropValue;
             if (directoryValue.length() <= 0) {
@@ -142,21 +184,35 @@ public class FileWriter extends ConnectorSettingsPanel {
         return valid;
     }
 
-    @Override
-    public void setProperties(ConnectorProperties properties) {
-        logger.debug("setProperties: props=" + properties);
-        FileDispatcherProperties props = (FileDispatcherProperties) properties;
+    public void setProperties(Properties props) {
+        logger.debug("setProperties: props=" + props);
 
-        FileScheme scheme = props.getScheme();
-        schemeComboBox.setSelectedItem(props.getScheme().getDisplayName());
+        resetInvalidProperties();
+
+        Object schemeValue = props.get(FileWriterProperties.FILE_SCHEME);
+        if (schemeValue.equals(FileWriterProperties.SCHEME_FILE)) {
+            schemeComboBox.setSelectedItem("file");
+        } else if (schemeValue.equals(FileWriterProperties.SCHEME_FTP)) {
+            schemeComboBox.setSelectedItem("ftp");
+        } else if (schemeValue.equals(FileWriterProperties.SCHEME_SFTP)) {
+            schemeComboBox.setSelectedItem("sftp");
+        } else if (schemeValue.equals(FileWriterProperties.SCHEME_SMB)) {
+            schemeComboBox.setSelectedItem("smb");
+        } else if (schemeValue.equals(FileWriterProperties.SCHEME_WEBDAV)) {
+            schemeComboBox.setSelectedItem("webdav");
+        } else {
+            // This "can't happen"
+            logger.error("Unrecognized props[\"scheme\"] value '" + schemeValue + "', using 'file' instead");
+            schemeComboBox.setSelectedItem("file");
+        }
 
         schemeComboBoxActionPerformed(null);
 
         setDirHostPath(props, true, false);
 
-        fileNameField.setText(props.getOutputPattern());
+        fileNameField.setText((String) props.get(FileWriterProperties.FILE_NAME));
 
-        if (props.isAnonymous()) {
+        if (((String) props.get(FileWriterProperties.FILE_ANONYMOUS)).equalsIgnoreCase(UIConstants.YES_OPTION)) {
             anonymousYes.setSelected(true);
             anonymousNo.setSelected(false);
             anonymousYesActionPerformed(null);
@@ -164,27 +220,27 @@ public class FileWriter extends ConnectorSettingsPanel {
             anonymousYes.setSelected(false);
             anonymousNo.setSelected(true);
             anonymousNoActionPerformed(null);
-            usernameField.setText(props.getUsername());
-            passwordField.setText(props.getPassword());
+            usernameField.setText((String) props.get(FileWriterProperties.FILE_USERNAME));
+            passwordField.setText((String) props.get(FileWriterProperties.FILE_PASSWORD));
         }
 
-        timeoutField.setText(props.getTimeout());
+        timeoutField.setText((String) props.get(FileWriterProperties.FILE_TIMEOUT));
 
-        if (props.isSecure()) {
+        if (((String) props.get(FileWriterProperties.FILE_SECURE_MODE)).equalsIgnoreCase(UIConstants.YES_OPTION)) {
             secureModeYes.setSelected(true);
             secureModeNo.setSelected(false);
-            if (scheme.equals(FileScheme.WEBDAV)) {
+            if (schemeValue.equals(FileWriterProperties.SCHEME_WEBDAV)) {
                 hostLabel.setText("https://");
             }
         } else {
             secureModeYes.setSelected(false);
             secureModeNo.setSelected(true);
-            if (scheme.equals(FileScheme.WEBDAV)) {
+            if (schemeValue.equals(FileWriterProperties.SCHEME_WEBDAV)) {
                 hostLabel.setText("http://");
             }
         }
 
-        if (props.isPassive()) {
+        if (((String) props.get(FileWriterProperties.FILE_PASSIVE_MODE)).equalsIgnoreCase(UIConstants.YES_OPTION)) {
             passiveModeYes.setSelected(true);
             passiveModeNo.setSelected(false);
         } else {
@@ -192,24 +248,24 @@ public class FileWriter extends ConnectorSettingsPanel {
             passiveModeNo.setSelected(true);
         }
 
-        if (props.isValidateConnection()) {
+        if (((String) props.get(FileWriterProperties.FILE_VALIDATE_CONNECTION)).equalsIgnoreCase(UIConstants.YES_OPTION)) {
             validateConnectionYes.setSelected(true);
             validateConnectionNo.setSelected(false);
         } else {
             validateConnectionYes.setSelected(false);
             validateConnectionNo.setSelected(true);
         }
-
-        if (props.isTemporary()) {
+        
+        if (((String) props.get(FileWriterProperties.FILE_TEMPORARY)).equalsIgnoreCase(UIConstants.YES_OPTION)) {
             tempFileYesRadio.setSelected(true);
         } else {
             tempFileNoRadio.setSelected(true);
         }
 
-        if (props.isOutputAppend()) {
+        if (((String) props.get(FileWriterProperties.FILE_APPEND)).equalsIgnoreCase(UIConstants.YES_OPTION)) {
             fileExistsAppendRadio.setSelected(true);
             fileExistsAppendRadioActionPerformed(null);
-        } else if (props.isErrorOnExists()) {
+        } else if (((String) props.get(FileWriterProperties.FILE_ERROR_ON_EXISTS)).equalsIgnoreCase(UIConstants.YES_OPTION)) {
             fileExistsErrorRadio.setSelected(true);
             fileExistsErrorRadioActionPerformed(null);
         } else {
@@ -217,11 +273,11 @@ public class FileWriter extends ConnectorSettingsPanel {
             fileExistsOverwriteRadioActionPerformed(null);
         }
 
-        parent.setPreviousSelectedEncodingForConnector(charsetEncodingCombobox, props.getCharsetEncoding());
+        parent.setPreviousSelectedEncodingForConnector(charsetEncodingCombobox, (String) props.get(FileWriterProperties.CONNECTOR_CHARSET_ENCODING));
 
-        fileContentsTextPane.setText(props.getTemplate());
+        fileContentsTextPane.setText((String) props.get(FileWriterProperties.FILE_CONTENTS));
 
-        if (props.isBinary()) {
+        if (((String) props.get(FileWriterProperties.FILE_TYPE)).equalsIgnoreCase(UIConstants.YES_OPTION)) {
             fileTypeBinary.setSelected(true);
             fileTypeASCII.setSelected(false);
             fileTypeBinaryActionPerformed(null);
@@ -232,39 +288,35 @@ public class FileWriter extends ConnectorSettingsPanel {
         }
     }
 
-    @Override
-    public ConnectorProperties getDefaults() {
-        return new FileDispatcherProperties();
+    public Properties getDefaults() {
+        return new FileWriterProperties().getDefaults();
     }
 
-    @Override
-    public boolean checkProperties(ConnectorProperties properties, boolean highlight) {
-        FileDispatcherProperties props = (FileDispatcherProperties) properties;
-
+    public boolean checkProperties(Properties props, boolean highlight) {
+        resetInvalidProperties();
         boolean valid = true;
 
         valid = setDirHostPath(props, false, highlight);
-
-        if (props.getOutputPattern().length() == 0) {
+        if (((String) props.get(FileWriterProperties.FILE_NAME)).length() == 0) {
             valid = false;
             if (highlight) {
                 fileNameField.setBackground(UIConstants.INVALID_COLOR);
             }
         }
-        if (props.getTemplate().length() == 0) {
+        if (((String) props.get(FileWriterProperties.FILE_CONTENTS)).length() == 0) {
             valid = false;
             if (highlight) {
                 fileContentsTextPane.setBackground(UIConstants.INVALID_COLOR);
             }
         }
-        if (!props.isAnonymous()) {
-            if (props.getUsername().length() == 0) {
+        if (((String) props.get(FileWriterProperties.FILE_ANONYMOUS)).equals(UIConstants.NO_OPTION)) {
+            if (((String) props.get(FileWriterProperties.FILE_USERNAME)).length() == 0) {
                 valid = false;
                 if (highlight) {
                     usernameField.setBackground(UIConstants.INVALID_COLOR);
                 }
             }
-            if (props.getPassword().length() == 0) {
+            if (((String) props.get(FileWriterProperties.FILE_PASSWORD)).length() == 0) {
                 valid = false;
                 if (highlight) {
                     passwordField.setBackground(UIConstants.INVALID_COLOR);
@@ -272,9 +324,9 @@ public class FileWriter extends ConnectorSettingsPanel {
             }
         }
 
-        FileScheme scheme = props.getScheme();
-        if (scheme.equals(FileScheme.FTP) || scheme.equals(FileScheme.SFTP) || scheme.equals(FileScheme.SMB)) {
-            if (props.getTimeout().length() == 0) {
+        Object scheme = props.get(FileWriterProperties.FILE_SCHEME);
+        if (scheme.equals(FileWriterProperties.SCHEME_FTP) || scheme.equals(FileWriterProperties.SCHEME_SFTP) || scheme.equals(FileWriterProperties.SCHEME_SMB)) {
+            if (((String) props.get(FileWriterProperties.FILE_TIMEOUT)).length() == 0) {
                 valid = false;
                 if (highlight) {
                     timeoutField.setBackground(UIConstants.INVALID_COLOR);
@@ -285,8 +337,7 @@ public class FileWriter extends ConnectorSettingsPanel {
         return valid;
     }
 
-    @Override
-    public void resetInvalidProperties() {
+    private void resetInvalidProperties() {
         directoryField.setBackground(null);
         hostField.setBackground(null);
         pathField.setBackground(null);
@@ -295,6 +346,16 @@ public class FileWriter extends ConnectorSettingsPanel {
         usernameField.setBackground(null);
         passwordField.setBackground(null);
         timeoutField.setBackground(null);
+    }
+
+    public String doValidate(Properties props, boolean highlight) {
+        String error = null;
+
+        if (!checkProperties(props, highlight)) {
+            error = "Error in the form for connector \"" + getName() + "\".\n\n";
+        }
+
+        return error;
     }
 
     /**
@@ -499,11 +560,6 @@ public class FileWriter extends ConnectorSettingsPanel {
         fileTypeBinary.setText("Binary");
         fileTypeBinary.setToolTipText("<html>If ASCII is selected, messages are written as text,<br> and the character set encoding used can be selected in the Encoding control below.<br>If Binary is selected, messages are written as binary byte streams.</html>");
         fileTypeBinary.setMargin(new java.awt.Insets(0, 0, 0, 0));
-        fileTypeBinary.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                fileTypeBinaryActionPerformed(evt);
-            }
-        });
 
         fileTypeASCII.setBackground(new java.awt.Color(255, 255, 255));
         fileTypeASCII.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
@@ -512,11 +568,6 @@ public class FileWriter extends ConnectorSettingsPanel {
         fileTypeASCII.setText("ASCII");
         fileTypeASCII.setToolTipText("<html>If ASCII is selected, messages are written as text,<br> and the character set encoding used can be selected in the Encoding control below.<br>If Binary is selected, messages are written as binary byte streams.</html>");
         fileTypeASCII.setMargin(new java.awt.Insets(0, 0, 0, 0));
-        fileTypeASCII.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                fileTypeASCIIActionPerformed(evt);
-            }
-        });
 
         charsetEncodingCombobox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "default", "utf-8", "iso-8859-1", "utf-16 (le)", "utf-16 (be)", "utf-16 (bom)", "us-ascii" }));
         charsetEncodingCombobox.setToolTipText("<html>Select the character encoding system to use to write the files accepted by the destination connector.<br>Selecting Default uses the default character encoding for the JVM in which Mirth is running.<br>Selecting any other value selects the corresponding character encoding.</html>");
@@ -652,7 +703,7 @@ public class FileWriter extends ConnectorSettingsPanel {
                         .addComponent(passiveModeYes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(passiveModeNo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(fileContentsTextPane, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(fileContentsTextPane, javax.swing.GroupLayout.DEFAULT_SIZE, 430, Short.MAX_VALUE)
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(tempFileYesRadio, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -758,7 +809,7 @@ public class FileWriter extends ConnectorSettingsPanel {
         passwordField.setText("anonymous");
     }//GEN-LAST:event_anonymousYesActionPerformed
 
-    private void onSchemeChange(boolean enableHost, boolean anonymous, boolean allowAppend, FileScheme scheme) {
+    private void onSchemeChange(boolean enableHost, boolean anonymous, boolean allowAppend, String scheme) {
         // act like the appropriate Anonymous button was selected.
         if (anonymous) {
             anonymousNo.setSelected(false);
@@ -807,7 +858,7 @@ public class FileWriter extends ConnectorSettingsPanel {
             fileExistsLabel.setEnabled(false);
         }
 
-        if (scheme.equals(FileScheme.FTP)) {
+        if (scheme.equals(FileWriterProperties.SCHEME_FTP)) {
             anonymousLabel.setEnabled(true);
             anonymousYes.setEnabled(true);
             anonymousNo.setEnabled(true);
@@ -819,10 +870,10 @@ public class FileWriter extends ConnectorSettingsPanel {
             validateConnectionNo.setEnabled(true);
             timeoutLabel.setEnabled(true);
             timeoutField.setEnabled(true);
-        } else if (scheme.equals(FileScheme.SFTP)) {
+        } else if (scheme.equals(FileWriterProperties.SCHEME_SFTP)) {
             timeoutLabel.setEnabled(true);
             timeoutField.setEnabled(true);
-        } else if (scheme.equals(FileScheme.WEBDAV)) {
+        } else if (scheme.equals(FileWriterProperties.SCHEME_WEBDAV)) {
             anonymousLabel.setEnabled(true);
             anonymousYes.setEnabled(true);
             anonymousNo.setEnabled(true);
@@ -834,7 +885,7 @@ public class FileWriter extends ConnectorSettingsPanel {
             passiveModeNo.setSelected(true);
             validateConnectionNo.setSelected(true);
 
-        } else if (scheme.equals(FileScheme.SMB)) {
+        } else if (scheme.equals(FileWriterProperties.SCHEME_SMB)) {
             timeoutLabel.setEnabled(true);
             timeoutField.setEnabled(true);
         }
@@ -844,28 +895,28 @@ public class FileWriter extends ConnectorSettingsPanel {
         String text = (String) schemeComboBox.getSelectedItem();
 
         // if File is selected
-        if (text.equals(FileScheme.FILE.getDisplayName())) {
+        if (text.equals(FileWriterProperties.SCHEME_FILE)) {
 
-            onSchemeChange(false, true, true, FileScheme.FILE);
+            onSchemeChange(false, true, true, FileWriterProperties.SCHEME_FILE);
         } // else if FTP is selected
-        else if (text.equals(FileScheme.FTP.getDisplayName())) {
+        else if (text.equals(FileWriterProperties.SCHEME_FTP)) {
 
-            onSchemeChange(true, anonymousYes.isSelected(), true, FileScheme.FTP);
+            onSchemeChange(true, anonymousYes.isSelected(), true, FileWriterProperties.SCHEME_FTP);
             hostLabel.setText("ftp://");
         } // else if SFTP is selected
-        else if (text.equals(FileScheme.SFTP.getDisplayName())) {
+        else if (text.equals(FileWriterProperties.SCHEME_SFTP)) {
 
-            onSchemeChange(true, false, true, FileScheme.SFTP);
+            onSchemeChange(true, false, true, FileWriterProperties.SCHEME_SFTP);
             hostLabel.setText("sftp://");
         } // else if SMB is selected
-        else if (text.equals(FileScheme.SMB.getDisplayName())) {
+        else if (text.equals(FileWriterProperties.SCHEME_SMB)) {
 
-            onSchemeChange(true, false, true, FileScheme.SMB);
+            onSchemeChange(true, false, true, FileWriterProperties.SCHEME_SMB);
             hostLabel.setText("smb://");
         } // else if WEBDAV is selected
-        else if (text.equals(FileScheme.WEBDAV.getDisplayName())) {
+        else if (text.equals(FileWriterProperties.SCHEME_WEBDAV)) {
 
-            onSchemeChange(true, anonymousYes.isSelected(), false, FileScheme.WEBDAV);
+            onSchemeChange(true, anonymousYes.isSelected(), false, FileWriterProperties.SCHEME_WEBDAV);
             if (secureModeYes.isSelected()) {
                 hostLabel.setText("https://");
             } else {
@@ -882,7 +933,7 @@ private void testConnectionActionPerformed(java.awt.event.ActionEvent evt) {//GE
         public Void doInBackground() {
 
             try {
-                ConnectionTestResponse response = (ConnectionTestResponse) parent.mirthClient.invokeConnectorService(getConnectorName(), "testWrite", getProperties());
+                ConnectionTestResponse response = (ConnectionTestResponse) parent.mirthClient.invokeConnectorService(name, "testWrite", getProperties());
 
                 if (response == null) {
                     throw new ClientException("Failed to invoke service.");
@@ -938,17 +989,18 @@ private void fileExistsErrorRadioActionPerformed(java.awt.event.ActionEvent evt)
     tempFileNoRadio.setEnabled(true);
 }//GEN-LAST:event_fileExistsErrorRadioActionPerformed
 
-private void fileTypeASCIIActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_fileTypeASCIIActionPerformed
-    encodingLabel.setEnabled(true);
-    charsetEncodingCombobox.setEnabled(true);
-}//GEN-LAST:event_fileTypeASCIIActionPerformed
+    private void fileTypeASCIIActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_fileTypeASCIIActionPerformed
+    {// GEN-HEADEREND:event_fileTypeASCIIActionPerformed
+        encodingLabel.setEnabled(true);
+        charsetEncodingCombobox.setEnabled(true);
+    }// GEN-LAST:event_fileTypeASCIIActionPerformed
 
-private void fileTypeBinaryActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_fileTypeBinaryActionPerformed
-    encodingLabel.setEnabled(false);
-    charsetEncodingCombobox.setEnabled(false);
-    charsetEncodingCombobox.setSelectedIndex(0);
-}//GEN-LAST:event_fileTypeBinaryActionPerformed
-
+    private void fileTypeBinaryActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_fileTypeBinaryActionPerformed
+    {// GEN-HEADEREND:event_fileTypeBinaryActionPerformed
+        encodingLabel.setEnabled(false);
+        charsetEncodingCombobox.setEnabled(false);
+        charsetEncodingCombobox.setSelectedIndex(0);
+    }// GEN-LAST:event_fileTypeBinaryActionPerformed
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel anonymousLabel;
     private com.mirth.connect.client.ui.components.MirthRadioButton anonymousNo;

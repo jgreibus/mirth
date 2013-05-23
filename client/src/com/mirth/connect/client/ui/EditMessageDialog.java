@@ -1,12 +1,11 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
  * http://www.mirthcorp.com
- * 
+ *
  * The software in this package is published under the terms of the MPL
  * license a copy of which has been included with this distribution in
  * the LICENSE.txt file.
  */
-
 package com.mirth.connect.client.ui;
 
 import java.awt.Dimension;
@@ -22,35 +21,30 @@ import java.awt.dnd.DropTargetListener;
 import java.io.File;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.syntax.jedit.SyntaxDocument;
-import org.syntax.jedit.tokenmarker.TokenMarker;
+import org.syntax.jedit.tokenmarker.EDITokenMarker;
+import org.syntax.jedit.tokenmarker.HL7TokenMarker;
+import org.syntax.jedit.tokenmarker.X12TokenMarker;
+import org.syntax.jedit.tokenmarker.XMLTokenMarker;
 
-import com.mirth.connect.client.ui.components.ItemSelectionTable;
-import com.mirth.connect.client.ui.components.ItemSelectionTableModel;
 import com.mirth.connect.client.ui.components.MirthSyntaxTextArea;
+import com.mirth.connect.model.MessageObject;
+import com.mirth.connect.model.MessageObject.Protocol;
 
 public class EditMessageDialog extends javax.swing.JDialog implements DropTargetListener {
 
     private Frame parent;
-    private String channelId;
+    private MessageObject message;
 
-    /**
-     * 
-     * @param message
-     * @param dataType
-     * @param channelId
-     * @param selectedMetaDataIds The connectors that will be pre-selected for processing the message. If null, all connectors will be pre-selected.
-     */
-    public EditMessageDialog(String message, String dataType, String channelId, Map<Integer, String> destinationConnectors, List<Integer> selectedMetaDataIds) {
+    public EditMessageDialog(MessageObject message) {
         super(PlatformUI.MIRTH_FRAME);
         this.parent = PlatformUI.MIRTH_FRAME;
-        this.channelId = channelId;
+        this.message = message;
         initComponents();
-        setCorrectDocument(messageContent, message, dataType);
+        setCorrectDocument(messageContent, message.getRawData(), message.getRawDataProtocol());
         messageContent.setCaretPosition(0);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setModal(true);
@@ -66,14 +60,7 @@ public class EditMessageDialog extends javax.swing.JDialog implements DropTarget
             setLocation((frmSize.width - dlgSize.width) / 2 + loc.x, (frmSize.height - dlgSize.height) / 2 + loc.y);
         }
 
-        initDestinationConnectorTable(destinationConnectors, selectedMetaDataIds);
         setVisible(true);
-    }
-
-    private void initDestinationConnectorTable(Map<Integer, String> destinationConnectors, List<Integer> selectedMetaDataIds) {
-        mirthTable1 = new ItemSelectionTable();
-        mirthTable1.setModel(new ItemSelectionTableModel<Integer, String>(destinationConnectors, selectedMetaDataIds, "Destination", "Included"));
-        jScrollPane1.setViewportView(mirthTable1);
     }
 
     public void dragEnter(DropTargetDragEvent dtde) {
@@ -124,15 +111,24 @@ public class EditMessageDialog extends javax.swing.JDialog implements DropTarget
         }
     }
 
-    private void setCorrectDocument(MirthSyntaxTextArea textPane, String message, String dataType) {
+    private void setCorrectDocument(MirthSyntaxTextArea textPane, String message, MessageObject.Protocol protocol) {
         SyntaxDocument newDoc = new SyntaxDocument();
 
         if (message != null) {
-            if (dataType != null) {
-                TokenMarker tokenMarker = LoadedExtensions.getInstance().getDataTypePlugins().get(dataType).getTokenMarker();
-                
-                if (tokenMarker != null) {
-                    newDoc.setTokenMarker(tokenMarker);
+            if (protocol != null) {
+                if (protocol.equals(MessageObject.Protocol.HL7V2) || protocol.equals(MessageObject.Protocol.NCPDP) || protocol.equals(MessageObject.Protocol.DICOM)) {
+                    newDoc.setTokenMarker(new HL7TokenMarker());
+//                    message = message.replace('\r', '\n');  // Not required with current text area
+                    // HL7 (ER7) encoded messages have \r as end of line
+                    // segments
+                    // The syntax editor box only recognizes \n
+                    // Add \n to make things look normal
+                } else if (protocol.equals(MessageObject.Protocol.XML) || protocol.equals(Protocol.HL7V3)) {
+                    newDoc.setTokenMarker(new XMLTokenMarker());
+                } else if (protocol.equals(MessageObject.Protocol.X12)) {
+                    newDoc.setTokenMarker(new X12TokenMarker());
+                } else if (protocol.equals(MessageObject.Protocol.EDI)) {
+                    newDoc.setTokenMarker(new EDITokenMarker());
                 }
             }
 
@@ -162,9 +158,6 @@ public class EditMessageDialog extends javax.swing.JDialog implements DropTarget
         messageContent = new com.mirth.connect.client.ui.components.MirthSyntaxTextArea();
         openTextFileButton = new javax.swing.JButton();
         openBinaryFileButton = new javax.swing.JButton();
-        jScrollPane1 = new javax.swing.JScrollPane();
-        mirthTable1 = new com.mirth.connect.client.ui.components.MirthTable();
-        jLabel1 = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
         setTitle("Message");
@@ -205,10 +198,6 @@ public class EditMessageDialog extends javax.swing.JDialog implements DropTarget
             }
         });
 
-        jScrollPane1.setViewportView(mirthTable1);
-
-        jLabel1.setText("Send to the following destination(s):");
-
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
         jPanel1Layout.setHorizontalGroup(
@@ -216,39 +205,28 @@ public class EditMessageDialog extends javax.swing.JDialog implements DropTarget
             .addGroup(jPanel1Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel1, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(messageContent, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                        .addGap(0, 354, Short.MAX_VALUE)
-                        .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                                .addComponent(processMessageButton)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(closeButton))
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                                .addComponent(openTextFileButton)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(openBinaryFileButton)))))
+                        .addComponent(openTextFileButton)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(openBinaryFileButton)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(processMessageButton)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(closeButton))
+                    .addComponent(messageContent, javax.swing.GroupLayout.DEFAULT_SIZE, 616, Short.MAX_VALUE))
                 .addContainerGap())
         );
         jPanel1Layout.setVerticalGroup(
             jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(messageContent, javax.swing.GroupLayout.DEFAULT_SIZE, 329, Short.MAX_VALUE)
+                .addComponent(messageContent, javax.swing.GroupLayout.DEFAULT_SIZE, 251, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(openBinaryFileButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(openTextFileButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jLabel1)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 139, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(closeButton)
-                    .addComponent(processMessageButton))
+                    .addComponent(processMessageButton)
+                    .addComponent(openTextFileButton)
+                    .addComponent(openBinaryFileButton))
                 .addContainerGap())
         );
 
@@ -290,16 +268,14 @@ public class EditMessageDialog extends javax.swing.JDialog implements DropTarget
 
     private void processMessageButtonActionPerformed(java.awt.event.ActionEvent evt)//GEN-FIRST:event_processMessageButtonActionPerformed
     {//GEN-HEADEREND:event_processMessageButtonActionPerformed
-        parent.processMessage(channelId, messageContent.getText(), ((ItemSelectionTableModel<Integer, String>)mirthTable1.getModel()).getKeys(true));
+        message.setRawData(messageContent.getText());
+        parent.processMessage(message);
         this.dispose();
     }//GEN-LAST:event_processMessageButtonActionPerformed
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton closeButton;
-    private javax.swing.JLabel jLabel1;
     private javax.swing.JPanel jPanel1;
-    private javax.swing.JScrollPane jScrollPane1;
     private com.mirth.connect.client.ui.components.MirthSyntaxTextArea messageContent;
-    private com.mirth.connect.client.ui.components.MirthTable mirthTable1;
     private javax.swing.JButton openBinaryFileButton;
     private javax.swing.JButton openTextFileButton;
     private javax.swing.JButton processMessageButton;

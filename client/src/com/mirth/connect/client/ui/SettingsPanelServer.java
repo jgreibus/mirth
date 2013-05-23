@@ -1,12 +1,11 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
  * http://www.mirthcorp.com
- * 
+ *
  * The software in this package is published under the terms of the MPL
  * license a copy of which has been included with this distribution in
  * the LICENSE.txt file.
  */
-
 package com.mirth.connect.client.ui;
 
 import java.awt.Cursor;
@@ -17,7 +16,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
 import javax.swing.SwingWorker;
 
-import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.commons.lang.math.NumberUtils;
 
 import com.mirth.connect.client.core.ClientException;
 import com.mirth.connect.client.core.TaskConstants;
@@ -280,7 +279,7 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
 
         String backupDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
 
-        ObjectXMLSerializer serializer = ObjectXMLSerializer.getInstance();
+        ObjectXMLSerializer serializer = new ObjectXMLSerializer();
         ServerConfiguration configuration = null;
         try {
             configuration = getFrame().mirthClient.getServerConfiguration();

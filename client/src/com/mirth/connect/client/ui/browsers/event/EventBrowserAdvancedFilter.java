@@ -1,7 +1,7 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
  * http://www.mirthcorp.com
- * 
+ *
  * The software in this package is published under the terms of the MPL
  * license a copy of which has been included with this distribution in
  * the LICENSE.txt file.
@@ -9,13 +9,13 @@
 
 package com.mirth.connect.client.ui.browsers.event;
 
+import com.mirth.connect.client.ui.UIConstants;
 import java.awt.Dimension;
 import java.awt.Point;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import com.mirth.connect.client.ui.UIConstants;
 import com.mirth.connect.model.Event;
 
 public class EventBrowserAdvancedFilter extends javax.swing.JDialog {

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
  * http://www.mirthcorp.com
- * 
+ *
  * The software in this package is published under the terms of the MPL
  * license a copy of which has been included with this distribution in
  * the LICENSE.txt file.
@@ -22,8 +22,8 @@ import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionAdapter;
 import java.io.StringReader;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -50,11 +50,14 @@ import com.mirth.connect.client.ui.components.MirthTree.FilterTreeModel;
 import com.mirth.connect.client.ui.components.MirthTreeNode;
 import com.mirth.connect.client.ui.editors.MessageTreePanel;
 import com.mirth.connect.client.ui.editors.transformer.TransformerPane;
+import com.mirth.connect.model.MessageObject;
+import com.mirth.connect.model.MessageObject.Protocol;
 import com.mirth.connect.model.converters.IXMLSerializer;
-import com.mirth.connect.model.datatype.DataTypeProperties;
+import com.mirth.connect.model.converters.SerializerFactory;
+import com.mirth.connect.model.dicom.DICOMVocabulary;
 import com.mirth.connect.model.util.MessageVocabulary;
 import com.mirth.connect.model.util.MessageVocabularyFactory;
-import com.mirth.connect.plugins.DataTypeClientPlugin;
+import com.mirth.connect.util.StringUtil;
 
 public class TreePanel extends javax.swing.JPanel {
 
@@ -335,7 +338,7 @@ public class TreePanel extends javax.swing.JPanel {
         PlatformUI.MIRTH_FRAME.stopWorking(workingId);
     }
 
-    public void setMessage(DataTypeProperties dataTypeProperties, String messageType, String source, String ignoreText) {
+    public void setMessage(Properties protocolProperties, String messageType, String source, String ignoreText, Properties dataProperties) {
         Document xmlDoc = null;
         DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
         DocumentBuilder docBuilder;
@@ -344,78 +347,81 @@ public class TreePanel extends javax.swing.JPanel {
         version = "";
         type = "";
         String messageDescription = "";
-        String dataType = null;
+        Protocol protocol = null;
         if (source.length() > 0 && !source.equals(ignoreText)) {
-            IXMLSerializer serializer;
-            
-            if (PlatformUI.MIRTH_FRAME.displayNameToDataType.containsKey(messageType)) {
-                dataType = PlatformUI.MIRTH_FRAME.displayNameToDataType.get(messageType);
+            IXMLSerializer<String> serializer;
+            if (PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.HL7V2).equals(messageType)) {
+                protocol = Protocol.HL7V2;
+                // The \n to \r conversion is ONLY valid for HL7
+                boolean convertLFtoCR = true;
+                if (protocolProperties != null && protocolProperties.get("convertLFtoCR") != null) {
+                    convertLFtoCR = Boolean.parseBoolean((String) protocolProperties.get("convertLFtoCR"));
+                }
+                if (convertLFtoCR) {
+                    source = StringUtil.convertLFtoCR(source).trim();
+                }
+            } else if (PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.NCPDP).equals(messageType)) {
+                protocol = Protocol.NCPDP;
+            } else if (PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.DICOM).equals(messageType)) {
+                protocol = Protocol.DICOM;
+            } else if (PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.HL7V3).equals(messageType)) {
+                protocol = Protocol.HL7V3;
+            } else if (PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.X12).equals(messageType)) {
+                protocol = Protocol.X12;
+            } else if (PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.XML).equals(messageType)) {
+                protocol = Protocol.XML;
+            } else if (PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.EDI).equals(messageType)) {
+                protocol = Protocol.EDI;
+            } else if (PlatformUI.MIRTH_FRAME.protocols.get(MessageObject.Protocol.DELIMITED).equals(messageType)) {
+                protocol = Protocol.DELIMITED;
             } else {
-                logger.error("Invalid data type");
+                logger.error("Invalid protocol");
                 return;
             }
 
-            DataTypeClientPlugin clientPlugin = LoadedExtensions.getInstance().getDataTypePlugins().get(dataType);
-            
-            switch (clientPlugin.getSerializationType()) {
-                case XML:
-                    try {
-                        serializer = clientPlugin.getSerializer(dataTypeProperties.getSerializerProperties());
-                        docBuilder = docFactory.newDocumentBuilder();
-        
-                        String message;
-                        
-                        if (clientPlugin.isBinary()) {
-                            message = source;
-                        } else {
-                            message = serializer.toXML(source);
-                        }
-        
-                        xmlDoc = docBuilder.parse(new InputSource(new StringReader(message)));
-        
-                        if (xmlDoc != null) {
-                            Map<String, String> metadata = serializer.getMetadataFromDocument(xmlDoc);
-                            
-                            if (metadata.get("version") != null) {
-                                version = metadata.get("version").trim();    
-                            } else {
-                                version = "Unknown version";
-                            }
-                            
-                            if (metadata.get("type") != null) {
-                                type = metadata.get("type").trim();    
-                            } else {
-                                type = "Unknown type";
-                            }
-                            
-                            messageName = type + " (" + version + ")";
-                            Map<String, Class<? extends MessageVocabulary>> vocabs = new HashMap<String, Class<? extends MessageVocabulary>>();
-                            for (DataTypeClientPlugin dataTypePlugin : LoadedExtensions.getInstance().getDataTypePlugins().values()) {
-                                Class<? extends MessageVocabulary> vocabulary = dataTypePlugin.getVocabulary();
-                                
-                                if (vocabulary != null) {
-                                    vocabs.put(dataTypePlugin.getPluginPointName(), vocabulary);
-                                }
-                            }
-                            vocabulary = MessageVocabularyFactory.getInstance(PlatformUI.MIRTH_FRAME.mirthClient, vocabs).getVocabulary(dataType, version, type);
-                            messageDescription = vocabulary.getDescription(type.replaceAll("-", ""));
-        
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-        
-                    if (xmlDoc != null) {
-                        createTree(dataType, xmlDoc, messageName, messageDescription);
-                        filter();
-                    } else {
-                        setInvalidMessage(messageType);
-                    }
-                    break;
+            try {
+                serializer = SerializerFactory.getSerializer(protocol, protocolProperties);
+                docBuilder = docFactory.newDocumentBuilder();
+
+                String message;
+                
+                if (protocol.equals(Protocol.DICOM)) {
+                    message = source;
+                } else {
+                    message = serializer.toXML(source);
+                }
+
+                xmlDoc = docBuilder.parse(new InputSource(new StringReader(message)));
+
+                if (xmlDoc != null) {
+                    Map<String, String> metadata = serializer.getMetadataFromDocument(xmlDoc);
                     
-                case RAW:
-                    setRawMessage();
-                    break;
+                    if (metadata.get("version") != null) {
+                        version = metadata.get("version").trim();    
+                    } else {
+                        version = "Unknown version";
+                    }
+                    
+                    if (metadata.get("type") != null) {
+                        type = metadata.get("type").trim();    
+                    } else {
+                        type = "Unknown type";
+                    }
+                    
+                    messageName = type + " (" + version + ")";
+                    vocabulary = MessageVocabularyFactory.getInstance(PlatformUI.MIRTH_FRAME.mirthClient).getVocabulary(protocol, version, type);
+                    messageDescription = vocabulary.getDescription(type.replaceAll("-", ""));
+
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
+            if (xmlDoc != null) {
+                createTree(protocol, xmlDoc, messageName, messageDescription);
+                filter();
+            } else {
+                setInvalidMessage(messageType);
             }
         } else {
             clearMessage();
@@ -437,7 +443,7 @@ public class TreePanel extends javax.swing.JPanel {
     /**
      * Updates the panel with a new Message.
      */
-    private void createTree(String dataType, Document document, String messageName, String messageDescription) {
+    private void createTree(Protocol protocol, Document document, String messageName, String messageDescription) {
         Element element = document.getDocumentElement();
         MirthTreeNode top;
         
@@ -446,13 +452,11 @@ public class TreePanel extends javax.swing.JPanel {
         } else {
             top = new MirthTreeNode(messageName);
         }
-        
-        processAttributes(element, top);
 
         NodeList children = element.getChildNodes();
         
         for (int i = 0; i < children.getLength(); i++) {
-            processElement(dataType, children.item(i), top);
+            processElement(protocol, children.item(i), top);
         }
 
         tree = new MirthTree(top, _dropPrefix, _dropSuffix);
@@ -516,12 +520,29 @@ public class TreePanel extends javax.swing.JPanel {
         PlatformUI.MIRTH_FRAME.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
     }
 
-    private void processElement(String dataType, Object elo, MirthTreeNode mtn) {
+    private void processElement(Protocol protocol, Object elo, MirthTreeNode mtn) {
         if (elo instanceof Element) {
             Element element = (Element) elo;
             String description;
-            MirthTreeNode currentNode = new MirthTreeNode(LoadedExtensions.getInstance().getDataTypePlugins().get(dataType).getNodeText(vocabulary, element));
-            
+            if (vocabulary instanceof DICOMVocabulary) {
+                description = vocabulary.getDescription(element.getAttribute("tag"));
+                if (description.equals("?")) {
+                    description = "";
+                }
+            } else {
+                description = vocabulary.getDescription(element.getNodeName());
+            }
+            MirthTreeNode currentNode;
+            if (description != null && description.length() > 0) {
+                if (vocabulary instanceof DICOMVocabulary) {
+                    currentNode = new MirthTreeNode("tag" + element.getAttribute("tag") + " (" + description + ")");
+                } else {
+                    currentNode = new MirthTreeNode(element.getNodeName() + " (" + description + ")");
+                }
+            } else {
+                currentNode = new MirthTreeNode(element.getNodeName());
+            }
+
             String text = "";
             if (element.hasChildNodes()) {
                 text = element.getFirstChild().getNodeValue();
@@ -531,44 +552,38 @@ public class TreePanel extends javax.swing.JPanel {
                     currentNode.add(new MirthTreeNode(text));
                 }
             } else {
-                int minLevel = LoadedExtensions.getInstance().getDataTypePlugins().get(dataType).getMinTreeLevel();
-                if (minLevel > 0) {
-                    String regex = ".*";
-                    for (int i = 0; i < minLevel; i++) {
-                        regex += "\\..*";
-                    }
-                    
-                    // build regex
-                    if (!element.getNodeName().matches(regex)) {
-                        // We have empty node and possibly empty children
-                        // Add the sub-node handler (SEG.1)
-                        currentNode.add(new MirthTreeNode(element.getNodeName()));
-                        // Add a sub node (SEG.1.1)
-                        String newNodeName = element.getNodeName() + ".1";
-                        description = vocabulary.getDescription(newNodeName);
-                        MirthTreeNode parentNode;
-                        if (description != null && description.length() > 0) {
-                            parentNode = new MirthTreeNode(newNodeName + " (" + description + ")");
-                        } else {
-                            parentNode = new MirthTreeNode(newNodeName);
-                        }
-                        parentNode.add(new MirthTreeNode(EMPTY));
-                        currentNode.add(parentNode);
-                        
-                    } else {
-                        currentNode.add(new MirthTreeNode(EMPTY));
-                    }
-                } else {
+                // Check if we are in the format SEG.N.N
+                if (protocol.equals(Protocol.HL7V3) || protocol.equals(Protocol.XML) || element.getNodeName().matches(".*\\..*\\..*") || protocol.equals(Protocol.DICOM)) {
+                    // We already at the last possible child segment, so just
+                    // add empty node
                     currentNode.add(new MirthTreeNode(EMPTY));
+                } else if (protocol.equals(Protocol.DELIMITED)) {
+                    // We have empty column node
+                    currentNode.add(new MirthTreeNode(EMPTY));
+                } else {
+                    // We have empty node and possibly empty children
+                    // Add the sub-node handler (SEG.1)
+                    currentNode.add(new MirthTreeNode(element.getNodeName()));
+                    // Add a sub node (SEG.1.1)
+                    String newNodeName = element.getNodeName() + ".1";
+                    description = vocabulary.getDescription(newNodeName);
+                    MirthTreeNode parentNode;
+                    if (description != null && description.length() > 0) {
+                        parentNode = new MirthTreeNode(newNodeName + " (" + description + ")");
+                    } else {
+                        parentNode = new MirthTreeNode(newNodeName);
+                    }
+                    parentNode.add(new MirthTreeNode(EMPTY));
+                    currentNode.add(parentNode);
                 }
-                
+
             }
 
             processAttributes(element, currentNode);
 
             NodeList children = element.getChildNodes();
             for (int i = 0; i < children.getLength(); i++) {
-                processElement(dataType, children.item(i), currentNode);
+                processElement(protocol, children.item(i), currentNode);
             }
             mtn.add(currentNode);
         }
@@ -632,13 +647,6 @@ public class TreePanel extends javax.swing.JPanel {
 
     public void setInvalidMessage(String messageType) {
         MirthTreeNode top = new MirthTreeNode("Template is not valid " + messageType + ".");
-        MirthTree tree = new MirthTree(top, _dropPrefix, _dropSuffix);
-        treePane.setViewportView(tree);
-        revalidate();
-    }
-    
-    public void setRawMessage() {
-        MirthTreeNode top = new MirthTreeNode("Template tree not available for raw data.");
         MirthTree tree = new MirthTree(top, _dropPrefix, _dropSuffix);
         treePane.setViewportView(tree);
         revalidate();

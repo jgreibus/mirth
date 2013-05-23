@@ -1,7 +1,7 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
  * http://www.mirthcorp.com
- * 
+ *
  * The software in this package is published under the terms of the MPL
  * license a copy of which has been included with this distribution in
  * the LICENSE.txt file.
@@ -11,13 +11,12 @@ package com.mirth.connect.client.ui.editors;
 
 import java.awt.event.HierarchyEvent;
 import java.awt.event.HierarchyListener;
+import java.util.Properties;
 
 import javax.swing.border.TitledBorder;
 
 import com.mirth.connect.client.ui.TemplatePanel;
-import com.mirth.connect.client.ui.TransformerType;
 import com.mirth.connect.client.ui.TreePanel;
-import com.mirth.connect.model.datatype.DataTypeProperties;
 
 public class MessageTemplatePanel extends javax.swing.JPanel {
 
@@ -31,9 +30,6 @@ public class MessageTemplatePanel extends javax.swing.JPanel {
     public MessageTemplatePanel(MirthEditorPane m) {
         this.parent = m;
         initComponents();
-        
-        templatePanelInbound.setInbound(true);
-        templatePanelOutbound.setInbound(false);
 
         try {
             split.addHierarchyListener(new HierarchyListener() {
@@ -53,9 +49,9 @@ public class MessageTemplatePanel extends javax.swing.JPanel {
         ((TitledBorder) templatePanelOutbound.getBorder()).setTitle("Outbound Message Template");
     }
     
-    public void setDataTypeEnabled(boolean inboundDataType, boolean inboundProperties, boolean outboundDataType, boolean outboundProperties, TransformerType transformerType) {
-        templatePanelInbound.setDataTypeEnabled(inboundDataType, inboundProperties, transformerType);
-        templatePanelOutbound.setDataTypeEnabled(outboundDataType, outboundProperties, transformerType);
+    public void setDataTypeEnabled(boolean inboundDataType, boolean inboundProperties, boolean outboundDataType, boolean outboundProperties) {
+        templatePanelInbound.setDataTypeEnabled(inboundDataType, inboundProperties);
+        templatePanelOutbound.setDataTypeEnabled(outboundDataType, outboundProperties);
     }
 
     public void hideOutbound() {
@@ -112,35 +108,35 @@ public class MessageTemplatePanel extends javax.swing.JPanel {
         templatePanelOutbound.clearMessage();
     }
 
-    public void setInboundDataType(String dataType) {
-        templatePanelInbound.setDataType(dataType);
+    public void setInboundProtocol(String protocol) {
+        templatePanelInbound.setProtocol(protocol);
     }
 
-    public void setOutboundDataType(String dataType) {
-        templatePanelOutbound.setDataType(dataType);
+    public void setOutboundProtocol(String protocol) {
+        templatePanelOutbound.setProtocol(protocol);
     }
 
-    public String getInboundDataType() {
-        return templatePanelInbound.getDataType();
+    public String getInboundProtocol() {
+        return templatePanelInbound.getProtocol();
     }
 
-    public String getOutboundDataType() {
-        return templatePanelOutbound.getDataType();
+    public String getOutboundProtocol() {
+        return templatePanelOutbound.getProtocol();
     }
 
-    public DataTypeProperties getInboundDataProperties() {
+    public Properties getInboundDataProperties() {
         return templatePanelInbound.getDataProperties();
     }
 
-    public DataTypeProperties getOutboundDataProperties() {
+    public Properties getOutboundDataProperties() {
         return templatePanelOutbound.getDataProperties();
     }
 
-    public void setInboundDataProperties(DataTypeProperties p) {
+    public void setInboundDataProperties(Properties p) {
         templatePanelInbound.setDataProperties(p);
     }
 
-    public void setOutboundDataProperties(DataTypeProperties p) {
+    public void setOutboundDataProperties(Properties p) {
         templatePanelOutbound.setDataProperties(p);
     }
 

@@ -1,7 +1,7 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
  * http://www.mirthcorp.com
- * 
+ *
  * The software in this package is published under the terms of the MPL
  * license a copy of which has been included with this distribution in
  * the LICENSE.txt file.
@@ -34,7 +34,6 @@ public class MirthTimePicker extends JSpinner {
     private DateFormatter formatter;
     private final JSpinner spinner;
     private Frame parent;
-    private boolean saveEnabled = true;
 
     public MirthTimePicker() {
         init("hh:mm aa", Calendar.MINUTE);
@@ -59,15 +58,15 @@ public class MirthTimePicker extends JSpinner {
 
         tf.addKeyListener(new KeyListener() {
 
-            public void keyTyped(KeyEvent e) {}
-
-            public void keyPressed(KeyEvent e) {
-                if (saveEnabled) {
-                    parent.setSaveEnabled(true);
-                }
+            public void keyTyped(KeyEvent e) {
             }
 
-            public void keyReleased(KeyEvent e) {}
+            public void keyPressed(KeyEvent e) {
+                parent.setSaveEnabled(true);
+            }
+
+            public void keyReleased(KeyEvent e) {
+            }
         });
 
         DefaultFormatterFactory factory = (DefaultFormatterFactory) tf.getFormatterFactory();
@@ -78,25 +77,16 @@ public class MirthTimePicker extends JSpinner {
         this.addChangeListener(new ChangeListener() {
 
             public void stateChanged(ChangeEvent event) {
-                if (saveEnabled) {
-                    parent.setSaveEnabled(true);
-                }
+                parent.setSaveEnabled(true);
             }
         });
-    }
-
-    public void setSaveEnabled(boolean saveEnabled) {
-        this.saveEnabled = saveEnabled;
     }
 
     public void setDate(String date) {
 
         try {
             this.setValue(formatter.stringToValue(date));
-
-            if (saveEnabled) {
-                parent.setSaveEnabled(false);
-            }
+            parent.setSaveEnabled(false);
         } catch (ParseException e) {
         }
     }

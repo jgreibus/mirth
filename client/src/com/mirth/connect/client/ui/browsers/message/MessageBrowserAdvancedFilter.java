@@ -1,7 +1,7 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
  * http://www.mirthcorp.com
- * 
+ *
  * The software in this package is published under the terms of the MPL
  * license a copy of which has been included with this distribution in
  * the LICENSE.txt file.
@@ -9,469 +9,176 @@
 
 package com.mirth.connect.client.ui.browsers.message;
 
-import java.awt.Component;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.prefs.Preferences;
-
-import javax.swing.DefaultComboBoxModel;
-import javax.swing.DefaultListModel;
-import javax.swing.JList;
-import javax.swing.JTable;
-import javax.swing.ListSelectionModel;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableCellEditor;
-import javax.swing.table.TableColumn;
-
-import org.apache.commons.lang3.StringUtils;
-import org.jdesktop.swingx.decorator.HighlighterFactory;
-
-import com.mirth.connect.client.ui.Frame;
-import com.mirth.connect.client.ui.Mirth;
 import com.mirth.connect.client.ui.UIConstants;
-import com.mirth.connect.client.ui.components.ItemSelectionTable;
-import com.mirth.connect.client.ui.components.ItemSelectionTableModel;
-import com.mirth.connect.client.ui.components.MirthComboBoxTableCellEditor;
-import com.mirth.connect.client.ui.components.MirthComboBoxTableCellRenderer;
-import com.mirth.connect.client.ui.components.MirthFieldConstraints;
-import com.mirth.connect.client.ui.components.MirthTable;
-import com.mirth.connect.donkey.model.channel.MetaDataColumn;
-import com.mirth.connect.donkey.model.channel.MetaDataColumnException;
-import com.mirth.connect.donkey.model.channel.MetaDataColumnType;
-import com.mirth.connect.donkey.model.message.ContentType;
-import com.mirth.connect.model.filters.MessageFilter;
-import com.mirth.connect.model.filters.elements.ContentSearchElement;
-import com.mirth.connect.model.filters.elements.MetaDataSearchElement;
-import com.mirth.connect.model.filters.elements.MetaDataSearchOperator;
+import java.awt.Dimension;
+import java.awt.Point;
+
+import com.mirth.connect.model.MessageObject;
 
 public class MessageBrowserAdvancedFilter extends javax.swing.JDialog {
-    private Frame parent;
-    private static final int CONTENT_TYPE_COLUMN_WIDTH = 120;
-    private static final int METADATA_NAME_COLUMN_WIDTH = 140;
-    private static final int METADATA_OPERATOR_COLUMN_WIDTH = 90;
-    private static final int METADATA_CASE_COLUMN_WIDTH = 75;
-    private static Map<String, Object> cachedSettings;
-    private static Map<String, MetaDataColumn> cachedMetaDataColumns;
 
-    private MessageBrowser messageBrowser;
+    private String connector = "";
+    private String messageSource = "";
+    private String messageType = "";
+    private String containingKeyword = "";
+    private String messageId = "";
+    private String correlationId = "";
+    private boolean includeRawMessage = false;
+    private boolean includeTransformedMessage = false;
+    private boolean includeEncodedMessage = false;
+    private boolean includeErrors = false;
+    private String protocol = UIConstants.ALL_OPTION;
 
     /** Creates new form MessageBrowserAdvancedFilter */
-    public MessageBrowserAdvancedFilter(com.mirth.connect.client.ui.Frame parent, MessageBrowser messageBrowser, String title, boolean modal, boolean allowSearch) {
+    public MessageBrowserAdvancedFilter(com.mirth.connect.client.ui.Frame parent, String title, boolean modal, boolean allowSearch) {
         super(parent, title, modal);
-        this.parent = parent;
-        this.messageBrowser = messageBrowser;
+
         initComponents();
-        initComponentsManual();
-        initContentSearchTable();
-        connectorTable = new ItemSelectionTable();
-        cachedSettings = new HashMap<String, Object>();
-        cachedMetaDataColumns = new HashMap<String, MetaDataColumn>();
-        jScrollPane6.setViewportView(connectorTable);
-    }
+        getContentPane().setBackground(new java.awt.Color(255, 255, 255));
 
-    private void initComponentsManual() {
-        // restrict the message ID and import ID fields to integer input only
-        messageIdLowerField.setDocument(new MirthFieldConstraints(19, false, false, true));
-        messageIdUpperField.setDocument(new MirthFieldConstraints(19, false, false, true));
-        importIdLowerField.setDocument(new MirthFieldConstraints(19, false, false, true));
-        importIdUpperField.setDocument(new MirthFieldConstraints(19, false, false, true));
-    }
+        pack();
+        Dimension dlgSize = getPreferredSize();
+        Dimension frmSize = parent.getSize();
+        Point loc = parent.getLocation();
 
-    private void initContentSearchTable() {
-        contentSearchTable.setModel(new DefaultTableModel(new Object[][] {}, new String[] {
-                "Content Type", "Contains" }) {
-            public boolean isCellEditable(int rowIndex, int columnIndex) {
-                return true;
-            }
-        });
-
-        contentSearchTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        contentSearchTable.setDragEnabled(false);
-        contentSearchTable.setSortable(false);
-        contentSearchTable.getTableHeader().setReorderingAllowed(false);
-
-        contentSearchTable.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
-            public void valueChanged(ListSelectionEvent evt) {
-                deleteContentSearchButton.setEnabled(getSelectedRow(contentSearchTable) != -1);
-            }
-        });
-
-        if (Preferences.userNodeForPackage(Mirth.class).getBoolean("highlightRows", true)) {
-            contentSearchTable.setHighlighters(HighlighterFactory.createAlternateStriping(UIConstants.HIGHLIGHTER_COLOR, UIConstants.BACKGROUND_COLOR));
-        }
-
-        TableColumn column = contentSearchTable.getColumnModel().getColumn(0);
-        column.setCellRenderer(new MirthComboBoxTableCellRenderer(ContentType.getMessageTypes()));
-        column.setCellEditor(new MirthComboBoxTableCellEditor(contentSearchTable, ContentType.getMessageTypes(), 1, false, null));
-        column.setMinWidth(CONTENT_TYPE_COLUMN_WIDTH);
-        column.setMaxWidth(CONTENT_TYPE_COLUMN_WIDTH);
-
-        deleteContentSearchButton.setEnabled(false);
-    }
-
-    private void initMetaDataSearchTable() {
-        metaDataSearchTable.setModel(new DefaultTableModel(new Object[][] {}, new String[] {
-                "Metadata", "Operator", "Value", "Ignore Case" }) {
-            public boolean isCellEditable(int rowIndex, int columnIndex) {
-                if (columnIndex == 3 && cachedMetaDataColumns.get(getValueAt(rowIndex, 0)).getType() != MetaDataColumnType.STRING) {
-                    return false;
-                }
-
-                return true;
-            }
-
-            @Override
-            public void setValueAt(Object value, int row, int column) {
-                int metaDataColumnIndex = findColumn("Metadata");
-                int operatorColumnIndex = findColumn("Operator");
-                int valueColumnIndex = findColumn("Value");
-
-                if (column == valueColumnIndex) {
-                    MetaDataColumn metaDataColumn = cachedMetaDataColumns.get(getValueAt(row, metaDataColumnIndex));
-
-                    if (StringUtils.isNotEmpty((String) value)) {
-                        try {
-                            metaDataColumn.getType().castValue(value);
-                        } catch (MetaDataColumnException e) {
-                            parent.alertError(parent, "Invalid value for column type " + metaDataColumn.getType().toString());
-                            return;
-                        }
-                    }
-                } else if (column == metaDataColumnIndex) {
-                    if (!value.equals(getValueAt(row, metaDataColumnIndex))) {
-                        MetaDataSearchOperator operator = MetaDataSearchOperator.EQUAL;
-
-                        super.setValueAt(operator, row, operatorColumnIndex);
-                    }
-
-                    super.setValueAt("", row, valueColumnIndex);
-                }
-                super.setValueAt(value, row, column);
-            }
-        });
-
-        metaDataSearchTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        metaDataSearchTable.setDragEnabled(false);
-        metaDataSearchTable.setSortable(false);
-        metaDataSearchTable.getTableHeader().setReorderingAllowed(false);
-
-        addMetaDataSearchButton.setEnabled(!messageBrowser.getMetaDataColumns().isEmpty());
-
-        metaDataSearchTable.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
-            public void valueChanged(ListSelectionEvent evt) {
-                deleteMetaDataSearchButton.setEnabled(getSelectedRow(metaDataSearchTable) != -1);
-            }
-        });
-
-        if (Preferences.userNodeForPackage(Mirth.class).getBoolean("highlightRows", true)) {
-            metaDataSearchTable.setHighlighters(HighlighterFactory.createAlternateStriping(UIConstants.HIGHLIGHTER_COLOR, UIConstants.BACKGROUND_COLOR));
-        }
-
-        List<MetaDataColumn> metaDataColumns = messageBrowser.getMetaDataColumns();
-        cachedMetaDataColumns.clear();
-
-        String[] metaDataNames = new String[metaDataColumns.size()];
-        for (int i = 0; i < metaDataColumns.size(); i++) {
-            String columnName = metaDataColumns.get(i).getName();
-            metaDataNames[i] = columnName;
-            cachedMetaDataColumns.put(columnName, metaDataColumns.get(i));
-        }
-
-        TableColumn metaDataColumn = metaDataSearchTable.getColumnModel().getColumn(0);
-        metaDataColumn.setCellRenderer(new MirthComboBoxTableCellRenderer(metaDataNames));
-        metaDataColumn.setCellEditor(new MirthComboBoxTableCellEditor(metaDataSearchTable, metaDataNames, 1, false, null));
-        metaDataColumn.setMinWidth(METADATA_NAME_COLUMN_WIDTH);
-        metaDataColumn.setMaxWidth(METADATA_NAME_COLUMN_WIDTH * 2);
-        metaDataColumn.setPreferredWidth(METADATA_NAME_COLUMN_WIDTH);
-
-        // Need to create this custom editor since the combo box values are dynamic based on metadata column type. 
-        MirthComboBoxTableCellEditor operatorEditor = new MirthComboBoxTableCellEditor(metaDataSearchTable, MetaDataSearchOperator.values(), 1, false, null) {
-
-            public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
-
-                MetaDataColumn metaDataColumn = cachedMetaDataColumns.get(table.getValueAt(row, 0));
-
-                comboBox.setModel(new DefaultComboBoxModel(MetaDataSearchOperator.valuesForColumnType(metaDataColumn.getType())));
-                
-                return super.getTableCellEditorComponent(table, value, isSelected, row, column);
-            }
-            
-        };
-
-        TableColumn operatorColumn = metaDataSearchTable.getColumnModel().getColumn(1);
-        operatorColumn.setCellRenderer(new MirthComboBoxTableCellRenderer(MetaDataSearchOperator.values()));
-        operatorColumn.setCellEditor(operatorEditor);
-        operatorColumn.setMinWidth(METADATA_OPERATOR_COLUMN_WIDTH);
-        operatorColumn.setMaxWidth(METADATA_OPERATOR_COLUMN_WIDTH);
-
-        TableColumn caseColumn = metaDataSearchTable.getColumnModel().getColumn(3);
-        caseColumn.setMinWidth(METADATA_CASE_COLUMN_WIDTH);
-        caseColumn.setMaxWidth(METADATA_CASE_COLUMN_WIDTH);
-
-        deleteMetaDataSearchButton.setEnabled(false);
-    }
-
-    public void loadChannel() {
-        connectorTable.setModel(new ItemSelectionTableModel<Integer, String>(messageBrowser.getConnectors(), null, "Current Connector Name", "Included", "Id"));
-
-        initMetaDataSearchTable();
-    }
-
-    protected void applySelectionsToFilter(MessageFilter messageFilter) {
-        List<Integer> selectedMetaDataIds = getMetaDataIds(true);
-
-        // Included and Excluded metadata Ids will both be null if everything is selected.
-        if (selectedMetaDataIds != null) {
-            if (selectedMetaDataIds.contains(null)) {
-                messageFilter.setExcludedMetaDataIds(getMetaDataIds(false));
-            } else {
-                messageFilter.setIncludedMetaDataIds(selectedMetaDataIds);
-            }
-        }
-
-        String id = messageIdLowerField.getText();
-        if (!StringUtils.isEmpty(id)) {
-            messageFilter.setMessageIdLower(Long.parseLong(id));
-        }
-
-        id = messageIdUpperField.getText();
-        if (!StringUtils.isEmpty(id)) {
-            messageFilter.setMessageIdUpper(Long.parseLong(id));
-        }
-
-        id = importIdLowerField.getText();
-        if (!StringUtils.isEmpty(id)) {
-            messageFilter.setImportIdLower(Long.parseLong(id));
-        }
-
-        id = importIdUpperField.getText();
-        if (!StringUtils.isEmpty(id)) {
-            messageFilter.setImportIdUpper(Long.parseLong(id));
-        }
-
-        messageFilter.setServerId(getServerId());
-
-        Integer sendAttemptsLower = (Integer) this.sendAttemptsLower.getValue();
-        Integer sendAttemptsUpper = this.sendAttemptsUpper.getIntegerValue();
-
-        // There is no need to test this criteria if it is zero or less, because this should be the lowest value allowed.
-        if (sendAttemptsLower <= 0) {
-            sendAttemptsLower = null;
-        }
-
-        if (sendAttemptsLower != null && sendAttemptsUpper != null && sendAttemptsLower > sendAttemptsUpper) {
-            sendAttemptsLower = null;
-            sendAttemptsUpper = null;
-        }
-
-        messageFilter.setAttachment(attachmentCheckBox.isSelected());
-        messageFilter.setSendAttemptsLower(sendAttemptsLower);
-        messageFilter.setSendAttemptsUpper(sendAttemptsUpper);
-        messageFilter.setContentSearch(getContentSearch(messageFilter.getQuickSearch()));
-
-        try {
-            messageFilter.setMetaDataSearch(getMetaDataSearch());
-        } catch (MetaDataColumnException e) {
-            parent.alertError(parent.messageBrowser, "Invalid value for column: " + e.getMetaDataColumn().getName());
-        }
-    }
-
-    private List<Integer> getMetaDataIds(boolean selected) {
-        List<Integer> selectedMetaDataIds = ((ItemSelectionTableModel<Integer, String>) connectorTable.getModel()).getKeys(selected);
-        if (selectedMetaDataIds.size() == connectorTable.getRowCount()) {
-            return null;
-        }
-        return selectedMetaDataIds;
-    }
-
-    private String getServerId() {
-        String serverId = serverIdField.getText();
-        return (serverId.length() == 0) ? null : serverId;
-    }
-
-    private List<ContentSearchElement> getContentSearch(String quickSearch) {
-        List<ContentSearchElement> contentSearch = new ArrayList<ContentSearchElement>();
-        Map<ContentType, List<String>> contentSearchMap = new HashMap<ContentType, List<String>>();
-        DefaultTableModel model = ((DefaultTableModel) contentSearchTable.getModel());
-        int rowCount = model.getRowCount();
-
-        for (int i = 0; i < rowCount; i++) {
-            ContentType contentType = (ContentType) model.getValueAt(i, 0);
-            String searchText = (String) model.getValueAt(i, 1);
-
-            if (searchText.length() > 0) {
-                List<String> searchList = contentSearchMap.get(contentType);
-                
-                if (searchList == null) {
-                    searchList = new ArrayList<String>();
-                    contentSearchMap.put(contentType, searchList);
-                }
-                searchList.add(searchText);
-            }
-        }
-        
-        for (ContentType contentType : ContentType.getMessageTypes()) {
-            if (contentSearchMap.containsKey(contentType)) {
-                contentSearch.add(new ContentSearchElement(contentType.getContentTypeCode(), contentSearchMap.get(contentType)));
-            } else if (quickSearch != null) {
-                /*
-                 * If quick search is active, always add the content type to the content search so
-                 * the content is joined for quick search.
-                 */
-                contentSearch.add(new ContentSearchElement(contentType.getContentTypeCode(), new ArrayList<String>()));
-            }
-        }
-
-        return contentSearch;
-    }
-
-    private List<MetaDataSearchElement> getMetaDataSearch() throws MetaDataColumnException {
-        List<MetaDataSearchElement> metaDataSearch = new ArrayList<MetaDataSearchElement>();
-
-        DefaultTableModel model = ((DefaultTableModel) metaDataSearchTable.getModel());
-        int rowCount = model.getRowCount();
-
-        if (rowCount == 0) {
-            return null;
+        if ((frmSize.width == 0 && frmSize.height == 0) || (loc.x == 0 && loc.y == 0)) {
+            setLocationRelativeTo(null);
         } else {
-            for (int i = 0; i < rowCount; i++) {
-                String metaDataName = (String) model.getValueAt(i, 0);
-                String operator = ((MetaDataSearchOperator) model.getValueAt(i, 1)).toFullString();
-                String searchText = (String) model.getValueAt(i, 2);
-                Boolean ignoreCase = (Boolean) model.getValueAt(i, 3);
-
-                if (StringUtils.isNotEmpty(searchText)) {
-                    MetaDataColumn column = cachedMetaDataColumns.get(metaDataName);
-                    metaDataSearch.add(new MetaDataSearchElement(metaDataName, operator, column.getType().castValue(searchText), ignoreCase));
-                }
-            }
-
-            return metaDataSearch;
+            setLocation((frmSize.width - dlgSize.width) / 2 + loc.x, (frmSize.height - dlgSize.height) / 2 + loc.y);
         }
+
+        setResizable(false);
+
+        String[] protocolValues = new String[MessageObject.Protocol.values().length + 1];
+        protocolValues[0] = UIConstants.ALL_OPTION;
+        for (int i = 1; i < protocolValues.length; i++) {
+            protocolValues[i] = MessageObject.Protocol.values()[i - 1].toString();
+        }
+
+        protocolComboBox.setModel(new javax.swing.DefaultComboBoxModel(protocolValues));
+
+        reset(allowSearch);
     }
 
-    public void setVisible(boolean visible) {
-        if (visible) {
-            saveSelections();
-        }
+    public void reset(boolean allowSearch) {
+        connector = "";
+        messageSource = "";
+        messageType = "";
+        containingKeyword = "";
+        messageId = "";
+        correlationId = "";
+        includeRawMessage = false;
+        includeTransformedMessage = false;
+        includeEncodedMessage = false;
+        includeErrors = false;
+        protocol = UIConstants.ALL_OPTION;
 
-        super.setVisible(visible);
+        connectorField.setText(connector);
+        messageSourceField.setText(messageSource);
+        messageTypeField.setText(messageType);
+        containing.setText(containingKeyword);
+        messageIdField.setText(messageId);
+        correlationIdField.setText(correlationId);
+        rawMessageCheckBox.setSelected(includeRawMessage);
+        transformedMessageCheckBox.setSelected(includeTransformedMessage);
+        encodedMessageCheckBox.setSelected(includeEncodedMessage);
+        errorsCheckBox.setSelected(includeErrors);
+        protocolComboBox.setSelectedIndex(0);
+        
+        rawMessageCheckBox.setEnabled(allowSearch);
+        transformedMessageCheckBox.setEnabled(allowSearch);
+        encodedMessageCheckBox.setEnabled(allowSearch);
     }
 
-    public void saveSelections() {
-        DefaultTableModel contentSearchModel = ((DefaultTableModel) contentSearchTable.getModel());
-        DefaultTableModel metaDataSearchModel = ((DefaultTableModel) metaDataSearchTable.getModel());
-        ItemSelectionTableModel<Integer, String> connectorModel = ((ItemSelectionTableModel<Integer, String>) connectorTable.getModel());
+    public void setFieldValues(String connector, String messageSource, String messageType, String containingKeyword, String messageId, String correlationId,
+            boolean includeRawMessage, boolean includeTransformedMessage, boolean includeEncodedMessage, boolean includeErrors,
+            String protocol) {
 
-        cachedSettings.clear();
+        this.connector = connector;
+        this.messageSource = messageSource;
+        this.messageType = messageType;
+        this.containingKeyword = containingKeyword;
+        this.messageId = messageId;
+        this.correlationId = correlationId;
+        this.includeRawMessage = includeRawMessage;
+        this.includeTransformedMessage = includeTransformedMessage;
+        this.includeEncodedMessage = includeEncodedMessage;
+        this.includeErrors = includeErrors;
+        this.protocol = protocol;
 
-        cachedSettings.put("messageIdLowerField", messageIdLowerField.getText());
-        cachedSettings.put("messageIdUpperField", messageIdUpperField.getText());
-        cachedSettings.put("importIdLowerField", importIdLowerField.getText());
-        cachedSettings.put("importIdUpperField", importIdUpperField.getText());
-        cachedSettings.put("serverIdField", serverIdField.getText());
-        cachedSettings.put("sendAttemptsLower", sendAttemptsLower.getValue());
-        cachedSettings.put("sendAttemptsUpper", sendAttemptsUpper.getValue());
-        cachedSettings.put("attachment", attachmentCheckBox.isSelected());
+        connectorField.setText(this.connector);
+        messageSourceField.setText(this.messageSource);
+        messageTypeField.setText(this.messageType);
+        containing.setText(this.containingKeyword);
+        messageIdField.setText(this.messageId);
+        correlationIdField.setText(this.correlationId);
+        rawMessageCheckBox.setSelected(this.includeRawMessage);
+        transformedMessageCheckBox.setSelected(this.includeTransformedMessage);
+        encodedMessageCheckBox.setSelected(this.includeEncodedMessage);
+        errorsCheckBox.setSelected(this.includeErrors);
 
-        Object[][] contentSearchData = new Object[contentSearchModel.getRowCount()][contentSearchModel.getColumnCount()];
-        for (int row = 0; row < contentSearchModel.getRowCount(); row++) {
-            for (int column = 0; column < contentSearchModel.getColumnCount(); column++) {
-                contentSearchData[row][column] = contentSearchModel.getValueAt(row, column);
-            }
+        if (this.protocol.equals(UIConstants.ALL_OPTION)) {
+            protocolComboBox.setSelectedIndex(0);
+        } else if (this.protocol.equals("HL7V2")) {
+            protocolComboBox.setSelectedIndex(1);
+        } else if (this.protocol.equals("X12")) {
+            protocolComboBox.setSelectedIndex(2);
+        } else if (this.protocol.equals("XML")) {
+            protocolComboBox.setSelectedIndex(3);
+        } else if (this.protocol.equals("HL7V3")) {
+            protocolComboBox.setSelectedIndex(4);
+        } else if (this.protocol.equals("EDI")) {
+            protocolComboBox.setSelectedIndex(5);
+        } else if (this.protocol.equals("NCPDP")) {
+            protocolComboBox.setSelectedIndex(6);
+        } else if (this.protocol.equals("DICOM")) {
+            protocolComboBox.setSelectedIndex(7);
         }
-        cachedSettings.put("contentSearchTable", contentSearchData);
 
-        Object[][] metaDataSearchData = new Object[metaDataSearchModel.getRowCount()][metaDataSearchModel.getColumnCount()];
-        for (int row = 0; row < metaDataSearchModel.getRowCount(); row++) {
-            for (int column = 0; column < metaDataSearchModel.getColumnCount(); column++) {
-                metaDataSearchData[row][column] = metaDataSearchModel.getValueAt(row, column);
-            }
-        }
-        cachedSettings.put("metaDataSearchTable", metaDataSearchData);
-
-        Boolean[] connectorData = new Boolean[connectorModel.getRowCount()];
-        for (int row = 0; row < connectorModel.getRowCount(); row++) {
-            connectorData[row] = (Boolean) connectorModel.getValueAt(row, ItemSelectionTableModel.CHECKBOX_COLUMN);
-        }
-
-        cachedSettings.put("connectorTable", connectorData);
     }
 
-    public void loadSelections() {
-        DefaultTableModel contentSearchModel = ((DefaultTableModel) contentSearchTable.getModel());
-        DefaultTableModel metaDataSearchModel = ((DefaultTableModel) metaDataSearchTable.getModel());
-        ItemSelectionTableModel<Integer, String> connectorModel = ((ItemSelectionTableModel<Integer, String>) connectorTable.getModel());
-        messageIdLowerField.setText((String) cachedSettings.get("messageIdLowerField"));
-        messageIdUpperField.setText((String) cachedSettings.get("messageIdUpperField"));
-        importIdLowerField.setText((String) cachedSettings.get("importIdLowerField"));
-        importIdUpperField.setText((String) cachedSettings.get("importIdUpperField"));
-        serverIdField.setText((String) cachedSettings.get("serverIdField"));
-        sendAttemptsLower.setValue(cachedSettings.get("sendAttemptsLower"));
-        sendAttemptsUpper.setValue(cachedSettings.get("sendAttemptsUpper"));
-        attachmentCheckBox.setSelected((Boolean) cachedSettings.get("attachment"));
-
-        contentSearchModel.setNumRows(0);
-        Object[][] contentSearchData = (Object[][]) cachedSettings.get("contentSearchTable");
-        for (int row = 0; row < contentSearchData.length; row++) {
-            contentSearchModel.addRow(contentSearchData[row]);
-        }
-
-        metaDataSearchModel.setNumRows(0);
-        Object[][] metaDataSearchData = (Object[][]) cachedSettings.get("metaDataSearchTable");
-        for (int row = 0; row < metaDataSearchData.length; row++) {
-            metaDataSearchModel.addRow(metaDataSearchData[row]);
-        }
-
-        Boolean[] connectorData = (Boolean[]) cachedSettings.get("connectorTable");
-        for (int row = 0; row < connectorModel.getRowCount(); row++) {
-            connectorModel.setValueAt(connectorData[row], row, ItemSelectionTableModel.CHECKBOX_COLUMN);
-        }
-
-        cachedSettings.clear();
+    public String getConnector() {
+        return connector;
     }
 
-    public void resetSelections() {
-        messageIdLowerField.setText("");
-        messageIdUpperField.setText("");
-        importIdLowerField.setText("");
-        importIdUpperField.setText("");
-        serverIdField.setText("");
-        sendAttemptsLower.setValue(0);
-        sendAttemptsUpper.setValue("");
-        attachmentCheckBox.setSelected(false);
-        ((DefaultTableModel) contentSearchTable.getModel()).setNumRows(0);
-        ((DefaultTableModel) metaDataSearchTable.getModel()).setNumRows(0);
-        ((ItemSelectionTableModel<Integer, String>) connectorTable.getModel()).selectAllKeys();
+    public String getMessageSource() {
+        return messageSource;
     }
 
-    public Boolean hasAdvancedCriteria() {
-        Boolean hasAdvancedCriteria = false;
-
-        ItemSelectionTableModel<Integer, String> model = ((ItemSelectionTableModel<Integer, String>) connectorTable.getModel());
-
-        if (StringUtils.isNotEmpty(messageIdLowerField.getText()) || StringUtils.isNotEmpty(messageIdUpperField.getText()) || StringUtils.isNotEmpty(importIdLowerField.getText()) || StringUtils.isNotEmpty(importIdUpperField.getText()) || StringUtils.isNotEmpty(serverIdField.getText()) || !sendAttemptsLower.getValue().equals(0) || StringUtils.isNotEmpty(sendAttemptsUpper.getValue().toString()) || attachmentCheckBox.isSelected() || ((DefaultTableModel) contentSearchTable.getModel()).getRowCount() != 0 || ((DefaultTableModel) metaDataSearchTable.getModel()).getRowCount() != 0 || model.getKeys(true).size() != model.getRowCount()) {
-            hasAdvancedCriteria = true;
-        }
-
-        return hasAdvancedCriteria;
+    public String getMessageType() {
+        return messageType;
     }
 
-    private void stopEditing() {
-        // if the user had typed in a value in the content search table, close the cell editor so that any value that was entered will be included in the search
-        TableCellEditor cellEditor = contentSearchTable.getCellEditor();
-        if (cellEditor != null) {
-            cellEditor.stopCellEditing();
-        }
+    public String getContainingKeyword() {
+        return containingKeyword;
+    }
 
-        cellEditor = metaDataSearchTable.getCellEditor();
-        if (cellEditor != null) {
-            cellEditor.stopCellEditing();
-        }
+    public String getMessageId() {
+        return messageId;
+    }
+    
+    public String getCorrelationId() {
+        return correlationId;
+    }
+    
+    public boolean isIncludeRawMessage() {
+        return includeRawMessage;
+    }
+
+    public boolean isIncludeTransformedMessage() {
+        return includeTransformedMessage;
+    }
+
+    public boolean isIncludeEncodedMessage() {
+        return includeEncodedMessage;
+    }
+    
+    public boolean isIncludeErrors() {
+        return includeErrors;
+    }
+
+    public String getProtocol() {
+        return protocol;
     }
 
     /** This method is called from within the constructor to
@@ -482,515 +189,231 @@ public class MessageBrowserAdvancedFilter extends javax.swing.JDialog {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        jScrollPane2 = new javax.swing.JScrollPane();
-        mirthTable1 = new com.mirth.connect.client.ui.components.MirthTable();
-        jScrollPane3 = new javax.swing.JScrollPane();
-        mirthTable2 = new com.mirth.connect.client.ui.components.MirthTable();
-        jScrollPane5 = new javax.swing.JScrollPane();
-        mirthTable3 = new com.mirth.connect.client.ui.components.MirthTable();
-        containerPanel = new javax.swing.JPanel();
-        messageIdLabel = new javax.swing.JLabel();
-        messageIdLowerField = new com.mirth.connect.client.ui.components.MirthTextField();
-        serverIdField = new com.mirth.connect.client.ui.components.MirthTextField();
-        serverIdLabel = new javax.swing.JLabel();
-        jLabel5 = new javax.swing.JLabel();
-        jPanel1 = new javax.swing.JPanel();
-        cancelButton = new com.mirth.connect.client.ui.components.MirthButton();
-        okButton = new com.mirth.connect.client.ui.components.MirthButton();
-        jSeparator1 = new javax.swing.JSeparator();
-        jScrollPane4 = new javax.swing.JScrollPane();
-        contentSearchTable = new com.mirth.connect.client.ui.components.MirthTable();
-        addContentSearchButton = new com.mirth.connect.client.ui.components.MirthButton();
-        deleteContentSearchButton = new com.mirth.connect.client.ui.components.MirthButton();
-        sendAttemptsUpper = new com.mirth.connect.client.ui.components.MirthBlankableSpinner();
-        jScrollPane6 = new javax.swing.JScrollPane();
-        connectorTable = new com.mirth.connect.client.ui.components.MirthTable();
-        connectorSelectAll = new javax.swing.JLabel();
-        connectorDeselectAll = new javax.swing.JLabel();
-        jLabel7 = new javax.swing.JLabel();
-        sendAttemptsLower = new javax.swing.JSpinner();
-        addMetaDataSearchButton = new com.mirth.connect.client.ui.components.MirthButton();
-        jScrollPane7 = new javax.swing.JScrollPane();
-        metaDataSearchTable = new com.mirth.connect.client.ui.components.MirthTable();
-        deleteMetaDataSearchButton = new com.mirth.connect.client.ui.components.MirthButton();
         jLabel1 = new javax.swing.JLabel();
-        attachmentCheckBox = new com.mirth.connect.client.ui.components.MirthCheckBox();
-        importIdLabel = new javax.swing.JLabel();
-        importIdLowerField = new com.mirth.connect.client.ui.components.MirthTextField();
+        connectorField = new com.mirth.connect.client.ui.components.MirthTextField();
         jLabel4 = new javax.swing.JLabel();
-        messageIdUpperField = new com.mirth.connect.client.ui.components.MirthTextField();
-        jLabel6 = new javax.swing.JLabel();
-        importIdUpperField = new com.mirth.connect.client.ui.components.MirthTextField();
+        messageTypeField = new com.mirth.connect.client.ui.components.MirthTextField();
+        jLabel7 = new javax.swing.JLabel();
+        messageSourceField = new com.mirth.connect.client.ui.components.MirthTextField();
+        jLabel10 = new javax.swing.JLabel();
+        containing = new com.mirth.connect.client.ui.components.MirthTextField();
+        jLabel9 = new javax.swing.JLabel();
+        rawMessageCheckBox = new com.mirth.connect.client.ui.components.MirthCheckBox();
+        transformedMessageCheckBox = new com.mirth.connect.client.ui.components.MirthCheckBox();
+        encodedMessageCheckBox = new com.mirth.connect.client.ui.components.MirthCheckBox();
         jLabel8 = new javax.swing.JLabel();
-
-        mirthTable1.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null}
-            },
-            new String [] {
-                "Title 1", "Title 2", "Title 3", "Title 4"
-            }
-        ));
-        jScrollPane2.setViewportView(mirthTable1);
-
-        mirthTable2.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null}
-            },
-            new String [] {
-                "Title 1", "Title 2", "Title 3", "Title 4"
-            }
-        ));
-        jScrollPane3.setViewportView(mirthTable2);
-
-        mirthTable3.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null},
-                {null, null, null, null}
-            },
-            new String [] {
-                "Title 1", "Title 2", "Title 3", "Title 4"
-            }
-        ));
-        jScrollPane5.setViewportView(mirthTable3);
+        protocolComboBox = new javax.swing.JComboBox();
+        advSearchOKButton = new javax.swing.JButton();
+        advSearchCancelButton = new javax.swing.JButton();
+        errorsCheckBox = new com.mirth.connect.client.ui.components.MirthCheckBox();
+        messageIdLabel = new javax.swing.JLabel();
+        messageIdField = new com.mirth.connect.client.ui.components.MirthTextField();
+        correlationIdField = new com.mirth.connect.client.ui.components.MirthTextField();
+        correlationIdLabel = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
-        addWindowListener(new java.awt.event.WindowAdapter() {
-            public void windowClosing(java.awt.event.WindowEvent evt) {
-                formWindowClosing(evt);
-            }
-        });
 
-        containerPanel.setBackground(new java.awt.Color(255, 255, 255));
+        jLabel1.setText("Connector:");
 
-        messageIdLabel.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
-        messageIdLabel.setText("Message Id:");
+        jLabel4.setText("Message Type:");
 
-        serverIdField.setToolTipText("<html>The GUID of the message in the Mirth Connect database.<br>This can be retrieved from the Meta Data tab in the Message Browser.</html>");
+        jLabel7.setText("Source:");
 
-        serverIdLabel.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
-        serverIdLabel.setText("Server Id:");
+        jLabel10.setText("Containing:");
 
-        jLabel5.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
-        jLabel5.setText("Send Attempts:");
+        jLabel9.setText(" in ");
 
-        jPanel1.setBackground(new java.awt.Color(255, 255, 255));
+        rawMessageCheckBox.setBackground(new java.awt.Color(255, 255, 255));
+        rawMessageCheckBox.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        rawMessageCheckBox.setText("Raw");
+        rawMessageCheckBox.setMargin(new java.awt.Insets(0, 0, 0, 0));
 
-        cancelButton.setText("Cancel");
-        cancelButton.addActionListener(new java.awt.event.ActionListener() {
+        transformedMessageCheckBox.setBackground(new java.awt.Color(255, 255, 255));
+        transformedMessageCheckBox.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        transformedMessageCheckBox.setText("Transformed");
+        transformedMessageCheckBox.setMargin(new java.awt.Insets(0, 0, 0, 0));
+
+        encodedMessageCheckBox.setBackground(new java.awt.Color(255, 255, 255));
+        encodedMessageCheckBox.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        encodedMessageCheckBox.setText("Encoded");
+        encodedMessageCheckBox.setMargin(new java.awt.Insets(0, 0, 0, 0));
+
+        jLabel8.setText("Protocol:");
+
+        protocolComboBox.setModel(new javax.swing.DefaultComboBoxModel(new String[] { "Item 1", "Item 2", "Item 3", "Item 4" }));
+
+        advSearchOKButton.setText("OK");
+        advSearchOKButton.setMaximumSize(new java.awt.Dimension(65, 23));
+        advSearchOKButton.setMinimumSize(new java.awt.Dimension(65, 23));
+        advSearchOKButton.setPreferredSize(new java.awt.Dimension(65, 23));
+        advSearchOKButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                cancelButtonActionPerformed(evt);
+                advSearchOKButtonActionPerformed(evt);
             }
         });
 
-        okButton.setText("OK");
-        okButton.addActionListener(new java.awt.event.ActionListener() {
+        advSearchCancelButton.setText("Cancel");
+        advSearchCancelButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                okButtonActionPerformed(evt);
+                advSearchCancelButtonActionPerformed(evt);
             }
         });
 
-        javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
-        jPanel1.setLayout(jPanel1Layout);
-        jPanel1Layout.setHorizontalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(jPanel1Layout.createSequentialGroup()
-                .addContainerGap(341, Short.MAX_VALUE)
-                .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(cancelButton, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE))
-            .addComponent(jSeparator1)
-        );
-        jPanel1Layout.setVerticalGroup(
-            jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel1Layout.createSequentialGroup()
-                .addGap(0, 0, Short.MAX_VALUE)
-                .addComponent(jSeparator1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(jPanel1Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(cancelButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-        );
+        errorsCheckBox.setBackground(new java.awt.Color(255, 255, 255));
+        errorsCheckBox.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
+        errorsCheckBox.setText("Errors");
+        errorsCheckBox.setMargin(new java.awt.Insets(0, 0, 0, 0));
 
-        contentSearchTable.setToolTipText("<html> \nSearch specific message content. This process could take a long time<br/>\ndepending on the amount of message content currently stored. Any message<br/>\ncontent that was encrypted by this channel will not be searchable. </html>");
-        jScrollPane4.setViewportView(contentSearchTable);
+        messageIdLabel.setText("Message ID:");
 
-        addContentSearchButton.setText("New");
-        addContentSearchButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                addContentSearchButtonActionPerformed(evt);
-            }
-        });
+        messageIdField.setToolTipText("<html>The GUID of the message in the Mirth Connect database.<br>This can be retrieved from the Meta Data tab in the Message Browser.</html>");
 
-        deleteContentSearchButton.setText("Delete");
-        deleteContentSearchButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                deleteContentSearchButtonActionPerformed(evt);
-            }
-        });
+        correlationIdField.setToolTipText("<html>The correlation GUID of the group of messages in the Mirth Connect database.<br>This can be retrieved from the Meta Data tab in the Message Browser.</html>");
 
-        connectorTable.setToolTipText("<html>\nInclude messages from the selected connectors. Connectors that were<br/>\nremoved from this channel are not available to select. Messages for removed<br/>\nconnectors will only be included if all connectors are selected. If a connector's<br/>\nname has changed, messages before the name change will still be included.\n</html>");
-        jScrollPane6.setViewportView(connectorTable);
-
-        connectorSelectAll.setForeground(java.awt.Color.blue);
-        connectorSelectAll.setText("<html><u>Select All</u></html>");
-        connectorSelectAll.setToolTipText("Select all connectors below.");
-        connectorSelectAll.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-        connectorSelectAll.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseReleased(java.awt.event.MouseEvent evt) {
-                connectorSelectAllMouseReleased(evt);
-            }
-        });
-
-        connectorDeselectAll.setForeground(java.awt.Color.blue);
-        connectorDeselectAll.setText("<html><u>Deselect All</u></html>");
-        connectorDeselectAll.setToolTipText("Deselect all connectors below.");
-        connectorDeselectAll.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-        connectorDeselectAll.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseReleased(java.awt.event.MouseEvent evt) {
-                connectorDeselectAllMouseReleased(evt);
-            }
-        });
-
-        jLabel7.setFont(new java.awt.Font("Lucida Grande", 0, 12)); // NOI18N
-        jLabel7.setText("|");
-
-        addMetaDataSearchButton.setText("New");
-        addMetaDataSearchButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                addMetaDataSearchButtonActionPerformed(evt);
-            }
-        });
-
-        metaDataSearchTable.setToolTipText("Search on custom metadata stored for this channel.");
-        jScrollPane7.setViewportView(metaDataSearchTable);
-
-        deleteMetaDataSearchButton.setText("Delete");
-        deleteMetaDataSearchButton.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                deleteMetaDataSearchButtonActionPerformed(evt);
-            }
-        });
-
-        jLabel1.setText("Has Attachment:");
-        jLabel1.setToolTipText("<html>\nIf this is not checked, messages with and without attachments will be retrieved.<br/>\nIf this is checked, only messages with attachments will be retrieved.\n</html>");
-
-        attachmentCheckBox.setBackground(new java.awt.Color(255, 255, 255));
-        attachmentCheckBox.setToolTipText("If checked, only messages with attachments will be included.");
-
-        importIdLabel.setHorizontalAlignment(javax.swing.SwingConstants.RIGHT);
-        importIdLabel.setText("Import Id:");
-
-        jLabel4.setText("-");
-
-        jLabel6.setText("-");
-
-        jLabel8.setText("-");
-
-        javax.swing.GroupLayout containerPanelLayout = new javax.swing.GroupLayout(containerPanel);
-        containerPanel.setLayout(containerPanelLayout);
-        containerPanelLayout.setHorizontalGroup(
-            containerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(containerPanelLayout.createSequentialGroup()
-                .addContainerGap()
-                .addGroup(containerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jPanel1, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                    .addComponent(jScrollPane6)
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, containerPanelLayout.createSequentialGroup()
-                        .addGap(0, 0, Short.MAX_VALUE)
-                        .addComponent(connectorSelectAll, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(jLabel7)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(connectorDeselectAll, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, containerPanelLayout.createSequentialGroup()
-                        .addGroup(containerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jScrollPane7, javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jScrollPane4))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(containerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
-                            .addComponent(addContentSearchButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(deleteContentSearchButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(addMetaDataSearchButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(deleteMetaDataSearchButton, javax.swing.GroupLayout.PREFERRED_SIZE, 52, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addGroup(containerPanelLayout.createSequentialGroup()
-                        .addGroup(containerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jLabel1, javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(jLabel5, javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(serverIdLabel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 52, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(importIdLabel, javax.swing.GroupLayout.Alignment.TRAILING)
-                            .addComponent(messageIdLabel, javax.swing.GroupLayout.Alignment.TRAILING))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(containerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(containerPanelLayout.createSequentialGroup()
-                                .addComponent(messageIdLowerField, javax.swing.GroupLayout.PREFERRED_SIZE, 118, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(jLabel4)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(messageIdUpperField, javax.swing.GroupLayout.PREFERRED_SIZE, 118, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, containerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                .addComponent(attachmentCheckBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGroup(containerPanelLayout.createSequentialGroup()
-                                    .addComponent(sendAttemptsLower, javax.swing.GroupLayout.PREFERRED_SIZE, 118, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                    .addComponent(jLabel8)
-                                    .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                    .addComponent(sendAttemptsUpper, javax.swing.GroupLayout.PREFERRED_SIZE, 118, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                            .addComponent(serverIdField, javax.swing.GroupLayout.PREFERRED_SIZE, 265, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addGroup(containerPanelLayout.createSequentialGroup()
-                                .addComponent(importIdLowerField, javax.swing.GroupLayout.PREFERRED_SIZE, 118, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(jLabel6)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(importIdUpperField, javax.swing.GroupLayout.PREFERRED_SIZE, 118, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                        .addGap(0, 0, Short.MAX_VALUE)))
-                .addContainerGap())
-        );
-        containerPanelLayout.setVerticalGroup(
-            containerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(containerPanelLayout.createSequentialGroup()
-                .addGap(4, 4, 4)
-                .addGroup(containerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(connectorSelectAll, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(connectorDeselectAll, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel7))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane6, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(5, 5, 5)
-                .addGroup(containerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(messageIdLabel)
-                    .addComponent(messageIdLowerField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel4)
-                    .addComponent(messageIdUpperField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(containerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(containerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(jLabel6)
-                        .addComponent(importIdUpperField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(containerPanelLayout.createSequentialGroup()
-                        .addGroup(containerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(importIdLowerField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(importIdLabel))
-                        .addGap(5, 5, 5)
-                        .addGroup(containerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(serverIdField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(serverIdLabel))))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(containerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel5)
-                    .addComponent(sendAttemptsLower, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(sendAttemptsUpper, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel8))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(containerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jLabel1)
-                    .addComponent(attachmentCheckBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(containerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(jScrollPane4, javax.swing.GroupLayout.DEFAULT_SIZE, 146, Short.MAX_VALUE)
-                    .addGroup(containerPanelLayout.createSequentialGroup()
-                        .addComponent(addContentSearchButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(deleteContentSearchButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(containerPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(containerPanelLayout.createSequentialGroup()
-                        .addComponent(jScrollPane7, javax.swing.GroupLayout.DEFAULT_SIZE, 145, Short.MAX_VALUE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
-                        .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(containerPanelLayout.createSequentialGroup()
-                        .addComponent(addMetaDataSearchButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(deleteMetaDataSearchButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap())
-        );
+        correlationIdLabel.setText("Correlation ID:");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(containerPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addContainerGap(342, Short.MAX_VALUE)
+                .addComponent(advSearchOKButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(advSearchCancelButton)
+                .addContainerGap())
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(jLabel1)
+                    .addComponent(jLabel4)
+                    .addComponent(jLabel10)
+                    .addComponent(messageIdLabel)
+                    .addComponent(correlationIdLabel))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(correlationIdField, javax.swing.GroupLayout.PREFERRED_SIZE, 225, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(messageTypeField, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(connectorField, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(jLabel7)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(messageSourceField, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(jLabel8)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(protocolComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE))))
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(containing, javax.swing.GroupLayout.PREFERRED_SIZE, 125, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(jLabel9)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(rawMessageCheckBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(transformedMessageCheckBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(encodedMessageCheckBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(6, 6, 6)
+                        .addComponent(errorsCheckBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(messageIdField, javax.swing.GroupLayout.PREFERRED_SIZE, 225, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(12, 12, 12))
         );
+
+        layout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {advSearchCancelButton, advSearchOKButton});
+
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(containerPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel1)
+                    .addComponent(connectorField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel8)
+                    .addComponent(protocolComboBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(messageTypeField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel4)
+                    .addComponent(messageSourceField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel7))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(containing, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel10)
+                    .addComponent(jLabel9)
+                    .addComponent(rawMessageCheckBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(transformedMessageCheckBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(encodedMessageCheckBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(errorsCheckBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addGap(4, 4, 4)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(messageIdField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(messageIdLabel))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(correlationIdField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(correlationIdLabel))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(advSearchCancelButton)
+                    .addComponent(advSearchOKButton, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap())
         );
+
+        layout.linkSize(javax.swing.SwingConstants.VERTICAL, new java.awt.Component[] {advSearchCancelButton, advSearchOKButton});
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void cancelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cancelButtonActionPerformed
-    	stopEditing();
-        loadSelections();
-        
+    private void advSearchOKButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_advSearchOKButtonActionPerformed
+
+        // "OK" button clicked.  save settings, and exit.        
+        connector = connectorField.getText();
+        messageSource = messageSourceField.getText();
+        messageType = messageTypeField.getText();
+        containingKeyword = containing.getText();
+        messageId = messageIdField.getText();
+        correlationId = correlationIdField.getText();
+        includeRawMessage = rawMessageCheckBox.isSelected();
+        includeTransformedMessage = transformedMessageCheckBox.isSelected();
+        includeEncodedMessage = encodedMessageCheckBox.isSelected();
+        includeErrors = errorsCheckBox.isSelected();
+        protocol = (String) protocolComboBox.getSelectedItem();
+
         setVisible(false);
-    }//GEN-LAST:event_cancelButtonActionPerformed
 
-    private void okButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okButtonActionPerformed
-    	stopEditing();
-        
+    }//GEN-LAST:event_advSearchOKButtonActionPerformed
+
+    private void advSearchCancelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_advSearchCancelButtonActionPerformed
+
+        // "Cancel" button clicked.  Just exit.
         setVisible(false);
-    }//GEN-LAST:event_okButtonActionPerformed
 
-    private void shiftValues(JList source, JList destination) {
-        Object[] values = source.getSelectedValues();
-        DefaultListModel sourceModel = (DefaultListModel) source.getModel();
-        DefaultListModel destinationModel = (DefaultListModel) destination.getModel();
-        
-        for (Object value : values) {
-            sourceModel.removeElement(value);
-            destinationModel.addElement(value);
-        }
-    }
-    
-    private void addContentSearchButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addContentSearchButtonActionPerformed
-        DefaultTableModel model = ((DefaultTableModel) contentSearchTable.getModel());
-        int row = model.getRowCount();
-        
-        model.addRow(new Object[]{ContentType.RAW, ""});
-        
-        contentSearchTable.setRowSelectionInterval(row, row);
-    }//GEN-LAST:event_addContentSearchButtonActionPerformed
-
-    private int getSelectedRow(MirthTable table) {
-        if (table.isEditing()) {
-            return table.getEditingRow();
-        } else {
-            return table.getSelectedRow();
-        }
-    }
-    
-    private void deleteContentSearchButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deleteContentSearchButtonActionPerformed
-        int selectedRow = getSelectedRow(contentSearchTable);
-
-        if (selectedRow != -1 && !contentSearchTable.isEditing()) {
-            ((DefaultTableModel) contentSearchTable.getModel()).removeRow(selectedRow);
-        }
-        
-        int rowCount = contentSearchTable.getRowCount();
-        
-        if (rowCount > 0) {
-            if (selectedRow >= rowCount) {
-                selectedRow--;
-            }
-            
-            contentSearchTable.setRowSelectionInterval(selectedRow, selectedRow);
-        }
-    }//GEN-LAST:event_deleteContentSearchButtonActionPerformed
-
-    private void connectorSelectAllMouseReleased(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_connectorSelectAllMouseReleased
-        ((ItemSelectionTableModel<Integer, String>) connectorTable.getModel()).selectAllKeys();
-    }//GEN-LAST:event_connectorSelectAllMouseReleased
-
-    private void connectorDeselectAllMouseReleased(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_connectorDeselectAllMouseReleased
-        ((ItemSelectionTableModel<Integer, String>) connectorTable.getModel()).unselectAllKeys();
-    }//GEN-LAST:event_connectorDeselectAllMouseReleased
-
-    private void addMetaDataSearchButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addMetaDataSearchButtonActionPerformed
-        DefaultTableModel model = ((DefaultTableModel) metaDataSearchTable.getModel());
-        int row = model.getRowCount();
-        
-        List<MetaDataColumn> metaDataColumns = messageBrowser.getMetaDataColumns();
-        if (metaDataColumns.size() > 0) {
-            MetaDataColumn metaDataColumn = metaDataColumns.get(0);
-            MetaDataSearchOperator operator = MetaDataSearchOperator.EQUAL;
-            
-            model.addRow(new Object[]{metaDataColumn.getName(), operator, "", false});
-            
-            metaDataSearchTable.setRowSelectionInterval(row, row);
-        }
-    }//GEN-LAST:event_addMetaDataSearchButtonActionPerformed
-
-    private void deleteMetaDataSearchButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deleteMetaDataSearchButtonActionPerformed
-        int selectedRow = getSelectedRow(metaDataSearchTable);
-
-        if (selectedRow != -1 && !metaDataSearchTable.isEditing()) {
-            ((DefaultTableModel) metaDataSearchTable.getModel()).removeRow(selectedRow);
-        }
-        
-        int rowCount = metaDataSearchTable.getRowCount();
-        
-        if (rowCount > 0) {
-            if (selectedRow >= rowCount) {
-                selectedRow--;
-            }
-            
-            metaDataSearchTable.setRowSelectionInterval(selectedRow, selectedRow);
-        }
-    }//GEN-LAST:event_deleteMetaDataSearchButtonActionPerformed
-
-    private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
-        stopEditing();
-        loadSelections();
-    }//GEN-LAST:event_formWindowClosing
-
-    private class ListItem {
-        private Object key;
-        private String label;
-
-        public ListItem(Object key, String label) {
-            this.key = key;
-            this.label = label;
-        }
-
-        public Object getKey() {
-            return key;
-        }
-
-        @Override
-        public String toString() {
-            return label;
-        }
-    }
-
+    }//GEN-LAST:event_advSearchCancelButtonActionPerformed
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private com.mirth.connect.client.ui.components.MirthButton addContentSearchButton;
-    private com.mirth.connect.client.ui.components.MirthButton addMetaDataSearchButton;
-    private com.mirth.connect.client.ui.components.MirthCheckBox attachmentCheckBox;
-    private com.mirth.connect.client.ui.components.MirthButton cancelButton;
-    private javax.swing.JLabel connectorDeselectAll;
-    private javax.swing.JLabel connectorSelectAll;
-    private com.mirth.connect.client.ui.components.MirthTable connectorTable;
-    private javax.swing.JPanel containerPanel;
-    private com.mirth.connect.client.ui.components.MirthTable contentSearchTable;
-    private com.mirth.connect.client.ui.components.MirthButton deleteContentSearchButton;
-    private com.mirth.connect.client.ui.components.MirthButton deleteMetaDataSearchButton;
-    private javax.swing.JLabel importIdLabel;
-    private com.mirth.connect.client.ui.components.MirthTextField importIdLowerField;
-    private com.mirth.connect.client.ui.components.MirthTextField importIdUpperField;
+    private javax.swing.JButton advSearchCancelButton;
+    private javax.swing.JButton advSearchOKButton;
+    private com.mirth.connect.client.ui.components.MirthTextField connectorField;
+    private com.mirth.connect.client.ui.components.MirthTextField containing;
+    private com.mirth.connect.client.ui.components.MirthTextField correlationIdField;
+    private javax.swing.JLabel correlationIdLabel;
+    private com.mirth.connect.client.ui.components.MirthCheckBox encodedMessageCheckBox;
+    private com.mirth.connect.client.ui.components.MirthCheckBox errorsCheckBox;
     private javax.swing.JLabel jLabel1;
+    private javax.swing.JLabel jLabel10;
     private javax.swing.JLabel jLabel4;
-    private javax.swing.JLabel jLabel5;
-    private javax.swing.JLabel jLabel6;
     private javax.swing.JLabel jLabel7;
     private javax.swing.JLabel jLabel8;
-    private javax.swing.JPanel jPanel1;
-    private javax.swing.JScrollPane jScrollPane2;
-    private javax.swing.JScrollPane jScrollPane3;
-    private javax.swing.JScrollPane jScrollPane4;
-    private javax.swing.JScrollPane jScrollPane5;
-    private javax.swing.JScrollPane jScrollPane6;
-    private javax.swing.JScrollPane jScrollPane7;
-    private javax.swing.JSeparator jSeparator1;
+    private javax.swing.JLabel jLabel9;
+    private com.mirth.connect.client.ui.components.MirthTextField messageIdField;
     private javax.swing.JLabel messageIdLabel;
-    private com.mirth.connect.client.ui.components.MirthTextField messageIdLowerField;
-    private com.mirth.connect.client.ui.components.MirthTextField messageIdUpperField;
-    private com.mirth.connect.client.ui.components.MirthTable metaDataSearchTable;
-    private com.mirth.connect.client.ui.components.MirthTable mirthTable1;
-    private com.mirth.connect.client.ui.components.MirthTable mirthTable2;
-    private com.mirth.connect.client.ui.components.MirthTable mirthTable3;
-    private com.mirth.connect.client.ui.components.MirthButton okButton;
-    private javax.swing.JSpinner sendAttemptsLower;
-    private com.mirth.connect.client.ui.components.MirthBlankableSpinner sendAttemptsUpper;
-    private com.mirth.connect.client.ui.components.MirthTextField serverIdField;
-    private javax.swing.JLabel serverIdLabel;
+    private com.mirth.connect.client.ui.components.MirthTextField messageSourceField;
+    private com.mirth.connect.client.ui.components.MirthTextField messageTypeField;
+    private javax.swing.JComboBox protocolComboBox;
+    private com.mirth.connect.client.ui.components.MirthCheckBox rawMessageCheckBox;
+    private com.mirth.connect.client.ui.components.MirthCheckBox transformedMessageCheckBox;
     // End of variables declaration//GEN-END:variables
 }

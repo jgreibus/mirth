@@ -1,7 +1,7 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
  * http://www.mirthcorp.com
- * 
+ *
  * The software in this package is published under the terms of the MPL
  * license a copy of which has been included with this distribution in
  * the LICENSE.txt file.
@@ -9,7 +9,6 @@
 
 package com.mirth.connect.plugins.dashboardstatus;
 
-import java.awt.Color;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,20 +22,21 @@ import com.mirth.connect.client.ui.CellData;
 import com.mirth.connect.client.ui.Frame;
 import com.mirth.connect.client.ui.ImageCellRenderer;
 import com.mirth.connect.client.ui.PlatformUI;
-import com.mirth.connect.model.DashboardStatus;
+import com.mirth.connect.client.ui.UIConstants;
+import com.mirth.connect.model.ChannelStatus;
 import com.mirth.connect.plugins.DashboardColumnPlugin;
 
 public class DashboardConnectorStatusColumn extends DashboardColumnPlugin {
 
-    private static final String _SOURCE_CONNECTOR = "_0";
+    private static final String _SOURCE_CONNECTOR = "_source_connector";
     private static final String GET_STATES = "getStates";
     private static final String DASHBOARD_SERVICE_PLUGINPOINT = "Dashboard Connector Service";
-    private Map<String, Object[]> currentStates;
+    private HashMap<String, String[]> currentStates;
     private ImageIcon greenBullet;
     private ImageIcon yellowBullet;
     private ImageIcon redBullet;
     private ImageIcon blackBullet;
-    private Map<Integer, ImageIcon> iconMap = new HashMap<Integer, ImageIcon>();
+    private Map<String, ImageIcon> iconMap = new HashMap<String, ImageIcon>();
 
     public DashboardConnectorStatusColumn(String name) {
         super(name);
@@ -44,10 +44,10 @@ public class DashboardConnectorStatusColumn extends DashboardColumnPlugin {
         yellowBullet = new ImageIcon(Frame.class.getResource("images/bullet_yellow.png"));
         redBullet = new ImageIcon(Frame.class.getResource("images/bullet_red.png"));
         blackBullet = new ImageIcon(Frame.class.getResource("images/bullet_black.png"));
-        iconMap.put(Color.green.getRGB(), greenBullet);
-        iconMap.put(Color.yellow.getRGB(), yellowBullet);
-        iconMap.put(Color.red.getRGB(), redBullet);
-        iconMap.put(Color.black.getRGB(), blackBullet);
+        iconMap.put("green", greenBullet);
+        iconMap.put("yellow", yellowBullet);
+        iconMap.put("red", redBullet);
+        iconMap.put("black", blackBullet);
     }
 
     @Override
@@ -71,26 +71,11 @@ public class DashboardConnectorStatusColumn extends DashboardColumnPlugin {
     }
 
     @Override
-    public Object getTableData(String channelId) {
-        String connectorName = channelId + _SOURCE_CONNECTOR;
-
+    public Object getTableData(ChannelStatus status) {
+        String connectorName = status.getChannelId() + _SOURCE_CONNECTOR;
         if (currentStates != null && currentStates.containsKey(connectorName)) {
-            Object[] stateData = currentStates.get(connectorName);
-            ImageIcon icon = iconMap.get(((Color) stateData[0]).getRGB());
-            return new CellData(icon, (String) stateData[1]);
-        } else {
-            return new CellData(blackBullet, "Unknown");
-        }
-    }
-
-    @Override
-    public Object getTableData(String channelId, Integer metaDataId) {
-        String connectorName = channelId + "_" + (metaDataId == null ? 0 : metaDataId);
-
-        if (currentStates != null && currentStates.containsKey(connectorName)) {
-            Object[] stateData = currentStates.get(connectorName);
-            ImageIcon icon = iconMap.get(((Color) stateData[0]).getRGB());
-            return new CellData(icon, (String) stateData[1]);
+            String[] stateData = currentStates.get(connectorName);
+            return new CellData(iconMap.get(stateData[0]), stateData[1]);
         } else {
             return new CellData(blackBullet, "Unknown");
         }
@@ -102,10 +87,10 @@ public class DashboardConnectorStatusColumn extends DashboardColumnPlugin {
     }
 
     @Override
-    public void tableUpdate(List<DashboardStatus> status) {
+    public void tableUpdate(List<ChannelStatus> status) {
         // get states from server
         try {
-            currentStates = (HashMap<String, Object[]>) PlatformUI.MIRTH_FRAME.mirthClient.invokePluginMethod(DASHBOARD_SERVICE_PLUGINPOINT, GET_STATES, null);
+            currentStates = (HashMap<String, String[]>) PlatformUI.MIRTH_FRAME.mirthClient.invokePluginMethod(DASHBOARD_SERVICE_PLUGINPOINT, GET_STATES, null);
         } catch (ClientException e) {
             if (e.getCause() instanceof UnauthorizedException) {
                 currentStates = null;
@@ -118,13 +103,16 @@ public class DashboardConnectorStatusColumn extends DashboardColumnPlugin {
     }
 
     @Override
-    public void start() {}
+    public void start() {
+    }
 
     @Override
-    public void stop() {}
+    public void stop() {
+    }
 
     @Override
-    public void reset() {}
+    public void reset() {
+    }
 
     @Override
     public String getPluginPointName() {
