@@ -1,10 +1,10 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.client.ui;
@@ -44,27 +44,21 @@ public class SettingsPanelAdministrator extends AbstractSettingsPanel {
             } else {
                 formatXmlNoRadio.setSelected(true);
             }
-
-            if (userPreferences.getBoolean("textSearchWarning", true)) {
-                textSearchWarningYesRadio.setSelected(true);
-            } else {
-                textSearchWarningNoRadio.setSelected(true);
-            }
         }
     }
 
-    public boolean doSave() {
+    public void doSave() {
         if (dashboardRefreshIntervalField.getText().length() == 0) {
             getFrame().alertWarning(this, "Please enter a valid interval time.");
-            return false;
+            return;
         }
         if (messageBrowserPageSizeField.getText().length() == 0) {
             getFrame().alertWarning(this, "Please enter a valid message browser page size.");
-            return false;
+            return;
         }
         if (eventBrowserPageSizeField.getText().length() == 0) {
             getFrame().alertWarning(this, "Please enter a valid event browser page size.");
-            return false;
+            return;
         }
 
         int interval = Integer.parseInt(dashboardRefreshIntervalField.getText());
@@ -82,12 +76,9 @@ public class SettingsPanelAdministrator extends AbstractSettingsPanel {
             userPreferences.putInt("messageBrowserPageSize", messageBrowserPageSize);
             userPreferences.putInt("eventBrowserPageSize", eventBrowserPageSize);
             userPreferences.putBoolean("messageBrowserFormatXml", formatXmlYesRadio.isSelected());
-            userPreferences.putBoolean("textSearchWarning", textSearchWarningYesRadio.isSelected());
 
             getFrame().setSaveEnabled(false);
         }
-
-        return true;
     }
 
     /**
@@ -100,7 +91,6 @@ public class SettingsPanelAdministrator extends AbstractSettingsPanel {
     private void initComponents() {
 
         formatXmlButtonGroup = new javax.swing.ButtonGroup();
-        textSearchWarningButtonGroup = new javax.swing.ButtonGroup();
         clientSettings = new javax.swing.JPanel();
         dashboardRefreshIntervalLabel = new javax.swing.JLabel();
         dashboardRefreshIntervalField = new com.mirth.connect.client.ui.components.MirthTextField();
@@ -111,9 +101,6 @@ public class SettingsPanelAdministrator extends AbstractSettingsPanel {
         formatXmlNoRadio = new com.mirth.connect.client.ui.components.MirthRadioButton();
         eventBrowserPageSizeLabel = new javax.swing.JLabel();
         eventBrowserPageSizeField = new com.mirth.connect.client.ui.components.MirthTextField();
-        textSearchWarningLabel = new javax.swing.JLabel();
-        textSearchWarningYesRadio = new com.mirth.connect.client.ui.components.MirthRadioButton();
-        textSearchWarningNoRadio = new com.mirth.connect.client.ui.components.MirthRadioButton();
 
         setBackground(new java.awt.Color(255, 255, 255));
         setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
@@ -134,6 +121,7 @@ public class SettingsPanelAdministrator extends AbstractSettingsPanel {
         formatXmlYesRadio.setBackground(new java.awt.Color(255, 255, 255));
         formatXmlYesRadio.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
         formatXmlButtonGroup.add(formatXmlYesRadio);
+        formatXmlYesRadio.setSelected(true);
         formatXmlYesRadio.setText("Yes");
         formatXmlYesRadio.setToolTipText("Pretty print messages in the message browser that are XML.");
         formatXmlYesRadio.setMargin(new java.awt.Insets(0, 0, 0, 0));
@@ -149,23 +137,6 @@ public class SettingsPanelAdministrator extends AbstractSettingsPanel {
 
         eventBrowserPageSizeField.setToolTipText("Sets the default page size for browsers (message, event, etc.)");
 
-        textSearchWarningLabel.setText("Message browser text search confirmation:");
-
-        textSearchWarningYesRadio.setBackground(new java.awt.Color(255, 255, 255));
-        textSearchWarningYesRadio.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
-        textSearchWarningButtonGroup.add(textSearchWarningYesRadio);
-        textSearchWarningYesRadio.setSelected(true);
-        textSearchWarningYesRadio.setText("Yes");
-        textSearchWarningYesRadio.setToolTipText("<html>Show a confirmation dialog in the message browser when attempting a text search, warning users<br/>that the query may take a long time depending on the amount of messages being searched.</html>");
-        textSearchWarningYesRadio.setMargin(new java.awt.Insets(0, 0, 0, 0));
-
-        textSearchWarningNoRadio.setBackground(new java.awt.Color(255, 255, 255));
-        textSearchWarningNoRadio.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
-        textSearchWarningButtonGroup.add(textSearchWarningNoRadio);
-        textSearchWarningNoRadio.setText("No");
-        textSearchWarningNoRadio.setToolTipText("<html>Show a confirmation dialog in the message browser when attempting a text search, warning users<br/>that the query may take a long time depending on the amount of messages being searched.</html>");
-        textSearchWarningNoRadio.setMargin(new java.awt.Insets(0, 0, 0, 0));
-
         javax.swing.GroupLayout clientSettingsLayout = new javax.swing.GroupLayout(clientSettings);
         clientSettings.setLayout(clientSettingsLayout);
         clientSettingsLayout.setHorizontalGroup(
@@ -173,7 +144,6 @@ public class SettingsPanelAdministrator extends AbstractSettingsPanel {
             .addGroup(clientSettingsLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(clientSettingsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(textSearchWarningLabel)
                     .addComponent(eventBrowserPageSizeLabel)
                     .addComponent(formatXmlLabel)
                     .addComponent(messageBrowserPageSizeLabel)
@@ -186,12 +156,8 @@ public class SettingsPanelAdministrator extends AbstractSettingsPanel {
                         .addComponent(formatXmlYesRadio, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(formatXmlNoRadio, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(eventBrowserPageSizeField, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGroup(clientSettingsLayout.createSequentialGroup()
-                        .addComponent(textSearchWarningYesRadio, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(textSearchWarningNoRadio, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(198, Short.MAX_VALUE))
+                    .addComponent(eventBrowserPageSizeField, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(45, Short.MAX_VALUE))
         );
         clientSettingsLayout.setVerticalGroup(
             clientSettingsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -212,11 +178,6 @@ public class SettingsPanelAdministrator extends AbstractSettingsPanel {
                     .addComponent(formatXmlLabel)
                     .addComponent(formatXmlYesRadio, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(formatXmlNoRadio, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(clientSettingsLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(textSearchWarningLabel)
-                    .addComponent(textSearchWarningYesRadio, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(textSearchWarningNoRadio, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -233,10 +194,10 @@ public class SettingsPanelAdministrator extends AbstractSettingsPanel {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(clientSettings, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addComponent(clientSettings, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(52, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel clientSettings;
     private com.mirth.connect.client.ui.components.MirthTextField dashboardRefreshIntervalField;
@@ -249,9 +210,5 @@ public class SettingsPanelAdministrator extends AbstractSettingsPanel {
     private com.mirth.connect.client.ui.components.MirthRadioButton formatXmlYesRadio;
     private com.mirth.connect.client.ui.components.MirthTextField messageBrowserPageSizeField;
     private javax.swing.JLabel messageBrowserPageSizeLabel;
-    private javax.swing.ButtonGroup textSearchWarningButtonGroup;
-    private javax.swing.JLabel textSearchWarningLabel;
-    private com.mirth.connect.client.ui.components.MirthRadioButton textSearchWarningNoRadio;
-    private com.mirth.connect.client.ui.components.MirthRadioButton textSearchWarningYesRadio;
     // End of variables declaration//GEN-END:variables
 }

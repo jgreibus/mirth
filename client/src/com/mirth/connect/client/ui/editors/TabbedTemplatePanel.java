@@ -1,25 +1,21 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.client.ui.editors;
 
-import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 
 import com.mirth.connect.client.ui.FunctionList;
-import com.mirth.connect.client.ui.TransformerType;
 import com.mirth.connect.client.ui.VariableListHandler;
-import com.mirth.connect.client.ui.VariableListHandler.TransferMode;
 import com.mirth.connect.client.ui.panels.reference.VariableReferenceTable;
 import com.mirth.connect.model.CodeTemplate.ContextType;
-import com.mirth.connect.model.Connector;
-import com.mirth.connect.model.datatype.DataTypeProperties;
 
 public class TabbedTemplatePanel extends javax.swing.JPanel {
 
@@ -34,9 +30,9 @@ public class TabbedTemplatePanel extends javax.swing.JPanel {
 
         // ArrayList<ReferenceListItem> functionListItems = new
         // ReferenceListBuilder().getVariableListItems();
-        variableTable = new VariableReferenceTable("Available Variables", new String[] {});
+        variableTable = new VariableReferenceTable("Available Variables", new String[]{});
         variableTable.setDragEnabled(true);
-        variableTable.setTransferHandler(new VariableListHandler(TransferMode.JAVASCRIPT));
+        variableTable.setTransferHandler(new VariableListHandler("$('", "')"));
         variableListScrollPane.setViewportView(variableTable);
     }
 
@@ -55,25 +51,25 @@ public class TabbedTemplatePanel extends javax.swing.JPanel {
         messageTreePanel.getInboundTreePanel().setTransformerView();
         messageTreePanel.getOutboundTreePanel().setTransformerView();
     }
-
+    
     /**
-     * Sets the the inbound and outbound data types and properties to be
-     * enabled. The inbound data type may be disabled if XML is required.
+     * Sets the the inbound and outbound data types and properties to be 
+     * enabled.  The inbound data type may be disabled if XML is required.
      */
     public void setSourceView() {
         boolean inboundEnabled = true;
         if (parent.parent.channelEditPanel.requiresXmlDataType()) {
             inboundEnabled = false;
         }
-        messageTemplatePanel.setDataTypeEnabled(inboundEnabled, true, true, true, TransformerType.SOURCE);
+        messageTemplatePanel.setDataTypeEnabled(inboundEnabled, true, true, true);
     }
-
+    
     /**
      * Sets the inbound data type and properties to be disabled and
      * the outbound data type and proeprties to be enabled.
      */
-    public void setDestinationView(boolean isResponse) {
-        messageTemplatePanel.setDataTypeEnabled(isResponse, true, true, true, isResponse ? TransformerType.RESPONSE : TransformerType.DESTINATION);
+    public void setDestinationView() {
+        messageTemplatePanel.setDataTypeEnabled(false, false, true, true);
     }
 
     public void resizePanes() {
@@ -88,10 +84,6 @@ public class TabbedTemplatePanel extends javax.swing.JPanel {
             rules.addAll(steps);
         }
         variableTable.updateVariables(rules);
-    }
-
-    public void populateConnectors(List<Connector> connectors) {
-        ((VariableListHandler) variableTable.getTransferHandler()).populateConnectors(connectors);
     }
 
     public String getIncomingMessage() {
@@ -110,35 +102,35 @@ public class TabbedTemplatePanel extends javax.swing.JPanel {
         messageTemplatePanel.setOutboundMessage(msg);
     }
 
-    public void setIncomingDataType(String dataType) {
-        messageTemplatePanel.setInboundDataType(dataType);
+    public void setIncomingDataType(String protocol) {
+        messageTemplatePanel.setInboundProtocol(protocol);
     }
 
-    public void setOutgoingDataType(String dataType) {
-        messageTemplatePanel.setOutboundDataType(dataType);
+    public void setOutgoingDataType(String protocol) {
+        messageTemplatePanel.setOutboundProtocol(protocol);
     }
 
     public String getIncomingDataType() {
-        return messageTemplatePanel.getInboundDataType();
+        return messageTemplatePanel.getInboundProtocol();
     }
 
     public String getOutgoingDataType() {
-        return messageTemplatePanel.getOutboundDataType();
+        return messageTemplatePanel.getOutboundProtocol();
     }
 
-    public void setIncomingDataProperties(DataTypeProperties properties) {
+    public void setIncomingDataProperties(Properties properties) {
         messageTemplatePanel.setInboundDataProperties(properties);
     }
 
-    public void setOutgoingDataProperties(DataTypeProperties properties) {
+    public void setOutgoingDataProperties(Properties properties) {
         messageTemplatePanel.setOutboundDataProperties(properties);
     }
 
-    public DataTypeProperties getIncomingDataProperties() {
+    public Properties getIncomingDataProperties() {
         return messageTemplatePanel.getInboundDataProperties();
     }
 
-    public DataTypeProperties getOutgoingDataProperties() {
+    public Properties getOutgoingDataProperties() {
         return messageTemplatePanel.getOutboundDataProperties();
     }
 

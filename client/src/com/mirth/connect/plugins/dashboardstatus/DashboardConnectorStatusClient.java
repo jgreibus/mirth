@@ -1,10 +1,10 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.plugins.dashboardstatus;
@@ -12,7 +12,6 @@ package com.mirth.connect.plugins.dashboardstatus;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import javax.swing.JComponent;
@@ -20,7 +19,7 @@ import javax.swing.JComponent;
 import com.mirth.connect.client.core.ClientException;
 import com.mirth.connect.client.core.UnauthorizedException;
 import com.mirth.connect.client.ui.PlatformUI;
-import com.mirth.connect.model.DashboardStatus;
+import com.mirth.connect.model.ChannelStatus;
 import com.mirth.connect.plugins.DashboardPanelPlugin;
 
 public class DashboardConnectorStatusClient extends DashboardPanelPlugin {
@@ -41,12 +40,12 @@ public class DashboardConnectorStatusClient extends DashboardPanelPlugin {
         currentDashboardLogSize = dcsp.getCurrentDashboardLogSize();
     }
 
-    public void clearLog(String selectedChannelId) {
-        if (connectorInfoLogs.containsKey(selectedChannelId)) {
-            connectorInfoLogs.remove(selectedChannelId);
+    public void clearLog(String selectedChannel) {
+        if (connectorInfoLogs.containsKey(selectedChannel)) {
+            connectorInfoLogs.remove(selectedChannel);
         }
 
-        if (selectedChannelId.equals(NO_CHANNEL_SELECTED)) {
+        if (selectedChannel.equals(NO_CHANNEL_SELECTED)) {
             // Add Channel Name column in the UI so that which logs correspond to which channel.
             dcsp.updateTable(null);
         } else {
@@ -93,9 +92,9 @@ public class DashboardConnectorStatusClient extends DashboardPanelPlugin {
     }
 
     // used for setting actions to be called for updating when there is a status selected    
-    public void update(List<DashboardStatus> statuses) {
+    public void update(List<ChannelStatus> statuses) {
         // Keep status as null if there are more than one channels selected
-        DashboardStatus status = null;
+        ChannelStatus status = null;
         if ((statuses != null) && (statuses.size() == 1)) {
             status = statuses.get(0);
         }
@@ -114,56 +113,45 @@ public class DashboardConnectorStatusClient extends DashboardPanelPlugin {
         }
 
         // If there are more than one channels selected, use state: NO_CHANNEL_SELECTED
-        String selectedChannelId;
+        String selectedChannel;
         if (status == null) {
             // no channel is selected.
-            selectedChannelId = NO_CHANNEL_SELECTED;
+            selectedChannel = NO_CHANNEL_SELECTED;
         } else {
             // channel is selected.
-            selectedChannelId = status.getChannelId();
+            selectedChannel = status.getName();
         }
 
         // If there are more than one channels selected, create an array of those names
-        Map<String, List<Integer>> selectedConnectorMap = null;
-        
-        if (statuses != null) {
-            selectedConnectorMap = new ConcurrentHashMap<String, List<Integer>>();
-            
+        List<String> selectedChannels = null;
+        if (statuses != null && statuses.size() > 1) {
+            selectedChannels = new ArrayList<String>();
             for (int i = 0; i < statuses.size(); i++) {
-                String channelId = statuses.get(i).getChannelId();
-                Integer metaDataId = statuses.get(i).getMetaDataId();
-                
-                List<Integer> selectedConnectors = selectedConnectorMap.get(channelId);
-                
-                if (selectedConnectors == null) {
-                    selectedConnectors = new ArrayList<Integer>();
-                    selectedConnectorMap.put(channelId, selectedConnectors);
-                }
-                
-                selectedConnectors.add(metaDataId);
+                selectedChannels.add(statuses.get(i).getName());
             }
         }
 
-        dcsp.setSelectedChannelId(selectedChannelId);
-        dcsp.setSelectedConnectors(selectedConnectorMap);
+        // set selectedChannel.  selectedChannels will be null unless multiple rows are selected
+        dcsp.setSelectedChannel(selectedChannel);
+        dcsp.setSelectedChannels(selectedChannels);
 
         // store this log on the client side for later use.
         // grab the channel's log from the HashMap, if not exist, create one.
         LinkedList<String[]> channelLog;
-        if (connectorInfoLogs.containsKey(selectedChannelId)) {
-            channelLog = connectorInfoLogs.get(selectedChannelId);
+        if (connectorInfoLogs.containsKey(selectedChannel)) {
+            channelLog = connectorInfoLogs.get(selectedChannel);
         } else {
             channelLog = new LinkedList<String[]>();
         }
 
         //get states from server only if the client's channel log is not in the paused state.
-        if (!dcsp.isPaused(selectedChannelId)) {
+        if (!dcsp.isPaused(selectedChannel)) {
             LinkedList<String[]> connectionInfoLogsReceived = new LinkedList<String[]>();
             try {
                 if (status == null) {
                     connectionInfoLogsReceived = (LinkedList<String[]>) PlatformUI.MIRTH_FRAME.mirthClient.invokePluginMethod(DASHBOARD_SERVICE_PLUGINPOINT, GET_CONNECTION_INFO_LOGS, null);
                 } else {
-                    connectionInfoLogsReceived = (LinkedList<String[]>) PlatformUI.MIRTH_FRAME.mirthClient.invokePluginMethod(DASHBOARD_SERVICE_PLUGINPOINT, GET_CONNECTION_INFO_LOGS, selectedChannelId);
+                    connectionInfoLogsReceived = (LinkedList<String[]>) PlatformUI.MIRTH_FRAME.mirthClient.invokePluginMethod(DASHBOARD_SERVICE_PLUGINPOINT, GET_CONNECTION_INFO_LOGS, selectedChannel);
                 }
             } catch (ClientException e) {
                 if (e.getCause() instanceof UnauthorizedException) {
@@ -181,18 +169,19 @@ public class DashboardConnectorStatusClient extends DashboardPanelPlugin {
                     channelLog.addFirst(connectionInfoLogsReceived.get(i));
                 }
             }
-            connectorInfoLogs.put(selectedChannelId, channelLog);
+            connectorInfoLogs.put(selectedChannel, channelLog);
         }
 
         // call updateLogTextArea.
-        if (selectedChannelId.equals(NO_CHANNEL_SELECTED)) {
+        if (selectedChannel.equals(NO_CHANNEL_SELECTED)) {
             // Add Channel Name column in the UI so that which logs correspond to which channel.
             dcsp.updateTable(channelLog);
         } else {
             // No Channel Name column needed.
             dcsp.updateTable(channelLog);
         }
-        dcsp.adjustPauseResumeButton(selectedChannelId);
+        dcsp.adjustPauseResumeButton(selectedChannel);
+
     }
     
     @Override

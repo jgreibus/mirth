@@ -1,10 +1,10 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.client.ui.components;
@@ -215,7 +215,9 @@ public class MirthTree extends JXTree implements DropTargetListener {
         }
     }
 
-    public void dragExit(DropTargetEvent dte) {}
+    public void dragExit(DropTargetEvent dte) {
+        // TODO Auto-generated method stub
+    }
 
     public void dragOver(DropTargetDragEvent dtde) {
         if (!dtde.isDataFlavorSupported(supportedDropFlavor)) {
@@ -264,7 +266,9 @@ public class MirthTree extends JXTree implements DropTargetListener {
 
     }
 
-    public void dropActionChanged(DropTargetDragEvent dtde) {}
+    public void dropActionChanged(DropTargetDragEvent dtde) {
+        // TODO Auto-generated method stub
+    }
 
     /**
      * Get the index of a node in relation to other nodes with the same name.

@@ -1,10 +1,10 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.client.ui.components;
@@ -13,14 +13,11 @@ import java.awt.Toolkit;
 import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.util.List;
 
 import org.jdesktop.swingx.JXList;
 
 import com.mirth.connect.client.ui.PlatformUI;
 import com.mirth.connect.client.ui.VariableListHandler;
-import com.mirth.connect.client.ui.VariableListHandler.TransferMode;
-import com.mirth.connect.model.Connector;
 
 /**
  * An implementation of JXList that has mouse rollover selection implemented.
@@ -28,15 +25,20 @@ import com.mirth.connect.model.Connector;
 public class MirthVariableList extends JXList {
 
     public MirthVariableList() {
-        this(TransferMode.VELOCITY, null);
+        this("${", "}");
+    }
+
+    public void setPrefixAndSuffix(String prefix, String suffix) {
+        this.setTransferHandler(new VariableListHandler(prefix, suffix));
     }
 
     /**
      * Creates a new instance of MirthVariableList
      */
-    public MirthVariableList(TransferMode transferMode, List<Connector> connectors) {
+    public MirthVariableList(String prefix, String suffix) {
         super();
         this.setDragEnabled(true);
+        setPrefixAndSuffix(prefix, suffix);
         this.setFocusable(false);
         this.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
 
@@ -59,24 +61,14 @@ public class MirthVariableList extends JXList {
                 }
             }
 
-            public void keyReleased(KeyEvent e) {}
+            public void keyReleased(KeyEvent e) {
+                // TODO Auto-generated method stub
+            }
 
-            public void keyTyped(KeyEvent e) {}
+            public void keyTyped(KeyEvent e) {
+                // TODO Auto-generated method stub
+            }
         });
-
-        setTransferHandler(new VariableListHandler(transferMode, connectors));
-    }
-
-    public TransferMode getTransferMode() {
-        return ((VariableListHandler) getTransferHandler()).getTransferMode();
-    }
-
-    public void setTransferMode(TransferMode transferMode) {
-        ((VariableListHandler) getTransferHandler()).setTransferMode(transferMode);
-    }
-
-    public void populateConnectors(List<Connector> connectors) {
-        ((VariableListHandler) getTransferHandler()).populateConnectors(connectors);
     }
 
     /**

@@ -1,10 +1,10 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.connectors.smtp;
@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Properties;
 import java.util.prefs.Preferences;
 
 import javax.swing.JButton;
@@ -26,17 +27,15 @@ import javax.swing.table.DefaultTableModel;
 import org.jdesktop.swingx.decorator.Highlighter;
 import org.jdesktop.swingx.decorator.HighlighterFactory;
 
-import com.mirth.connect.client.ui.Frame;
 import com.mirth.connect.client.ui.Mirth;
-import com.mirth.connect.client.ui.PlatformUI;
 import com.mirth.connect.client.ui.TextFieldCellEditor;
 import com.mirth.connect.client.ui.UIConstants;
 import com.mirth.connect.client.ui.components.MirthTable;
-import com.mirth.connect.client.ui.panels.connectors.ConnectorSettingsPanel;
-import com.mirth.connect.donkey.model.channel.ConnectorProperties;
+import com.mirth.connect.connectors.ConnectorClass;
+import com.mirth.connect.model.converters.ObjectXMLSerializer;
 import com.mirth.connect.util.ConnectionTestResponse;
 
-public class SmtpSender extends ConnectorSettingsPanel {
+public class SmtpSender extends ConnectorClass {
 
     private final int HEADERS_NAME_COLUMN = 0;
     private final int HEADERS_VALUE_COLUMN = 1;
@@ -50,74 +49,72 @@ public class SmtpSender extends ConnectorSettingsPanel {
     private final String ATTACHMENTS_MIME_TYPE_COLUMN_NAME = "MIME type";
     private int headersLastIndex = -1;
     private int attachmentsLastIndex = -1;
-    private String errors;
-
-    private Frame parent;
+   
+    private ObjectXMLSerializer serializer = new ObjectXMLSerializer();
 
     public SmtpSender() {
-        this.parent = PlatformUI.MIRTH_FRAME;
+        name = SmtpSenderProperties.name;
         initComponents();
-
         parent.setupCharsetEncodingForConnector(charsetEncodingCombobox);
     }
 
-    @Override
-    public String getConnectorName() {
-        return new SmtpDispatcherProperties().getName();
-    }
-
-    @Override
-    public ConnectorProperties getProperties() {
-        SmtpDispatcherProperties properties = new SmtpDispatcherProperties();
-
-        properties.setSmtpHost(smtpHostField.getText());
-        properties.setSmtpPort(smtpPortField.getText());
-        properties.setTimeout(sendTimeoutField.getText());
+    public Properties getProperties() {
+        Properties properties = new Properties();
+        properties.put(SmtpSenderProperties.DATATYPE, name);
+        properties.put(SmtpSenderProperties.SMTP_HOST, smtpHostField.getText());
+        properties.put(SmtpSenderProperties.SMTP_PORT, smtpPortField.getText());
+        properties.put(SmtpSenderProperties.SMTP_TIMEOUT, sendTimeoutField.getText());
 
         if (encryptionTls.isSelected()) {
-            properties.setEncryption("TLS");
+            properties.put(SmtpSenderProperties.SMTP_SECURE, "TLS");
         } else if (encryptionSsl.isSelected()) {
-            properties.setEncryption("SSL");
+            properties.put(SmtpSenderProperties.SMTP_SECURE, "SSL");
         } else {
-            properties.setEncryption("none");
+            properties.put(SmtpSenderProperties.SMTP_SECURE, "none");
         }
 
-        properties.setAuthentication(useAuthenticationYes.isSelected());
+        if (useAuthenticationYes.isSelected()) {
+            properties.put(SmtpSenderProperties.SMTP_AUTHENTICATION, UIConstants.YES_OPTION);
+        } else {
+            properties.put(SmtpSenderProperties.SMTP_AUTHENTICATION, UIConstants.NO_OPTION);
+        }
 
-        properties.setUsername(usernameField.getText());
-        properties.setPassword(new String(passwordField.getPassword()));
-        properties.setTo(toField.getText());
-        properties.setFrom(fromField.getText());
-        properties.setSubject(subjectField.getText());
+        properties.put(SmtpSenderProperties.SMTP_USERNAME, usernameField.getText());
+        properties.put(SmtpSenderProperties.SMTP_PASSWORD, new String(passwordField.getPassword()));
+        properties.put(SmtpSenderProperties.SMTP_TO, toField.getText());
+        properties.put(SmtpSenderProperties.SMTP_FROM, fromField.getText());
+        properties.put(SmtpSenderProperties.SMTP_SUBJECT, subjectField.getText());
+        
+        properties.put(SmtpSenderProperties.SMTP_CHARSET, parent.getSelectedEncodingForConnector(charsetEncodingCombobox));
 
-        properties.setCharsetEncoding(parent.getSelectedEncodingForConnector(charsetEncodingCombobox));
+        if (htmlYes.isSelected()) {
+            properties.put(SmtpSenderProperties.SMTP_HTML, UIConstants.YES_OPTION);
+        } else {
+            properties.put(SmtpSenderProperties.SMTP_HTML, UIConstants.NO_OPTION);
+        }
 
-        properties.setHtml(htmlYes.isSelected());
-
-        properties.setBody(bodyTextPane.getText());
-        properties.setHeaders(getHeaders());
-        properties.setAttachments(getAttachments());
-
+        properties.put(SmtpSenderProperties.SMTP_BODY, bodyTextPane.getText());
+        properties.put(SmtpSenderProperties.SMTP_HEADERS, serializer.toXML(getHeaders()));
+        properties.put(SmtpSenderProperties.SMTP_ATTACHMENTS, serializer.toXML(getAttachments()));
         return properties;
     }
 
-    @Override
-    public void setProperties(ConnectorProperties properties) {
-        SmtpDispatcherProperties props = (SmtpDispatcherProperties) properties;
+    public void setProperties(Properties props) {
+        resetInvalidProperties();
 
-        smtpHostField.setText(props.getSmtpHost());
-        smtpPortField.setText(props.getSmtpPort());
-        sendTimeoutField.setText(props.getTimeout());
+        smtpHostField.setText((String) props.get(SmtpSenderProperties.SMTP_HOST));
+        smtpPortField.setText((String) props.get(SmtpSenderProperties.SMTP_PORT));
+        sendTimeoutField.setText((String) props.get(SmtpSenderProperties.SMTP_TIMEOUT));
 
-        if (props.getEncryption().equalsIgnoreCase("TLS")) {
+        if (((String) props.getProperty(SmtpSenderProperties.SMTP_SECURE)).equalsIgnoreCase("TLS")) {
             encryptionTls.setSelected(true);
-        } else if (props.getEncryption().equalsIgnoreCase("SSL")) {
+        } else if (((String) props.getProperty(SmtpSenderProperties.SMTP_SECURE)).equalsIgnoreCase("SSL")) {
             encryptionSsl.setSelected(true);
         } else {
             encryptionNone.setSelected(true);
         }
 
-        if (props.isAuthentication()) {
+        if (((String) props.get(SmtpSenderProperties.SMTP_AUTHENTICATION)).equalsIgnoreCase(UIConstants.YES_OPTION)) {
             useAuthenticationYesActionPerformed(null);
             useAuthenticationYes.setSelected(true);
         } else {
@@ -125,96 +122,83 @@ public class SmtpSender extends ConnectorSettingsPanel {
             useAuthenticationNo.setSelected(true);
         }
 
-        usernameField.setText(props.getUsername());
-        passwordField.setText(props.getPassword());
-        toField.setText(props.getTo());
-        fromField.setText(props.getFrom());
-        subjectField.setText(props.getSubject());
+        usernameField.setText((String) props.get(SmtpSenderProperties.SMTP_USERNAME));
+        passwordField.setText((String) props.get(SmtpSenderProperties.SMTP_PASSWORD));
+        toField.setText((String) props.get(SmtpSenderProperties.SMTP_TO));
+        fromField.setText((String) props.get(SmtpSenderProperties.SMTP_FROM));
+        subjectField.setText((String) props.get(SmtpSenderProperties.SMTP_SUBJECT));
 
-        parent.setPreviousSelectedEncodingForConnector(charsetEncodingCombobox, props.getCharsetEncoding());
-
-        if (props.isHtml()) {
+        parent.setPreviousSelectedEncodingForConnector(charsetEncodingCombobox, (String) props.get(SmtpSenderProperties.SMTP_CHARSET));
+        
+        if (((String) props.get(SmtpSenderProperties.SMTP_HTML)).equalsIgnoreCase(UIConstants.YES_OPTION)) {
             htmlYes.setSelected(true);
         } else {
             htmlNo.setSelected(true);
         }
 
-        bodyTextPane.setText(props.getBody());
-
-        setHeaders(props.getHeaders());
-
-        setAttachments(props.getAttachments());
+        bodyTextPane.setText((String) props.get(SmtpSenderProperties.SMTP_BODY));
+        
+        Map<String, String> headers = (Map<String, String>) serializer.fromXML((String) props.get(SmtpSenderProperties.SMTP_HEADERS));
+        setHeaders(headers);
+        
+        List<Attachment> attachments = (List<Attachment>) serializer.fromXML((String) props.get(SmtpSenderProperties.SMTP_ATTACHMENTS));
+        setAttachments(attachments);
     }
 
-    @Override
-    public ConnectorProperties getDefaults() {
-        return new SmtpDispatcherProperties();
+    public Properties getDefaults() {
+        return new SmtpSenderProperties().getDefaults();
     }
 
-    @Override
-    public boolean checkProperties(ConnectorProperties properties, boolean highlight) {
-        SmtpDispatcherProperties props = (SmtpDispatcherProperties) properties;
-
+    public boolean checkProperties(Properties props, boolean highlight) {
+        resetInvalidProperties();
         boolean valid = true;
-        StringBuilder errors = new StringBuilder();
 
-        if (props.getSmtpHost().length() == 0) {
+        if (((String) props.get(SmtpSenderProperties.SMTP_HOST)).length() == 0) {
             valid = false;
             if (highlight) {
                 smtpHostField.setBackground(UIConstants.INVALID_COLOR);
             }
-
-            errors.append("\"SMTP Host\" is required\n");
         }
-
-        if (props.getSmtpPort().length() == 0) {
+        
+        if (((String) props.get(SmtpSenderProperties.SMTP_PORT)).length() == 0) {
             valid = false;
             if (highlight) {
                 smtpPortField.setBackground(UIConstants.INVALID_COLOR);
             }
-
-            errors.append("\"SMTP Port\" is required\n");
         }
-
-        if (props.getTimeout().length() == 0) {
+        
+        if (((String) props.get(SmtpSenderProperties.SMTP_TIMEOUT)).length() == 0) {
             valid = false;
             if (highlight) {
                 sendTimeoutField.setBackground(UIConstants.INVALID_COLOR);
             }
-
-            errors.append("\"Send Timeout\" is required\n");
         }
-
-        if (props.getTo().length() == 0) {
+        
+        if (((String) props.get(SmtpSenderProperties.SMTP_TO)).length() == 0) {
             valid = false;
             if (highlight) {
                 toField.setBackground(UIConstants.INVALID_COLOR);
             }
-
-            errors.append("\"To\" is required\n");
         }
-
-        if (props.getFrom().length() == 0) {
-            valid = false;
-            if (highlight) {
-                fromField.setBackground(UIConstants.INVALID_COLOR);
-            }
-
-            errors.append("\"From\" is required\n");
-        }
-
-        this.errors = errors.toString();
 
         return valid;
     }
 
-    @Override
-    public void resetInvalidProperties() {
+    private void resetInvalidProperties() {
         smtpHostField.setBackground(null);
         smtpPortField.setBackground(null);
         sendTimeoutField.setBackground(null);
         toField.setBackground(null);
-        fromField.setBackground(null);
+    }
+
+    public String doValidate(Properties props, boolean highlight) {
+        String error = null;
+
+        if (!checkProperties(props, highlight)) {
+            error = "Error in the form for connector \"" + getName() + "\".\n\n";
+        }
+
+        return error;
     }
 
     private void setHeaders(Map<String, String> headers) {
@@ -229,10 +213,9 @@ public class SmtpSender extends ConnectorSettingsPanel {
             i++;
         }
 
-        headersTable.setModel(new javax.swing.table.DefaultTableModel(tableData, new String[] {
-                HEADERS_NAME_COLUMN_NAME, HEADERS_VALUE_COLUMN_NAME }) {
+        headersTable.setModel(new javax.swing.table.DefaultTableModel(tableData, new String[]{HEADERS_NAME_COLUMN_NAME, HEADERS_VALUE_COLUMN_NAME}) {
 
-            boolean[] canEdit = new boolean[] { true, true };
+            boolean[] canEdit = new boolean[]{true, true};
 
             public boolean isCellEditable(int rowIndex, int columnIndex) {
                 return canEdit[columnIndex];
@@ -275,18 +258,18 @@ public class SmtpSender extends ConnectorSettingsPanel {
             @Override
             public boolean isCellEditable(EventObject evt) {
                 boolean editable = super.isCellEditable(evt);
-
+                
                 if (editable) {
                     deleteHeaderButton.setEnabled(false);
                 }
 
-                return editable;
+                return editable; 
             }
 
             @Override
             protected boolean valueChanged(String value) {
                 deleteHeaderButton.setEnabled(true);
-
+                
                 if (checkHeaders && (value.length() == 0 || checkUniqueHeader(value))) {
                     return false;
                 }
@@ -299,7 +282,7 @@ public class SmtpSender extends ConnectorSettingsPanel {
         headersTable.getColumnModel().getColumn(headersTable.getColumnModel().getColumnIndex(HEADERS_NAME_COLUMN_NAME)).setCellEditor(new HeadersTableCellEditor(true));
         headersTable.getColumnModel().getColumn(headersTable.getColumnModel().getColumnIndex(HEADERS_VALUE_COLUMN_NAME)).setCellEditor(new HeadersTableCellEditor(false));
         headersTable.setCustomEditorControls(true);
-
+        
         headersTable.setSelectionMode(0);
         headersTable.setRowSelectionAllowed(true);
         headersTable.setRowHeight(UIConstants.ROW_HEIGHT);
@@ -327,7 +310,7 @@ public class SmtpSender extends ConnectorSettingsPanel {
 
         return headers;
     }
-
+    
     private void setAttachments(List<Attachment> attachments) {
         Object[][] tableData = new Object[attachments.size()][3];
 
@@ -339,11 +322,9 @@ public class SmtpSender extends ConnectorSettingsPanel {
             tableData[i][ATTACHMENTS_MIME_TYPE_COLUMN] = attachments.get(i).getMimeType();
         }
 
-        attachmentsTable.setModel(new javax.swing.table.DefaultTableModel(tableData, new String[] {
-                ATTACHMENTS_NAME_COLUMN_NAME, ATTACHMENTS_CONTENT_COLUMN_NAME,
-                ATTACHMENTS_MIME_TYPE_COLUMN_NAME }) {
+        attachmentsTable.setModel(new javax.swing.table.DefaultTableModel(tableData, new String[]{ATTACHMENTS_NAME_COLUMN_NAME, ATTACHMENTS_CONTENT_COLUMN_NAME, ATTACHMENTS_MIME_TYPE_COLUMN_NAME}) {
 
-            boolean[] canEdit = new boolean[] { true, true, true };
+            boolean[] canEdit = new boolean[]{true, true, true};
 
             public boolean isCellEditable(int rowIndex, int columnIndex) {
                 return canEdit[columnIndex];
@@ -386,18 +367,18 @@ public class SmtpSender extends ConnectorSettingsPanel {
             @Override
             public boolean isCellEditable(EventObject evt) {
                 boolean editable = super.isCellEditable(evt);
-
+                
                 if (editable) {
                     deleteAttachmentButton.setEnabled(false);
                 }
 
-                return editable;
+                return editable; 
             }
 
             @Override
             protected boolean valueChanged(String value) {
                 deleteAttachmentButton.setEnabled(true);
-
+                
                 if (checkAttachments && (value.length() == 0 || checkUniqueAttachment(value))) {
                     return false;
                 }
@@ -465,7 +446,7 @@ public class SmtpSender extends ConnectorSettingsPanel {
     private String getNewUniqueName(MirthTable table) {
         String tempName;
         int nameColumn;
-
+        
         if (table == attachmentsTable) {
             tempName = "Attachment ";
             nameColumn = ATTACHMENTS_NAME_COLUMN;
@@ -874,109 +855,102 @@ public class SmtpSender extends ConnectorSettingsPanel {
         );
     }// </editor-fold>//GEN-END:initComponents
 
-    private void newAttachmentButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_newAttachmentButtonActionPerformed
-        ((DefaultTableModel) attachmentsTable.getModel()).addRow(new Object[] {
-                getNewUniqueName(attachmentsTable), "" });
-        attachmentsTable.setRowSelectionInterval(attachmentsTable.getRowCount() - 1, attachmentsTable.getRowCount() - 1);
+private void newAttachmentButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_newAttachmentButtonActionPerformed
+    ((DefaultTableModel) attachmentsTable.getModel()).addRow(new Object[]{getNewUniqueName(attachmentsTable), ""});
+    attachmentsTable.setRowSelectionInterval(attachmentsTable.getRowCount() - 1, attachmentsTable.getRowCount() - 1);
+    parent.setSaveEnabled(true);
+}//GEN-LAST:event_newAttachmentButtonActionPerformed
+
+private void deleteAttachmentButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deleteAttachmentButtonActionPerformed
+    if (getSelectedRow(attachmentsTable) != -1 && !attachmentsTable.isEditing()) {
+        ((DefaultTableModel) attachmentsTable.getModel()).removeRow(getSelectedRow(attachmentsTable));
+
+        if (attachmentsTable.getRowCount() != 0) {
+            if (attachmentsLastIndex == 0) {
+                attachmentsTable.setRowSelectionInterval(0, 0);
+            } else if (attachmentsLastIndex == attachmentsTable.getRowCount()) {
+                attachmentsTable.setRowSelectionInterval(attachmentsLastIndex - 1, attachmentsLastIndex - 1);
+            } else {
+                attachmentsTable.setRowSelectionInterval(attachmentsLastIndex, attachmentsLastIndex);
+            }
+        }
+
         parent.setSaveEnabled(true);
-    }//GEN-LAST:event_newAttachmentButtonActionPerformed
+    }
+}//GEN-LAST:event_deleteAttachmentButtonActionPerformed
 
-    private void deleteAttachmentButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deleteAttachmentButtonActionPerformed
-        if (getSelectedRow(attachmentsTable) != -1 && !attachmentsTable.isEditing()) {
-            ((DefaultTableModel) attachmentsTable.getModel()).removeRow(getSelectedRow(attachmentsTable));
+private void useAuthenticationYesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_useAuthenticationYesActionPerformed
+    usernameLabel.setEnabled(true);
+    usernameField.setEnabled(true);
 
-            if (attachmentsTable.getRowCount() != 0) {
-                if (attachmentsLastIndex == 0) {
-                    attachmentsTable.setRowSelectionInterval(0, 0);
-                } else if (attachmentsLastIndex == attachmentsTable.getRowCount()) {
-                    attachmentsTable.setRowSelectionInterval(attachmentsLastIndex - 1, attachmentsLastIndex - 1);
+    passwordLabel.setEnabled(true);
+    passwordField.setEnabled(true);
+}//GEN-LAST:event_useAuthenticationYesActionPerformed
+
+private void useAuthenticationNoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_useAuthenticationNoActionPerformed
+    usernameLabel.setEnabled(false);
+    usernameField.setEnabled(false);
+
+    passwordLabel.setEnabled(false);
+    passwordField.setEnabled(false);
+}//GEN-LAST:event_useAuthenticationNoActionPerformed
+
+private void sendTestEmailButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_sendTestEmailButtonActionPerformed
+    final String workingId = parent.startWorking("Sending test email...");
+    
+    SwingWorker worker = new SwingWorker<Void, Void>() {
+        
+        public Void doInBackground() {
+            
+            try {
+                ConnectionTestResponse response = (ConnectionTestResponse) parent.mirthClient.invokeConnectorService(name, "sendTestEmail", getProperties());
+                
+                if (response == null) {
+                    parent.alertError(parent, "Failed to send email.");
+                } else if (response.getType().equals(ConnectionTestResponse.Type.SUCCESS)) {
+                    parent.alertInformation(parent, response.getMessage());
                 } else {
-                    attachmentsTable.setRowSelectionInterval(attachmentsLastIndex, attachmentsLastIndex);
+                    parent.alertWarning(parent, response.getMessage());
                 }
+                
+                return null;
+            } catch (Exception e) {
+                parent.alertException(parent, e.getStackTrace(), e.getMessage());
+                return null;
             }
-
-            parent.setSaveEnabled(true);
         }
-    }//GEN-LAST:event_deleteAttachmentButtonActionPerformed
+        
+        public void done() {
+            parent.stopWorking(workingId);
+        }
+    };
+    
+    worker.execute();
+}//GEN-LAST:event_sendTestEmailButtonActionPerformed
 
-    private void useAuthenticationYesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_useAuthenticationYesActionPerformed
-        usernameLabel.setEnabled(true);
-        usernameField.setEnabled(true);
+private void newHeaderButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_newHeaderButtonActionPerformed
+    ((DefaultTableModel) headersTable.getModel()).addRow(new Object[]{getNewUniqueName(headersTable), ""});
+    headersTable.setRowSelectionInterval(headersTable.getRowCount() - 1, headersTable.getRowCount() - 1);
+    parent.setSaveEnabled(true);
+}//GEN-LAST:event_newHeaderButtonActionPerformed
 
-        passwordLabel.setEnabled(true);
-        passwordField.setEnabled(true);
-    }//GEN-LAST:event_useAuthenticationYesActionPerformed
+private void deleteHeaderButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deleteHeaderButtonActionPerformed
+    if (getSelectedRow(headersTable) != -1 && !headersTable.isEditing()) {
+        ((DefaultTableModel) headersTable.getModel()).removeRow(getSelectedRow(headersTable));
 
-    private void useAuthenticationNoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_useAuthenticationNoActionPerformed
-        usernameLabel.setEnabled(false);
-        usernameField.setEnabled(false);
-
-        passwordLabel.setEnabled(false);
-        passwordField.setEnabled(false);
-    }//GEN-LAST:event_useAuthenticationNoActionPerformed
-
-    private void sendTestEmailButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_sendTestEmailButtonActionPerformed
-        if (!checkProperties(getProperties(), true)) {
-            parent.alertCustomError(this.parent, errors, "Please fix the following errors before sending a test email:");
-            return;
+        if (headersTable.getRowCount() != 0) {
+            if (headersLastIndex == 0) {
+                headersTable.setRowSelectionInterval(0, 0);
+            } else if (headersLastIndex == headersTable.getRowCount()) {
+                headersTable.setRowSelectionInterval(headersLastIndex - 1, headersLastIndex - 1);
+            } else {
+                headersTable.setRowSelectionInterval(headersLastIndex, headersLastIndex);
+            }
         }
 
-        final String workingId = parent.startWorking("Sending test email...");
-
-        SwingWorker worker = new SwingWorker<Void, Void>() {
-
-            public Void doInBackground() {
-
-                try {
-                    ConnectionTestResponse response = (ConnectionTestResponse) parent.mirthClient.invokeConnectorService(parent.channelEditPanel.currentChannel.getId(), getConnectorName(), "sendTestEmail", getProperties());
-
-                    if (response == null) {
-                        parent.alertError(parent, "Failed to send email.");
-                    } else if (response.getType().equals(ConnectionTestResponse.Type.SUCCESS)) {
-                        parent.alertInformation(parent, response.getMessage());
-                    } else {
-                        parent.alertWarning(parent, response.getMessage());
-                    }
-
-                    return null;
-                } catch (Exception e) {
-                    parent.alertException(parent, e.getStackTrace(), e.getMessage());
-                    return null;
-                }
-            }
-
-            public void done() {
-                parent.stopWorking(workingId);
-            }
-        };
-
-        worker.execute();
-    }//GEN-LAST:event_sendTestEmailButtonActionPerformed
-
-    private void newHeaderButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_newHeaderButtonActionPerformed
-        ((DefaultTableModel) headersTable.getModel()).addRow(new Object[] {
-                getNewUniqueName(headersTable), "" });
-        headersTable.setRowSelectionInterval(headersTable.getRowCount() - 1, headersTable.getRowCount() - 1);
         parent.setSaveEnabled(true);
-    }//GEN-LAST:event_newHeaderButtonActionPerformed
-
-    private void deleteHeaderButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_deleteHeaderButtonActionPerformed
-        if (getSelectedRow(headersTable) != -1 && !headersTable.isEditing()) {
-            ((DefaultTableModel) headersTable.getModel()).removeRow(getSelectedRow(headersTable));
-
-            if (headersTable.getRowCount() != 0) {
-                if (headersLastIndex == 0) {
-                    headersTable.setRowSelectionInterval(0, 0);
-                } else if (headersLastIndex == headersTable.getRowCount()) {
-                    headersTable.setRowSelectionInterval(headersLastIndex - 1, headersLastIndex - 1);
-                } else {
-                    headersTable.setRowSelectionInterval(headersLastIndex, headersLastIndex);
-                }
-            }
-
-            parent.setSaveEnabled(true);
-        }
-    }//GEN-LAST:event_deleteHeaderButtonActionPerformed
+    }
+}//GEN-LAST:event_deleteHeaderButtonActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel attachmentsLabel;

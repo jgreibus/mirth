@@ -1,10 +1,10 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.client.ui;
@@ -152,7 +152,7 @@ public class FirstLoginDialog extends javax.swing.JDialog implements UserDialogI
         usageStatsCheckBox.setSelected(true);
         usageStatsCheckBox.setText("Submit usage statistics");
 
-        usageStatsMoreInfoLabel.setText("<html><font color=blue><u>Privacy Policy</u></font></html>");
+        usageStatsMoreInfoLabel.setText("<html><font color=blue><u>More Info</u></font></html>");
         usageStatsMoreInfoLabel.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 usageStatsMoreInfoLabelMouseClicked(evt);

@@ -1,10 +1,10 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.plugins;
@@ -13,7 +13,7 @@ import java.util.List;
 
 import javax.swing.JComponent;
 
-import com.mirth.connect.model.DashboardStatus;
+import com.mirth.connect.model.ChannelStatus;
 
 public abstract class DashboardPanelPlugin extends ClientPlugin {
 
@@ -29,6 +29,6 @@ public abstract class DashboardPanelPlugin extends ClientPlugin {
 
     // used for setting actions to be called for updating when there is a status
     // selected
-    public abstract void update(List<DashboardStatus> statuses);
+    public abstract void update(List<ChannelStatus> statuses);
 
 }

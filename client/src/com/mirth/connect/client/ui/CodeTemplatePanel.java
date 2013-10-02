@@ -1,10 +1,10 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.client.ui;
@@ -388,6 +388,9 @@ public class CodeTemplatePanel extends javax.swing.JPanel {
             parent.alertException(this, e.getStackTrace(), e.getMessage());
         }
 
+        // Set the version when creating new code templates in case they are exported
+        // without being retrieved from the server again, which always sets the version
+        codeTemplate.setVersion(PlatformUI.SERVER_VERSION);
         codeTemplate.setName(getNewCodeTemplateName(model.getRowCount() + 1));
         codeTemplate.setCode(functionCodeExample);
         codeTemplate.setTooltip("");

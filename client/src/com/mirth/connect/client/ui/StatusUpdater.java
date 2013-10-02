@@ -1,10 +1,10 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.client.ui;
@@ -21,34 +21,38 @@ public class StatusUpdater implements Runnable {
     private static Preferences userPreferences;
     Frame parent;
     int refreshRate;
+    boolean interrupted;
 
     public StatusUpdater() {
         this.parent = PlatformUI.MIRTH_FRAME;
         userPreferences = Preferences.userNodeForPackage(Mirth.class);
+        interrupted = false;
     }
 
     public void run() {
-        while (!Thread.currentThread().isInterrupted()) {
-            refreshRate = userPreferences.getInt("intervalTime", DEFAULT_INTERVAL_TIME) * 1000;
-            
-            try {
-                Thread.sleep(refreshRate);
-            } catch (InterruptedException e) {
-                return;
-            }
+        try {
+            while (!interrupted) {
+                while (parent.isRefreshingStatuses()) {
+                    Thread.sleep(100);
+                }
 
-            // Stop this thread if the current content page is neither dashboard or alert panel
-            if (parent.currentContentPage != null) {
-                if (parent.currentContentPage == parent.dashboardPanel) {
-                    parent.doRefreshStatuses(false);
-                } else if (parent.currentContentPage == parent.alertPanel){
-                    parent.doRefreshAlerts(false);
-                } else {
+                refreshRate = userPreferences.getInt("intervalTime", DEFAULT_INTERVAL_TIME) * 1000;
+                Thread.sleep(refreshRate);
+
+                if (interrupted) {
                     return;
                 }
-            } else {
-                return;
+
+                if (parent.currentContentPage != null && parent.currentContentPage == parent.dashboardPanel) {
+                    parent.doRefreshStatuses();
+                }
             }
+        } catch (InterruptedException e) {
+            // should happen when closed.
         }
+    }
+
+    public void interruptThread() {
+        interrupted = true;
     }
 }

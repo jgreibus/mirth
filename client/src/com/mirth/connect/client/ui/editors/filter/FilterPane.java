@@ -1,16 +1,15 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.client.ui.editors.filter;
 
 import java.awt.BorderLayout;
-import java.awt.Component;
 import java.awt.Point;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
@@ -22,6 +21,8 @@ import java.awt.dnd.DropTargetEvent;
 import java.awt.dnd.DropTargetListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
@@ -29,7 +30,6 @@ import java.awt.event.MouseEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -47,12 +47,10 @@ import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
-import javax.swing.JTable;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableModel;
 
-import org.apache.commons.lang3.StringUtils;
 import org.jdesktop.swingx.JXTaskPane;
 import org.jdesktop.swingx.action.ActionFactory;
 import org.jdesktop.swingx.action.BoundAction;
@@ -67,8 +65,7 @@ import com.mirth.connect.client.ui.PlatformUI;
 import com.mirth.connect.client.ui.RuleDropData;
 import com.mirth.connect.client.ui.TreeTransferable;
 import com.mirth.connect.client.ui.UIConstants;
-import com.mirth.connect.client.ui.components.MirthComboBoxTableCellEditor;
-import com.mirth.connect.client.ui.components.MirthComboBoxTableCellRenderer;
+import com.mirth.connect.client.ui.components.MirthComboBoxCellEditor;
 import com.mirth.connect.client.ui.components.MirthTable;
 import com.mirth.connect.client.ui.components.MirthTree;
 import com.mirth.connect.client.ui.editors.BasePanel;
@@ -79,9 +76,9 @@ import com.mirth.connect.model.Channel;
 import com.mirth.connect.model.Connector;
 import com.mirth.connect.model.Filter;
 import com.mirth.connect.model.Rule;
-import com.mirth.connect.model.Rule.Operator;
 import com.mirth.connect.model.Transformer;
 import com.mirth.connect.model.converters.ObjectXMLSerializer;
+import com.mirth.connect.model.util.ImportConverter;
 import com.mirth.connect.plugins.FilterRulePlugin;
 
 public class FilterPane extends MirthEditorPane implements DropTargetListener {
@@ -135,7 +132,8 @@ public class FilterPane extends MirthEditorPane implements DropTargetListener {
      * load( Filter f )
      */
     public boolean load(Connector c, Filter f, Transformer t, boolean channelHasBeenChanged) {
-        if (alertUnsupportedRuleTypes(f)) {
+        if (LoadedExtensions.getInstance().getFilterRulePlugins().values().size() == 0) {
+            parent.alertError(this, "No filter rule plugins loaded.\r\nPlease install plugins and try again.");
             return false;
         }
 
@@ -156,7 +154,12 @@ public class FilterPane extends MirthEditorPane implements DropTargetListener {
         ListIterator<Rule> li = list.listIterator();
         while (li.hasNext()) {
             Rule s = li.next();
-            setRowData(s, s.getSequenceNumber(), false);
+            if (!LoadedExtensions.getInstance().getFilterRulePlugins().containsKey(s.getType())) {
+                parent.alertError(this, "Unable to load filter rule plugin \"" + s.getType() + "\"\r\nPlease install plugin and try again.");
+                return false;
+            }
+            int row = s.getSequenceNumber();
+            setRowData(s, row, false);
         }
 
         tabTemplatePanel.setDefaultComponent();
@@ -179,13 +182,13 @@ public class FilterPane extends MirthEditorPane implements DropTargetListener {
 
         if (connector.getMode() == Connector.Mode.SOURCE) {
             tabTemplatePanel.setSourceView();
-            tabTemplatePanel.setIncomingDataType((String) PlatformUI.MIRTH_FRAME.dataTypeToDisplayName.get(channel.getSourceConnector().getTransformer().getInboundDataType()));
+            tabTemplatePanel.setIncomingDataType((String) PlatformUI.MIRTH_FRAME.protocols.get(channel.getSourceConnector().getTransformer().getInboundProtocol()));
         } else if (connector.getMode() == Connector.Mode.DESTINATION) {
-            tabTemplatePanel.setDestinationView(false);
-            if (channel.getSourceConnector().getTransformer().getOutboundDataType() != null) {
-                tabTemplatePanel.setIncomingDataType((String) PlatformUI.MIRTH_FRAME.dataTypeToDisplayName.get(channel.getSourceConnector().getTransformer().getOutboundDataType()));
+            tabTemplatePanel.setDestinationView();
+            if (channel.getSourceConnector().getTransformer().getOutboundProtocol() != null) {
+                tabTemplatePanel.setIncomingDataType((String) PlatformUI.MIRTH_FRAME.protocols.get(channel.getSourceConnector().getTransformer().getOutboundProtocol()));
             } else {
-                tabTemplatePanel.setIncomingDataType((String) PlatformUI.MIRTH_FRAME.dataTypeToDisplayName.get(channel.getSourceConnector().getTransformer().getInboundDataType()));
+                tabTemplatePanel.setIncomingDataType((String) PlatformUI.MIRTH_FRAME.protocols.get(channel.getSourceConnector().getTransformer().getInboundProtocol()));
             }
         }
 
@@ -205,36 +208,6 @@ public class FilterPane extends MirthEditorPane implements DropTargetListener {
         }
 
         return true;
-    }
-    
-    /**
-     * @return Returns true if the filter has unsupported rule types and an alert was generated, false otherwise.
-     */
-    private boolean alertUnsupportedRuleTypes(Filter filter) {
-        if (LoadedExtensions.getInstance().getFilterRulePlugins().values().size() == 0) {
-            parent.alertError(this, "No filter rule plugins loaded.\r\nPlease install plugins and try again.");
-            return true;
-        }
-
-        Set<String> types = new HashSet<String>();
-
-        for (Rule rule : filter.getRules()) {
-            types.add(rule.getType());
-        }
-
-        types.removeAll(LoadedExtensions.getInstance().getFilterRulePlugins().keySet());
-
-        if (!types.isEmpty()) {
-            if (types.size() == 1) {
-                parent.alertError(this, "The \"" + types.toArray()[0] + "\" rule plugin is required by this filter. Please install this plugin and try again.");
-            } else {
-                parent.alertError(this, "The following rule type plugins are required by this filter: " + StringUtils.join(types, ", ") + ". Please install these plugins and try again.");
-            }
-
-            return true;
-        }
-
-        return false;
     }
 
     public void dragEnter(DropTargetDragEvent dtde) {
@@ -468,10 +441,10 @@ public class FilterPane extends MirthEditorPane implements DropTargetListener {
 
         // Set the combobox editor on the operator column, and add action
         // listener
-        MirthComboBoxTableCellEditor comboBoxOp = new MirthComboBoxTableCellEditor(filterTable, comboBoxValues, 2, true, new ActionListener() {
+        MirthComboBoxCellEditor comboBoxOp = new MirthComboBoxCellEditor(filterTable, comboBoxValues, 2, true);
+        ((JComboBox) comboBoxOp.getComponent()).addItemListener(new ItemListener() {
 
-            @Override
-            public void actionPerformed(ActionEvent e) {
+            public void itemStateChanged(ItemEvent evt) {
                 modified = true;
                 updateOperations();
             }
@@ -484,12 +457,13 @@ public class FilterPane extends MirthEditorPane implements DropTargetListener {
             defaultComboBoxValues[i] = pluginArray[i].getPluginPointName();
         }
 
-        MirthComboBoxTableCellEditor comboBoxType = new MirthComboBoxTableCellEditor(filterTable, defaultComboBoxValues, 2, true, new ActionListener() {
+        MirthComboBoxCellEditor comboBoxType = new MirthComboBoxCellEditor(filterTable, defaultComboBoxValues, 2, true);
 
-            @Override
-            public void actionPerformed(ActionEvent evt) {
-                if (filterTable.getEditingRow() != -1) {
-                    String type = ((JComboBox) evt.getSource()).getSelectedItem().toString();
+        ((JComboBox) comboBoxType.getComponent()).addItemListener(new ItemListener() {
+
+            public void itemStateChanged(ItemEvent evt) {
+                if (evt.getStateChange() == evt.SELECTED) {
+                    String type = evt.getItem().toString();
                     int row = getSelectedRow();
 
                     if (type.equalsIgnoreCase((String) filterTable.getValueAt(row, RULE_TYPE_COL))) {
@@ -522,24 +496,11 @@ public class FilterPane extends MirthEditorPane implements DropTargetListener {
 
         filterTable.getColumnExt(RULE_NUMBER_COL).setCellRenderer(new CenterCellRenderer());
         filterTable.getColumnExt(RULE_OP_COL).setCellEditor(comboBoxOp);
-        filterTable.getColumnExt(RULE_OP_COL).setCellRenderer(new MirthComboBoxTableCellRenderer(comboBoxValues) {
-            @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-                if (value instanceof String && value.equals("")) {
-                    value = null;
-                } else if (value != null) {
-                    value = value.toString();
-                }
-
-                return super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-            }
-        });
 
         filterTable.getColumnExt(RULE_TYPE_COL).setMaxWidth(UIConstants.MAX_WIDTH);
         filterTable.getColumnExt(RULE_TYPE_COL).setMinWidth(120);
         filterTable.getColumnExt(RULE_TYPE_COL).setPreferredWidth(120);
         filterTable.getColumnExt(RULE_TYPE_COL).setCellEditor(comboBoxType);
-        filterTable.getColumnExt(RULE_TYPE_COL).setCellRenderer(new MirthComboBoxTableCellRenderer(defaultComboBoxValues));
 
         filterTable.getColumnExt(RULE_DATA_COL).setVisible(false);
 
@@ -548,7 +509,6 @@ public class FilterPane extends MirthEditorPane implements DropTargetListener {
         filterTable.setSortable(false);
         filterTable.setOpaque(true);
         filterTable.setRowSelectionAllowed(true);
-        filterTable.setDragEnabled(false);
         filterTable.getTableHeader().setReorderingAllowed(false);
 
         if (Preferences.userNodeForPackage(Mirth.class).getBoolean("highlightRows", true)) {
@@ -667,8 +627,6 @@ public class FilterPane extends MirthEditorPane implements DropTargetListener {
             try {
                 data = getPlugin(type).getData(row);
                 filterTableModel.setValueAt(data, row, RULE_DATA_COL);
-                List<Rule> list = buildRuleList(new ArrayList<Rule>(), filterTable.getRowCount());
-                filter.setRules(list);
             } catch (Exception e) {
                 parent.alertException(this, e.getStackTrace(), e.getMessage());
             }
@@ -693,7 +651,6 @@ public class FilterPane extends MirthEditorPane implements DropTargetListener {
             tabTemplatePanel.updateVariables(concatenatedRules, null);
         } else {
             tabTemplatePanel.updateVariables(getRuleVariables(row), getGlobalStepVariables(row));
-            tabTemplatePanel.populateConnectors(channel.getDestinationConnectors());
         }
     }
 
@@ -920,61 +877,35 @@ public class FilterPane extends MirthEditorPane implements DropTargetListener {
     }
 
     public void importFilter(String content) {
-        ObjectXMLSerializer serializer = ObjectXMLSerializer.getInstance();
-        Filter importFilter = null;
+        Filter previousFilter = connector.getFilter();
 
+        boolean append = false;
+
+        if (previousFilter.getRules().size() > 0) {
+            if (parent.alertOption(parent, "Would you like to append the rules from the imported filter to the existing filter?")) {
+                append = true;
+            }
+        }
+
+        ObjectXMLSerializer serializer = new ObjectXMLSerializer();
         try {
-            importFilter = serializer.deserialize(content, Filter.class);
-        } catch (Exception e) {
-            parent.alertError(this, "Invalid filter file.");
-            return;
-        }
-        
-        if (alertUnsupportedRuleTypes(importFilter)) {
-            return;
-        }
-        
-        prevSelRow = -1;
-        modified = true;
+            Filter importFilter = (Filter) serializer.fromXML(ImportConverter.convertFilter(content));
+            prevSelRow = -1;
+            modified = true;
 
-        boolean append = (filterTableModel.getRowCount() > 0 && parent.alertOption(parent, "Would you like to append the rules from the imported filter to the existing filter?"));
-        
-        /*
-         * When appending, we merely add the rules from the filter being imported. When not
-         * appending, we replace the entire filter with the one being imported.
-         */
-        if (append) {
-            /*
-             * MIRTH-2746 When appending filter rules from an import, the first rule may not
-             * have an operator. To prevent an error in the JavaScript, we default it to AND.
-             */
-            switch (importFilter.getRules().get(0).getOperator()) {
-                case AND:
-                case OR:
-                    break;
-
-                default:
-                    importFilter.getRules().get(0).setOperator(Operator.AND);
-                    break;
+            if (append) {
+                previousFilter.getRules().addAll(importFilter.getRules());
+                importFilter = previousFilter;
+                connector.setFilter(importFilter);
             }
-            
-            int row = filterTableModel.getRowCount();
-            
-            for (Rule rule : importFilter.getRules()) {
-                setRowData(rule, row++, false);
-            }
-            
-            updateRuleNumbers();
-        } else {
             connector.setFilter(importFilter);
-            
-            /*
-             * We don't need to check the boolean return value from load() because we already
-             * checked for unsupported rule types earlier in this method.
-             */
+
             load(connector, importFilter, transformer, modified);
+        } catch (Exception e) {
+            e.printStackTrace();
+            parent.alertError(this, "Invalid filter file.");
         }
-}
+    }
 
     /*
      * Export the filter.
@@ -982,8 +913,8 @@ public class FilterPane extends MirthEditorPane implements DropTargetListener {
     public void doExport() {
         accept(false);
 
-        ObjectXMLSerializer serializer = ObjectXMLSerializer.getInstance();
-        String filterXML = serializer.serialize(filter);
+        ObjectXMLSerializer serializer = new ObjectXMLSerializer();
+        String filterXML = serializer.toXML(filter);
 
         parent.exportFile(filterXML, null, "XML", "Filter");
     }
@@ -1030,11 +961,10 @@ public class FilterPane extends MirthEditorPane implements DropTargetListener {
             Rule rule = new Rule();
             rule.setSequenceNumber(Integer.parseInt(filterTable.getValueAt(i, RULE_NUMBER_COL).toString()));
 
-            String operator = filterTableModel.getValueAt(i, RULE_OP_COL).toString();
-            if (i == 0 || StringUtils.isBlank(operator)) {
+            if (i == 0) {
                 rule.setOperator(Rule.Operator.NONE);
             } else {
-                rule.setOperator(Rule.Operator.valueOf(operator));
+                rule.setOperator(Rule.Operator.valueOf(filterTableModel.getValueAt(i, RULE_OP_COL).toString()));
             }
 
             rule.setData((Map) filterTableModel.getValueAt(i, RULE_DATA_COL));
@@ -1075,7 +1005,7 @@ public class FilterPane extends MirthEditorPane implements DropTargetListener {
 
     private Set<String> getGlobalStepVariables(int row) {
         Set<String> concatenatedSteps = new LinkedHashSet<String>();
-        VariableListUtil.getStepVariables(concatenatedSteps, channel.getSourceConnector().getTransformer(), false);
+        VariableListUtil.getStepVariables(concatenatedSteps, channel.getSourceConnector(), false);
 
         List<Connector> destinationConnectors = channel.getDestinationConnectors();
         Iterator<Connector> it = destinationConnectors.iterator();
@@ -1087,8 +1017,7 @@ public class FilterPane extends MirthEditorPane implements DropTargetListener {
                 // VariableListUtil.getStepVariables(concatenatedSteps,
                 // destination, true, row);
             } else if (!seenCurrent) {
-                VariableListUtil.getStepVariables(concatenatedSteps, destination.getTransformer(), false);
-                VariableListUtil.getStepVariables(concatenatedSteps, destination.getResponseTransformer(), false);
+                VariableListUtil.getStepVariables(concatenatedSteps, destination, false);
                 concatenatedSteps.add(destination.getName());
             }
         }
@@ -1107,9 +1036,10 @@ public class FilterPane extends MirthEditorPane implements DropTargetListener {
         saveData(filterTable.getSelectedRow());
 
         List<Rule> list = buildRuleList(new ArrayList<Rule>(), filterTable.getRowCount());
-        filter.setRules(list);
 
+        filter.setRules(list);
         transformer.setInboundTemplate(tabTemplatePanel.getIncomingMessage());
+
         transformer.setInboundProperties(tabTemplatePanel.getIncomingDataProperties());
 
         // reset the task pane and content to channel edit page

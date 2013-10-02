@@ -1,10 +1,10 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.client.ui.editors;
@@ -159,7 +159,7 @@ public class JavaScriptEditorDialog extends javax.swing.JDialog implements DropT
         jPanel1 = new javax.swing.JPanel();
         cancelButton = new javax.swing.JButton();
         validateScriptButton = new javax.swing.JButton();
-        scriptContent = new com.mirth.connect.client.ui.components.MirthSyntaxTextArea(true,true);
+        scriptContent = new com.mirth.connect.client.ui.components.MirthSyntaxTextArea();
         openFileButton = new javax.swing.JButton();
         okButton = new javax.swing.JButton();
 
@@ -249,6 +249,7 @@ public class JavaScriptEditorDialog extends javax.swing.JDialog implements DropT
     }// </editor-fold>//GEN-END:initComponents
 
     private void openFileButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_openFileButtonActionPerformed
+// TODO add your handling code here:
         String content = parent.browseForFileString(null);
 
         if (content != null) {

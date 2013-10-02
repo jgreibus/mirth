@@ -1,10 +1,10 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.client.ui.components;
@@ -22,15 +22,6 @@ public class MirthCheckBox extends javax.swing.JCheckBox {
 
     public MirthCheckBox() {
         super();
-        init();
-    }
-    
-    public MirthCheckBox(String text) {
-        super(text);
-        init();
-    }
-    
-    private void init() {
         this.setFocusable(true);
         this.parent = PlatformUI.MIRTH_FRAME;
         this.addActionListener(new java.awt.event.ActionListener() {

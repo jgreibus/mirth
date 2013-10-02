@@ -1,13 +1,16 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.client.ui.editors;
+
+import org.syntax.jedit.SyntaxDocument;
+import org.syntax.jedit.tokenmarker.XMLTokenMarker;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -15,9 +18,6 @@ import java.util.Map;
 import javax.swing.SwingUtilities;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-
-import org.syntax.jedit.SyntaxDocument;
-import org.syntax.jedit.tokenmarker.XMLTokenMarker;
 
 public class XsltStepPanel extends BasePanel {
 

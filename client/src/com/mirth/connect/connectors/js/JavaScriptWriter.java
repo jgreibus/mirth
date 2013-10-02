@@ -1,16 +1,16 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.connectors.js;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.UUID;
 
 import org.mozilla.javascript.Context;
@@ -19,15 +19,21 @@ import org.syntax.jedit.SyntaxDocument;
 import org.syntax.jedit.tokenmarker.JavaScriptTokenMarker;
 
 import com.mirth.connect.client.ui.UIConstants;
-import com.mirth.connect.client.ui.VariableListHandler.TransferMode;
-import com.mirth.connect.client.ui.panels.connectors.ConnectorSettingsPanel;
-import com.mirth.connect.donkey.model.channel.ConnectorProperties;
+import com.mirth.connect.connectors.ConnectorClass;
+import com.mirth.connect.model.DriverInfo;
 
-public class JavaScriptWriter extends ConnectorSettingsPanel {
+/**
+ * A form that extends from ConnectorClass. All methods implemented are
+ * described in ConnectorClass.
+ */
+public class JavaScriptWriter extends ConnectorClass {
 
     private static SyntaxDocument jsMappingDoc;
+    private List<DriverInfo> drivers;
 
     public JavaScriptWriter() {
+        name = JavaScriptWriterProperties.name;
+
         initComponents();
 
         jsMappingDoc = new SyntaxDocument();
@@ -36,39 +42,30 @@ public class JavaScriptWriter extends ConnectorSettingsPanel {
         javaScriptTextPane.setDocument(jsMappingDoc);
     }
 
-    @Override
-    public String getConnectorName() {
-        return new JavaScriptDispatcherProperties().getName();
-    }
-
-    @Override
-    public ConnectorProperties getProperties() {
-        JavaScriptDispatcherProperties properties = new JavaScriptDispatcherProperties();
-
-        properties.setScript(javaScriptTextPane.getText());
+    public Properties getProperties() {
+        Properties properties = new Properties();
+        properties.put(JavaScriptWriterProperties.DATATYPE, name);
+        properties.put(JavaScriptWriterProperties.JAVASCRIPT_HOST, "sink");
+        properties.put(JavaScriptWriterProperties.JAVASCRIPT_SCRIPT, javaScriptTextPane.getText());
 
         return properties;
     }
 
-    @Override
-    public void setProperties(ConnectorProperties properties) {
-        JavaScriptDispatcherProperties props = (JavaScriptDispatcherProperties) properties;
+    public void setProperties(Properties props) {
+        resetInvalidProperties();
+        javaScriptTextPane.setText((String) props.get(JavaScriptWriterProperties.JAVASCRIPT_SCRIPT));
 
-        javaScriptTextPane.setText(props.getScript());
     }
 
-    @Override
-    public ConnectorProperties getDefaults() {
-        return new JavaScriptDispatcherProperties();
+    public Properties getDefaults() {
+        return new JavaScriptWriterProperties().getDefaults();
     }
 
-    @Override
-    public boolean checkProperties(ConnectorProperties properties, boolean highlight) {
-        JavaScriptDispatcherProperties props = (JavaScriptDispatcherProperties) properties;
-
+    public boolean checkProperties(Properties props, boolean highlight) {
+        resetInvalidProperties();
         boolean valid = true;
 
-        if (props.getScript().length() == 0) {
+        if (((String) props.get(JavaScriptWriterProperties.JAVASCRIPT_SCRIPT)).length() == 0) {
             valid = false;
             if (highlight) {
                 javaScriptTextPane.setBackground(UIConstants.INVALID_COLOR);
@@ -78,22 +75,22 @@ public class JavaScriptWriter extends ConnectorSettingsPanel {
         return valid;
     }
 
-    public TransferMode getTransferMode() {
-        return TransferMode.JAVASCRIPT;
+    public String[] getDragAndDropCharacters(Properties props) {
+        return new String[]{"$('", "')"};
     }
 
-    @Override
-    public void resetInvalidProperties() {
+    private void resetInvalidProperties() {
         javaScriptTextPane.setBackground(null);
     }
 
-    @Override
-    public String doValidate(ConnectorProperties properties, boolean highlight) {
-        JavaScriptDispatcherProperties props = (JavaScriptDispatcherProperties) properties;
-
+    public String doValidate(Properties props, boolean highlight) {
         String error = null;
 
-        String script = props.getScript();
+        if (!checkProperties(props, highlight)) {
+            error = "Error in the form for connector \"" + getName() + "\".\n\n";
+        }
+
+        String script = ((String) props.get(JavaScriptWriterProperties.JAVASCRIPT_SCRIPT));
 
         if (script.length() != 0) {
             Context context = Context.enter();
@@ -117,17 +114,6 @@ public class JavaScriptWriter extends ConnectorSettingsPanel {
         return error;
     }
 
-    @Override
-    public List<String> getScripts(ConnectorProperties properties) {
-        JavaScriptDispatcherProperties props = (JavaScriptDispatcherProperties) properties;
-
-        List<String> scripts = new ArrayList<String>();
-
-        scripts.add(props.getScript());
-
-        return scripts;
-    }
-
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -137,8 +123,9 @@ public class JavaScriptWriter extends ConnectorSettingsPanel {
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
+        buttonGroup1 = new javax.swing.ButtonGroup();
         jsLabel = new javax.swing.JLabel();
-        javaScriptTextPane = new com.mirth.connect.client.ui.components.MirthSyntaxTextArea(true,true);
+        javaScriptTextPane = new com.mirth.connect.client.ui.components.MirthSyntaxTextArea(true,false);
 
         setBackground(new java.awt.Color(255, 255, 255));
         setBorder(javax.swing.BorderFactory.createEmptyBorder(1, 1, 1, 1));
@@ -168,6 +155,7 @@ public class JavaScriptWriter extends ConnectorSettingsPanel {
         );
     }// </editor-fold>//GEN-END:initComponents
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.ButtonGroup buttonGroup1;
     private com.mirth.connect.client.ui.components.MirthSyntaxTextArea javaScriptTextPane;
     private javax.swing.JLabel jsLabel;
     // End of variables declaration//GEN-END:variables

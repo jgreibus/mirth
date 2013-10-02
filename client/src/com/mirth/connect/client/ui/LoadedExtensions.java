@@ -1,10 +1,10 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.client.ui;
@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import com.mirth.connect.client.ui.panels.connectors.ConnectorSettingsPanel;
+import com.mirth.connect.connectors.ConnectorClass;
 import com.mirth.connect.model.ConnectorMetaData;
 import com.mirth.connect.model.PluginMetaData;
 import com.mirth.connect.plugins.AttachmentViewer;
@@ -27,15 +27,13 @@ import com.mirth.connect.plugins.ClientPlugin;
 import com.mirth.connect.plugins.CodeTemplatePlugin;
 import com.mirth.connect.plugins.DashboardColumnPlugin;
 import com.mirth.connect.plugins.DashboardPanelPlugin;
-import com.mirth.connect.plugins.DataTypeClientPlugin;
 import com.mirth.connect.plugins.FilterRulePlugin;
 import com.mirth.connect.plugins.SettingsPanelPlugin;
 import com.mirth.connect.plugins.TransformerStepPlugin;
-import com.mirth.connect.plugins.TransmissionModePlugin;
 
 public class LoadedExtensions {
-
     private List<ClientPlugin> clientPlugins = new ArrayList<ClientPlugin>();
+
     private Map<String, SettingsPanelPlugin> settingsPanelPlugins = new HashMap<String, SettingsPanelPlugin>();
     private Map<String, ChannelPanelPlugin> channelPanelPlugins = new HashMap<String, ChannelPanelPlugin>();
     private Map<String, DashboardPanelPlugin> dashboardPanelPlugins = new HashMap<String, DashboardPanelPlugin>();
@@ -46,11 +44,11 @@ public class LoadedExtensions {
     private Map<String, FilterRulePlugin> filterRulePlugins = new HashMap<String, FilterRulePlugin>();
     private Map<String, TransformerStepPlugin> transformerStepPlugins = new HashMap<String, TransformerStepPlugin>();
     private Map<String, CodeTemplatePlugin> codeTemplatePlugins = new HashMap<String, CodeTemplatePlugin>();
-    private Map<String, DataTypeClientPlugin> dataTypePlugins = new TreeMap<String, DataTypeClientPlugin>();
-    private Map<String, TransmissionModePlugin> transmissionModePlugins = new TreeMap<String, TransmissionModePlugin>();
-    private Map<String, ConnectorSettingsPanel> connectors = new TreeMap<String, ConnectorSettingsPanel>();
-    private Map<String, ConnectorSettingsPanel> sourceConnectors = new TreeMap<String, ConnectorSettingsPanel>();
-    private Map<String, ConnectorSettingsPanel> destinationConnectors = new TreeMap<String, ConnectorSettingsPanel>();
+
+    private Map<String, ConnectorClass> connectors = new TreeMap<String, ConnectorClass>();
+    private Map<String, ConnectorClass> sourceConnectors = new TreeMap<String, ConnectorClass>();
+    private Map<String, ConnectorClass> destinationConnectors = new TreeMap<String, ConnectorClass>();
+
     private static LoadedExtensions instance = null;
 
     private LoadedExtensions() {
@@ -102,21 +100,21 @@ public class LoadedExtensions {
                 if (PlatformUI.MIRTH_FRAME.mirthClient.isExtensionEnabled(metaData.getName())) {
 
                     String connectorName = metaData.getName();
-                    ConnectorSettingsPanel connectorSettingsPanel = (ConnectorSettingsPanel) Class.forName(metaData.getClientClassName()).newInstance();
+                    ConnectorClass connectorClass = (ConnectorClass) Class.forName(metaData.getClientClassName()).newInstance();
 
                     if (metaData.getType() == ConnectorMetaData.Type.SOURCE) {
-                        connectors.put(connectorName, connectorSettingsPanel);
-                        sourceConnectors.put(connectorName, connectorSettingsPanel);
+                        connectors.put(connectorName, connectorClass);
+                        sourceConnectors.put(connectorName, connectorClass);
                     } else if (metaData.getType() == ConnectorMetaData.Type.DESTINATION) {
-                        connectors.put(connectorName, connectorSettingsPanel);
-                        destinationConnectors.put(connectorName, connectorSettingsPanel);
+                        connectors.put(connectorName, connectorClass);
+                        destinationConnectors.put(connectorName, connectorClass);
                     } else {
                         // type must be SOURCE or DESTINATION
                         throw new Exception();
                     }
                 }
             } catch (Exception e) {
-                PlatformUI.MIRTH_FRAME.alertException(PlatformUI.MIRTH_FRAME, e.getStackTrace(), "Could not load connector class: " + metaData.getClientClassName());
+                PlatformUI.MIRTH_FRAME.alertError(PlatformUI.MIRTH_FRAME, "Could not load connector class: " + metaData.getClientClassName());
             }
         }
     }
@@ -183,17 +181,9 @@ public class LoadedExtensions {
         if (plugin instanceof TransformerStepPlugin) {
             transformerStepPlugins.put(plugin.getPluginPointName(), (TransformerStepPlugin) plugin);
         }
-
+        
         if (plugin instanceof CodeTemplatePlugin) {
             codeTemplatePlugins.put(plugin.getPluginPointName(), (CodeTemplatePlugin) plugin);
-        }
-
-        if (plugin instanceof DataTypeClientPlugin) {
-            dataTypePlugins.put(plugin.getPluginPointName(), (DataTypeClientPlugin) plugin);
-        }
-
-        if (plugin instanceof TransmissionModePlugin) {
-            transmissionModePlugins.put(plugin.getPluginPointName(), (TransmissionModePlugin) plugin);
         }
     }
 
@@ -210,8 +200,6 @@ public class LoadedExtensions {
         filterRulePlugins.clear();
         transformerStepPlugins.clear();
         codeTemplatePlugins.clear();
-        dataTypePlugins.clear();
-        transmissionModePlugins.clear();
 
         connectors.clear();
         sourceConnectors.clear();
@@ -257,28 +245,20 @@ public class LoadedExtensions {
     public Map<String, TransformerStepPlugin> getTransformerStepPlugins() {
         return transformerStepPlugins;
     }
-
+    
     public Map<String, CodeTemplatePlugin> getCodeTemplatePlugins() {
         return codeTemplatePlugins;
     }
 
-    public Map<String, DataTypeClientPlugin> getDataTypePlugins() {
-        return dataTypePlugins;
-    }
-
-    public Map<String, TransmissionModePlugin> getTransmissionModePlugins() {
-        return transmissionModePlugins;
-    }
-
-    public Map<String, ConnectorSettingsPanel> getConnectors() {
+    public Map<String, ConnectorClass> getConnectors() {
         return connectors;
     }
 
-    public Map<String, ConnectorSettingsPanel> getSourceConnectors() {
+    public Map<String, ConnectorClass> getSourceConnectors() {
         return sourceConnectors;
     }
 
-    public Map<String, ConnectorSettingsPanel> getDestinationConnectors() {
+    public Map<String, ConnectorClass> getDestinationConnectors() {
         return destinationConnectors;
     }
 }

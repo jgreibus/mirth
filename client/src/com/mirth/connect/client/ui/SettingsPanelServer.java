@@ -1,42 +1,35 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
-
 package com.mirth.connect.client.ui;
 
 import java.awt.Cursor;
-import java.io.File;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 
 import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
 import javax.swing.SwingWorker;
 
-import org.apache.commons.lang3.math.NumberUtils;
+import org.apache.commons.lang.math.NumberUtils;
 
 import com.mirth.connect.client.core.ClientException;
 import com.mirth.connect.client.core.TaskConstants;
 import com.mirth.connect.client.ui.components.MirthFieldConstraints;
-import com.mirth.connect.donkey.model.channel.MetaDataColumn;
 import com.mirth.connect.model.ServerConfiguration;
 import com.mirth.connect.model.ServerSettings;
 import com.mirth.connect.model.UpdateSettings;
 import com.mirth.connect.model.converters.ObjectXMLSerializer;
-import com.mirth.connect.model.util.DefaultMetaData;
+import com.mirth.connect.model.util.ImportConverter;
 
 public class SettingsPanelServer extends AbstractSettingsPanel {
-
+    
     public static final String TAB_NAME = "Server";
-
-    private List<MetaDataColumn> defaultMetaDataColumns;
 
     public SettingsPanelServer(String tabName) {
         super(tabName);
@@ -45,14 +38,11 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
 
         addTask(TaskConstants.SETTINGS_SERVER_BACKUP, "Backup Config", "Backup your server configuration to an XML file. The backup includes channels, alerts, code templates, server properties, global scripts, and plugin properties.", "", new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/report_disk.png")));
         addTask(TaskConstants.SETTINGS_SERVER_RESTORE, "Restore Config", "Restore your server configuration from a server configuration XML file. This will remove and restore your channels, alerts, code templates, server properties, global scripts, and plugin properties.", "", new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/report_go.png")));
-        addTask(TaskConstants.SETTINGS_CLEAR_ALL_STATS, "Clear All Statistics", "Reset the current and lifetime statistics for all channels.", "", new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/chart_bar_delete.png")));
 
         provideUsageStatsMoreInfoLabel.setToolTipText(UIConstants.PRIVACY_TOOLTIP);
         provideUsageStatsMoreInfoLabel.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        queueBufferSizeField.setDocument(new MirthFieldConstraints(8, false, false, true));
+        maxQueueSizeField.setDocument(new MirthFieldConstraints(8, false, false, true));
         smtpTimeoutField.setDocument(new MirthFieldConstraints(0, false, false, true));
-
-        defaultMetaDataColumns = new ArrayList<MetaDataColumn>();
     }
 
     public void doRefresh() {
@@ -89,20 +79,20 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
         worker.execute();
     }
 
-    public boolean doSave() {
+    public void doSave() {
         final ServerSettings serverSettings = getServerSettings();
         final UpdateSettings updateSettings = getUpdateSettings();
 
-        // Integer queueBufferSize will be null if it was invalid
-        if (serverSettings.getQueueBufferSize() == null) {
-            getFrame().alertWarning(this, "Please enter a valid queue buffer size.");
-            return false;
+        // Integer maxQueueSize will be null if it was invalid
+        if (serverSettings.getMaxQueueSize() == null) {
+            getFrame().alertWarning(this, "Please enter a valid maximum queue size.");
+            return;
         }
-
+        
         // Integer smtpTimeput will be null if it was invalid
         if (serverSettings.getSmtpTimeout() == null) {
             getFrame().alertWarning(this, "Please enter a valid SMTP timeout.");
-            return false;
+            return;
         }
 
         final String workingId = getFrame().startWorking("Saving " + getTabName() + " settings...");
@@ -128,8 +118,6 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
         };
 
         worker.execute();
-
-        return true;
     }
 
     /** Loads the current server settings into the Settings form */
@@ -140,12 +128,12 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
             smtpHostField.setText("");
         }
 
-        if (serverSettings.getSmtpPort() != null) {
+        if (serverSettings.getSmtpPort()!= null) {
             smtpPortField.setText(serverSettings.getSmtpPort());
         } else {
             smtpPortField.setText("");
         }
-
+        
         if (serverSettings.getSmtpTimeout() != null) {
             smtpTimeoutField.setText(serverSettings.getSmtpTimeout().toString());
         } else {
@@ -181,22 +169,11 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
             clearGlobalMapYesRadio.setSelected(true);
         }
 
-        if (serverSettings.getQueueBufferSize() != null) {
-            queueBufferSizeField.setText(serverSettings.getQueueBufferSize().toString());
+        if (serverSettings.getMaxQueueSize() != null) {
+            maxQueueSizeField.setText(serverSettings.getMaxQueueSize().toString());
         } else {
-            queueBufferSizeField.setText("");
+            maxQueueSizeField.setText("");
         }
-
-        // TODO: Change this to use a more complex custom metadata table rather than checkboxes
-        List<MetaDataColumn> defaultMetaDataColumns = serverSettings.getDefaultMetaDataColumns();
-        if (defaultMetaDataColumns != null) {
-            this.defaultMetaDataColumns = new ArrayList<MetaDataColumn>(defaultMetaDataColumns);
-        } else {
-            this.defaultMetaDataColumns = new ArrayList<MetaDataColumn>(DefaultMetaData.DEFAULT_COLUMNS);
-        }
-        defaultMetaDataSourceCheckBox.setSelected(this.defaultMetaDataColumns.contains(DefaultMetaData.SOURCE_COLUMN));
-        defaultMetaDataTypeCheckBox.setSelected(this.defaultMetaDataColumns.contains(DefaultMetaData.TYPE_COLUMN));
-        defaultMetaDataVersionCheckBox.setSelected(this.defaultMetaDataColumns.contains(DefaultMetaData.VERSION_COLUMN));
 
         if (serverSettings.getSmtpUsername() != null) {
             usernameField.setText(serverSettings.getSmtpUsername());
@@ -210,7 +187,7 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
             passwordField.setText("");
         }
     }
-
+    
     public void setUpdateSettings(UpdateSettings updateSettings) {
         if (updateSettings.getUpdatesEnabled() != null && !updateSettings.getUpdatesEnabled()) {
             checkForUpdatesNoRadio.setSelected(true);
@@ -218,7 +195,7 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
             checkForUpdatesYesRadio.setSelected(true);
         }
 
-        if (updateSettings.getStatsEnabled() != null && !updateSettings.getStatsEnabled()) {
+        if (updateSettings.getStatsEnabled() != null  && !updateSettings.getStatsEnabled()) {
             provideUsageStatsNoRadio.setSelected(true);
         } else {
             provideUsageStatsYesRadio.setSelected(true);
@@ -236,46 +213,18 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
         ServerSettings serverSettings = new ServerSettings();
 
         serverSettings.setClearGlobalMap(clearGlobalMapYesRadio.isSelected());
-
-        // Set the queue buffer size Integer to null if it was invalid
-        int queueBufferSize = NumberUtils.toInt(queueBufferSizeField.getText(), 0);
-        if (queueBufferSize == 0) {
-            serverSettings.setQueueBufferSize(null);
+        
+        // Set the max queue size Integer to null if it was invalid
+        int maxQueueSize = NumberUtils.toInt(maxQueueSizeField.getText(), -1);
+        if (maxQueueSize == -1) {
+            serverSettings.setMaxQueueSize(null);
         } else {
-            serverSettings.setQueueBufferSize(queueBufferSize);
+            serverSettings.setMaxQueueSize(maxQueueSize);
         }
-
-        // TODO: Change this to use a more complex custom metadata table rather than checkboxes
-        // Until this is changed to a table, always add source/type/version in order
-        List<MetaDataColumn> defaultMetaDataColumns = new ArrayList<MetaDataColumn>();
-        if (defaultMetaDataSourceCheckBox.isSelected()) {
-            defaultMetaDataColumns.add(DefaultMetaData.SOURCE_COLUMN);
-        } else {
-            this.defaultMetaDataColumns.remove(DefaultMetaData.SOURCE_COLUMN);
-        }
-
-        if (defaultMetaDataTypeCheckBox.isSelected()) {
-            defaultMetaDataColumns.add(DefaultMetaData.TYPE_COLUMN);
-        } else {
-            this.defaultMetaDataColumns.remove(DefaultMetaData.TYPE_COLUMN);
-        }
-
-        if (defaultMetaDataVersionCheckBox.isSelected()) {
-            defaultMetaDataColumns.add(DefaultMetaData.VERSION_COLUMN);
-        } else {
-            this.defaultMetaDataColumns.remove(DefaultMetaData.VERSION_COLUMN);
-        }
-
-        for (MetaDataColumn column : this.defaultMetaDataColumns) {
-            if (!defaultMetaDataColumns.contains(column)) {
-                defaultMetaDataColumns.add(column);
-            }
-        }
-        serverSettings.setDefaultMetaDataColumns(this.defaultMetaDataColumns = defaultMetaDataColumns);
-
+        
         serverSettings.setSmtpHost(smtpHostField.getText());
         serverSettings.setSmtpPort(smtpPortField.getText());
-
+        
         // Set the SMTP timeout Integer to null if it was invalid
         int smtpTimeout = NumberUtils.toInt(smtpTimeoutField.getText(), -1);
         if (smtpTimeout == -1) {
@@ -283,9 +232,9 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
         } else {
             serverSettings.setSmtpTimeout(smtpTimeout);
         }
-
+        
         serverSettings.setSmtpFrom(defaultFromAddressField.getText());
-
+        
         if (secureConnectionTLSRadio.isSelected()) {
             serverSettings.setSmtpSecure("tls");
         } else if (secureConnectionSSLRadio.isSelected()) {
@@ -306,7 +255,7 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
 
         return serverSettings;
     }
-
+    
     public UpdateSettings getUpdateSettings() {
         UpdateSettings updateSettings = new UpdateSettings();
 
@@ -322,46 +271,27 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
             int option = JOptionPane.showConfirmDialog(this, "Would you like to save the settings first?");
 
             if (option == JOptionPane.YES_OPTION) {
-                if (!doSave()) {
-                    return;
-                }
+                doSave();
             } else if (option == JOptionPane.CANCEL_OPTION || option == JOptionPane.CLOSED_OPTION) {
                 return;
             }
         }
 
-        final String backupDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
-        final File exportFile = getFrame().createFileForExport(backupDate.substring(0, 10) + " Mirth Backup.xml", "XML");
+        String backupDate = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
 
-        if (exportFile != null) {
-            final String workingId = getFrame().startWorking("Exporting server config...");
-
-            SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
-
-                public Void doInBackground() {
-                    ServerConfiguration configuration = null;
-
-                    try {
-                        configuration = getFrame().mirthClient.getServerConfiguration();
-                    } catch (ClientException e) {
-                        getFrame().alertException(SettingsPanelServer.this, e.getStackTrace(), e.getMessage());
-                        return null;
-                    }
-
-                    configuration.setDate(backupDate);
-                    String backupXML = ObjectXMLSerializer.getInstance().serialize(configuration);
-
-                    getFrame().exportFile(backupXML, exportFile, "Server Configuration");
-                    return null;
-                }
-
-                public void done() {
-                    getFrame().stopWorking(workingId);
-                }
-            };
-
-            worker.execute();
+        ObjectXMLSerializer serializer = new ObjectXMLSerializer();
+        ServerConfiguration configuration = null;
+        try {
+            configuration = getFrame().mirthClient.getServerConfiguration();
+        } catch (ClientException e) {
+            getFrame().alertException(this, e.getStackTrace(), e.getMessage());
+            return;
         }
+
+        configuration.setDate(backupDate);
+        String backupXML = serializer.toXML(configuration);
+
+        getFrame().exportFile(backupXML, backupDate.substring(0, 10) + " Mirth Backup.xml", "XML", "Server Configuration");
     }
 
     public void doRestore() {
@@ -369,82 +299,28 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
             if (!getFrame().alertOkCancel(this, "Your new settings will first be saved.  Continue?")) {
                 return;
             }
-            if (!doSave()) {
-                return;
-            }
+            doSave();
         }
 
         String content = getFrame().browseForFileString("XML");
 
         if (content != null) {
             try {
-                final ServerConfiguration configuration = ObjectXMLSerializer.getInstance().deserialize(content, ServerConfiguration.class);
+                ServerConfiguration configuration = ImportConverter.convertServerConfiguration(content);
 
                 if (getFrame().alertOption(this, "Import configuration from " + configuration.getDate() + "?\nWARNING: This will overwrite all current channels,\nalerts, server properties, and plugin properties.")) {
-                    final String workingId = getFrame().startWorking("Restoring server config...");
-
-                    SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
-
-                        public Void doInBackground() {
-                            try {
-                                getFrame().mirthClient.setServerConfiguration(configuration);
-                                getFrame().clearChannelCache();
-                                doRefresh();
-                                getFrame().alertInformation(SettingsPanelServer.this, "Your configuration was successfully restored.");
-                            } catch (ClientException e) {
-                                getFrame().alertException(SettingsPanelServer.this, e.getStackTrace(), e.getMessage());
-                            }
-                            return null;
-                        }
-
-                        public void done() {
-                            getFrame().stopWorking(workingId);
-                        }
-                    };
-
-                    worker.execute();
+                    try {
+                        getFrame().mirthClient.setServerConfiguration(configuration);
+                        getFrame().clearChannelCache();
+                        doRefresh();
+                        getFrame().alertInformation(this, "Your configuration was successfully restored.");
+                    } catch (ClientException e) {
+                        getFrame().alertException(this, e.getStackTrace(), e.getMessage());
+                    }
                 }
             } catch (Exception e) {
                 getFrame().alertError(this, "Invalid server configuration file.");
             }
-        }
-    }
-
-    public void doClearAllStats() {
-        String result = JOptionPane.showInputDialog(this, "<html>This will reset all channel statistics (including lifetime statistics) for<br>all channels (including undeployed channels).<br><font size='1'><br></font>Type CLEAR and click the OK button to continue.</html>", "Clear All Statistics", JOptionPane.WARNING_MESSAGE);
-
-        if (result != null) {
-            if (!result.equals("CLEAR")) {
-                getFrame().alertWarning(SettingsPanelServer.this, "You must type CLEAR to clear all statistics.");
-                return;
-            }
-
-            final String workingId = getFrame().startWorking("Clearing all statistics...");
-
-            SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
-
-                private Exception exception = null;
-
-                public Void doInBackground() {
-                    try {
-                        getFrame().mirthClient.clearAllStatistics();
-                    } catch (ClientException e) {
-                        exception = e;
-                        getFrame().alertException(SettingsPanelServer.this, e.getStackTrace(), e.getMessage());
-                    }
-                    return null;
-                }
-
-                public void done() {
-                    getFrame().stopWorking(workingId);
-
-                    if (exception == null) {
-                        getFrame().alertInformation(SettingsPanelServer.this, "All current and lifetime statistics have been cleared for all channels.");
-                    }
-                }
-            };
-
-            worker.execute();
         }
     }
 
@@ -495,12 +371,8 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
         updateUrlField = new com.mirth.connect.client.ui.components.MirthTextField();
         updateUrlLabel = new javax.swing.JLabel();
         provideUsageStatsMoreInfoLabel = new javax.swing.JLabel();
-        queueBufferSizeField = new com.mirth.connect.client.ui.components.MirthTextField();
-        queueBufferSizeLabel = new javax.swing.JLabel();
-        defaultMetaDataLabel = new javax.swing.JLabel();
-        defaultMetaDataSourceCheckBox = new com.mirth.connect.client.ui.components.MirthCheckBox();
-        defaultMetaDataTypeCheckBox = new com.mirth.connect.client.ui.components.MirthCheckBox();
-        defaultMetaDataVersionCheckBox = new com.mirth.connect.client.ui.components.MirthCheckBox();
+        maxQueueSizeField = new com.mirth.connect.client.ui.components.MirthTextField();
+        maxQueueSizeLabel = new javax.swing.JLabel();
 
         setBackground(new java.awt.Color(255, 255, 255));
         setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
@@ -719,36 +591,16 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
 
         updateUrlLabel.setText("Update URL:");
 
-        provideUsageStatsMoreInfoLabel.setText("<html><font color=blue><u>Privacy Policy</u></font></html>");
+        provideUsageStatsMoreInfoLabel.setText("<html><font color=blue><u>More Info</u></font></html>");
         provideUsageStatsMoreInfoLabel.addMouseListener(new java.awt.event.MouseAdapter() {
             public void mouseClicked(java.awt.event.MouseEvent evt) {
                 provideUsageStatsMoreInfoLabelMouseClicked(evt);
             }
         });
 
-        queueBufferSizeField.setToolTipText("<html>The maximum number of queued messages each connector will hold in memory.<br>There is no limit to the total number of queued messages. A smaller buffer will<br>use less memory, but may decrease queue performance. Mirth Connect must be<br>restarted for this setting to take effect.</html>");
+        maxQueueSizeField.setToolTipText("<html>The maximum queue size allowed for each connector, or 0 for infinite.<br>Mirth Connect must be restarted for this setting to take effect.</html>");
 
-        queueBufferSizeLabel.setText("Queue Buffer Size:");
-
-        defaultMetaDataLabel.setText("Default Metadata Columns:");
-
-        defaultMetaDataSourceCheckBox.setBackground(new java.awt.Color(255, 255, 255));
-        defaultMetaDataSourceCheckBox.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
-        defaultMetaDataSourceCheckBox.setText("Source");
-        defaultMetaDataSourceCheckBox.setToolTipText("<html>If checked, the Source metadata column will be added by<br/>default when a user creates a new channel. The user can<br/>choose to remove the column on the channel's Summary tab.</html>");
-        defaultMetaDataSourceCheckBox.setMargin(new java.awt.Insets(0, 0, 0, 0));
-
-        defaultMetaDataTypeCheckBox.setBackground(new java.awt.Color(255, 255, 255));
-        defaultMetaDataTypeCheckBox.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
-        defaultMetaDataTypeCheckBox.setText("Type");
-        defaultMetaDataTypeCheckBox.setToolTipText("<html>If checked, the Type metadata column will be added by<br/>default when a user creates a new channel. The user can<br/>choose to remove the column on the channel's Summary tab.</html>");
-        defaultMetaDataTypeCheckBox.setMargin(new java.awt.Insets(0, 0, 0, 0));
-
-        defaultMetaDataVersionCheckBox.setBackground(new java.awt.Color(255, 255, 255));
-        defaultMetaDataVersionCheckBox.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
-        defaultMetaDataVersionCheckBox.setText("Version");
-        defaultMetaDataVersionCheckBox.setToolTipText("<html>If checked, the Version metadata column will be added by<br/>default when a user creates a new channel. The user can<br/>choose to remove the column on the channel's Summary tab.</html>");
-        defaultMetaDataVersionCheckBox.setMargin(new java.awt.Insets(0, 0, 0, 0));
+        maxQueueSizeLabel.setText("Maximum Queue Size:");
 
         javax.swing.GroupLayout configurationPanelLayout = new javax.swing.GroupLayout(configurationPanel);
         configurationPanel.setLayout(configurationPanelLayout);
@@ -757,12 +609,11 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
             .addGroup(configurationPanelLayout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(configurationPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(defaultMetaDataLabel)
                     .addComponent(checkForUpdatesLabel)
                     .addComponent(clearGlobalMapLabel)
                     .addComponent(provideUsageStatsLabel)
                     .addComponent(updateUrlLabel)
-                    .addComponent(queueBufferSizeLabel))
+                    .addComponent(maxQueueSizeLabel))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(configurationPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(updateUrlField, javax.swing.GroupLayout.PREFERRED_SIZE, 200, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -780,13 +631,7 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
                         .addComponent(checkForUpdatesYesRadio, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(checkForUpdatesNoRadio, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(queueBufferSizeField, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addGroup(configurationPanelLayout.createSequentialGroup()
-                        .addComponent(defaultMetaDataSourceCheckBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(defaultMetaDataTypeCheckBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(defaultMetaDataVersionCheckBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addComponent(maxQueueSizeField, javax.swing.GroupLayout.PREFERRED_SIZE, 60, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         configurationPanelLayout.setVerticalGroup(
@@ -813,14 +658,8 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
                     .addComponent(updateUrlLabel))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(configurationPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(queueBufferSizeField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(queueBufferSizeLabel))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(configurationPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(defaultMetaDataLabel)
-                    .addComponent(defaultMetaDataSourceCheckBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(defaultMetaDataTypeCheckBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(defaultMetaDataVersionCheckBox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(maxQueueSizeField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(maxQueueSizeLabel))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
@@ -831,7 +670,7 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(configurationPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                    .addComponent(configurationPanel, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(emailPanel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
         );
@@ -842,7 +681,7 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
                 .addComponent(configurationPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(emailPanel, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(25, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
     }// </editor-fold>//GEN-END:initComponents
 
@@ -863,7 +702,6 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
         usernameLabel.setEnabled(true);
         passwordLabel.setEnabled(true);
     }//GEN-LAST:event_requireAuthenticationYesRadioActionPerformed
-
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.ButtonGroup checkForUpdatesButtonGroup;
     private javax.swing.JLabel checkForUpdatesLabel;
@@ -876,11 +714,9 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
     private javax.swing.JPanel configurationPanel;
     private com.mirth.connect.client.ui.components.MirthTextField defaultFromAddressField;
     private javax.swing.JLabel defaultFromAddressLabel;
-    private javax.swing.JLabel defaultMetaDataLabel;
-    private com.mirth.connect.client.ui.components.MirthCheckBox defaultMetaDataSourceCheckBox;
-    private com.mirth.connect.client.ui.components.MirthCheckBox defaultMetaDataTypeCheckBox;
-    private com.mirth.connect.client.ui.components.MirthCheckBox defaultMetaDataVersionCheckBox;
     private javax.swing.JPanel emailPanel;
+    private com.mirth.connect.client.ui.components.MirthTextField maxQueueSizeField;
+    private javax.swing.JLabel maxQueueSizeLabel;
     private com.mirth.connect.client.ui.components.MirthPasswordField passwordField;
     private javax.swing.JLabel passwordLabel;
     private javax.swing.ButtonGroup provideUsageStatsButtonGroup;
@@ -888,8 +724,6 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
     private javax.swing.JLabel provideUsageStatsMoreInfoLabel;
     private com.mirth.connect.client.ui.components.MirthRadioButton provideUsageStatsNoRadio;
     private com.mirth.connect.client.ui.components.MirthRadioButton provideUsageStatsYesRadio;
-    private com.mirth.connect.client.ui.components.MirthTextField queueBufferSizeField;
-    private javax.swing.JLabel queueBufferSizeLabel;
     private javax.swing.ButtonGroup requireAuthenticationButtonGroup;
     private javax.swing.JLabel requireAuthenticationLabel;
     private com.mirth.connect.client.ui.components.MirthRadioButton requireAuthenticationNoRadio;

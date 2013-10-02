@@ -1,10 +1,10 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
  * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.client.ui.components;
@@ -34,7 +34,6 @@ import com.mirth.connect.client.ui.actions.SelectAllAction;
 import com.mirth.connect.client.ui.actions.ShowLineEndingsAction;
 import com.mirth.connect.client.ui.actions.SnippetAction;
 import com.mirth.connect.client.ui.actions.UndoAction;
-import com.mirth.connect.client.ui.actions.ViewUserApiAction;
 import com.mirth.connect.client.ui.panels.reference.ReferenceListFactory;
 import com.mirth.connect.client.ui.panels.reference.ReferenceListFactory.ListType;
 import com.mirth.connect.model.CodeTemplate;
@@ -59,7 +58,7 @@ public class MirthSyntaxTextArea extends JEditTextArea implements MirthTextInter
     private ShowLineEndingsAction showLineEndingsAction;
     private JMenu varlist;
     private JMenu funclist;
-    private ViewUserApiAction viewUserApiAction;
+    // This needs to be saveDisabled instead of saveEnabled because JEditTextArea actually calls setDocument before this gets initialized
     private boolean saveDisabled;
     protected boolean showSnippets;
 
@@ -73,7 +72,6 @@ public class MirthSyntaxTextArea extends JEditTextArea implements MirthTextInter
         this.showSnippets = showSnippets;
         this.setCaretVisible(false);
         this.setShowLineEndings(false);
-        // This needs to be saveDisabled instead of saveEnabled because JEditTextArea actually calls setDocument before this gets initialized
         this.saveDisabled = false;
         // Setup menu actions
         cutAction = new CutAction(this);
@@ -124,10 +122,6 @@ public class MirthSyntaxTextArea extends JEditTextArea implements MirthTextInter
             popup.addSeparator();
             popup.add(varlist);
             popup.add(funclist);
-            popup.addSeparator();
-            
-            viewUserApiAction = new ViewUserApiAction(this);
-            popup.add(viewUserApiAction);
         }
 
         this.popupHandler = new PopUpHandler() {
@@ -150,11 +144,11 @@ public class MirthSyntaxTextArea extends JEditTextArea implements MirthTextInter
                 if (showSnippets) {
                     menu.getComponent(12).setEnabled(varlist.isEnabled());
                     menu.getComponent(13).setEnabled(funclist.isEnabled());
-                    menu.getComponent(14).setEnabled(viewUserApiAction.isEnabled());
                 }
                 menu.show(evt.getComponent(), evt.getX(), evt.getY());
             }
         };
+
     }
 
     public MirthSyntaxTextArea(boolean lineNumbers, final boolean showSnippets) {

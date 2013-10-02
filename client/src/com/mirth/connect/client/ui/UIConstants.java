@@ -1,10 +1,10 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.client.ui;
@@ -14,7 +14,7 @@ import java.awt.Font;
 
 import javax.swing.ImageIcon;
 
-import org.apache.commons.lang3.SystemUtils;
+import org.apache.commons.lang.SystemUtils;
 
 /**
  * A constants class for the Mirth UI
@@ -38,10 +38,8 @@ public class UIConstants {
     public static final String MIRTHCONNECT_URL = "http://www.mirthcorp.com/products/mirth-connect";
     public static final String EDIT_FILTER = "Edit Filter";
     public static final String EDIT_TRANSFORMER = "Edit Transformer";
-    public static final String EDIT_RESPONSE_TRANSFORMER = "Edit Response";
     public static final int EDIT_FILTER_TASK_NUMBER = 9;
     public static final int EDIT_TRANSFORMER_TASK_NUMBER = 10;
-    public static final int EDIT_RESPONSE_TRANSFORMER_TASK_NUMBER = 11;
     // for error checking
     public static final int ERROR_CONSTANT = -1;
     // for JXTables
@@ -52,7 +50,6 @@ public class UIConstants {
     public static final int MAX_WIDTH = 200;
     public static final int WIDTH_SHORT_MIN = 20;
     public static final int WIDTH_SHORT_MAX = 50;
-    public static final int METADATA_ID_COLUMN_WIDTH = 30;
     public static final Color HIGHLIGHTER_COLOR = new Color(240, 240, 240);
     // background colors
     public static final Color BACKGROUND_COLOR = new Color(255, 255, 255);
@@ -73,10 +70,18 @@ public class UIConstants {
 
     // issue link
     public static final String ISSUE_TRACKER_LOCATION = "http://www.mirthcorp.com/community/issues/";
-    // help link
-    public static String HELP_LOCATION = "http://www.mirthcorp.com/community/wiki/display/mirth";
-    // user api
-    public static String USER_API_LOCATION = "/javadocs/user-api/";
+    // help links
+    public static final String ALERTS_HELP_LOCATION = "Alerts";
+    public static final String CHANNEL_HELP_LOCATION = "Edit+Channel";
+    public static final String TRANFORMER_HELP_LOCATION = "Transformers";
+    public static final String FILTER_HELP_LOCATION = "Filters";
+    public static final String CHANNELS_HELP_LOCATION = "Channels";
+    public static final String DASHBOARD_HELP_LOCATION = "Dashboard";
+    public static final String MESSAGE_BROWSER_HELP_LOCATION = "Message+Browser";
+    public static final String SYSTEM_EVENT_HELP_LOCATION = "Events";
+    public static final String SETTINGS_HELP_LOCATION = "Settings";
+    public static final String USERS_HELP_LOCATION = "Users";
+    public static final String EXTENSIONS_HELP_LOCATION = "Extensions";
     // for JTrees
     public static final ImageIcon LEAF_ICON = new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/bullet_green.png"));
     public static final ImageIcon OPEN_ICON = new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/bullet_yellow.png"));
@@ -119,23 +124,16 @@ public class UIConstants {
     public static final ImageIcon ICON_CHECK = new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/tick.png"));
     // for dashboard statistics
     public static final ImageIcon ICON_BULLET_GREEN = new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/bullet_green.png"));
-    public static final ImageIcon ICON_BULLET_ORANGE = new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/bullet_orange.png"));
     public static final ImageIcon ICON_BULLET_YELLOW = new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/bullet_yellow.png"));
     public static final ImageIcon ICON_BULLET_RED = new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/bullet_red.png"));
-    public static final ImageIcon ICON_CHANNEL = new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/server.png"));
-    public static final ImageIcon ICON_CONNECTOR = new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/connect.png"));
     // for events
     public static final ImageIcon ICON_INFORMATION = new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/information.png"));
     public static final ImageIcon ICON_WARNING = new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/error.png"));
     public static final ImageIcon ICON_ERROR = new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/exclamation.png"));
     // for privacy
-    public static final String PRIVACY_URL = "http://www.mirthcorp.com/company/about/privacy";
+    public static final String PRIVACY_URL = "http://www.mirthcorp.com/company/about/privacy#mirthconnect";
     public static final String PRIVACY_TOOLTIP = "Privacy Information";
-
+    
     // FileUtils reading/writing
     public static final String CHARSET = "UTF-8";
-
-    // for data types
-    public static final String DATATYPE_DEFAULT = "HL7V2";
-    public static final String DATATYPE_XML = "XML";
 }

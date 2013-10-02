@@ -1,206 +1,251 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.connectors.dimse;
 
-import com.mirth.connect.client.ui.Frame;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import com.mirth.connect.client.ui.PlatformUI;
 import com.mirth.connect.client.ui.UIConstants;
-import com.mirth.connect.client.ui.panels.connectors.ConnectorSettingsPanel;
-import com.mirth.connect.donkey.model.channel.ConnectorProperties;
+import com.mirth.connect.client.ui.editors.transformer.TransformerPane;
+import com.mirth.connect.connectors.ConnectorClass;
+import com.mirth.connect.model.Channel;
+import com.mirth.connect.model.Connector;
+import com.mirth.connect.model.Step;
 
-public class DICOMSender extends ConnectorSettingsPanel {
+/**
+ * A form that extends from ConnectorClass. All methods implemented are
+ * described in ConnectorClass.
+ */
+public class DICOMSender extends ConnectorClass {
 
-    private Frame parent;
-
+    /**
+     * Creates new form DICOMListener
+     */
     public DICOMSender() {
         this.parent = PlatformUI.MIRTH_FRAME;
+        name = DICOMSenderProperties.name;
         initComponents();
     }
 
     @Override
-    public String getConnectorName() {
-        return new DICOMDispatcherProperties().getName();
-    }
+    public Properties getProperties() {
+        Properties properties = new Properties();
+        properties.put(DICOMSenderProperties.DATATYPE, name);
+        properties.put(DICOMSenderProperties.DICOM_ADDRESS, listenerAddressField.getText());
+        properties.put(DICOMSenderProperties.DICOM_PORT, listenerPortField.getText());
+        properties.put(DICOMSenderProperties.DICOM_LOCALADDRESS, localAddressField.getText());
+        properties.put(DICOMSenderProperties.DICOM_LOCALPORT, localPortField.getText());
+        properties.put(DICOMSenderProperties.DICOM_TEMPLATE, fileContentsTextPane.getText());
+        properties.put(DICOMSenderProperties.DICOM_ACCECPTTO, accepttoField.getText());
+        properties.put(DICOMSenderProperties.DICOM_ASYNC, asyncField.getText());
+        properties.put(DICOMSenderProperties.DICOM_BUFSIZE, bufsizeField.getText());
+        properties.put(DICOMSenderProperties.DICOM_CONNECTTO, connecttoField.getText());
+        properties.put(DICOMSenderProperties.DICOM_KEYPW, keyPasswordField.getText());
+        properties.put(DICOMSenderProperties.DICOM_KEYSTORE, keyStoreField.getText());
+        properties.put(DICOMSenderProperties.DICOM_KEYSTOREPW, keyStorePasswordField.getText());
 
-    @Override
-    public ConnectorProperties getProperties() {
-        DICOMDispatcherProperties properties = new DICOMDispatcherProperties();
-
-        properties.setHost(listenerAddressField.getText());
-        properties.setPort(listenerPortField.getText());
-        properties.setLocalHost(localAddressField.getText());
-        properties.setLocalPort(localPortField.getText());
-        properties.setTemplate(fileContentsTextPane.getText());
-        properties.setAcceptTo(accepttoField.getText());
-        properties.setAsync(asyncField.getText());
-        properties.setBufSize(bufsizeField.getText());
-        properties.setConnectTo(connecttoField.getText());
-        properties.setKeyPW(keyPasswordField.getText());
-        properties.setKeyStore(keyStoreField.getText());
-        properties.setKeyStorePW(keyStorePasswordField.getText());
-
-        properties.setNoClientAuth(noclientauthYes.isSelected());
-        properties.setNossl2(nossl2Yes.isSelected());
-        properties.setPasscode(passcodeField.getText());
-        properties.setPdv1(pdv1Yes.isSelected());
-        if (lowPriority.isSelected()) {
-            properties.setPriority("low");
-        } else if (mediumPriority.isSelected()) {
-            properties.setPriority("med");
-        } else if (highPriority.isSelected()) {
-            properties.setPriority("high");
-        }
-        properties.setRcvpdulen(rcvpdulenField.getText());
-        properties.setReaper(reaperField.getText());
-        properties.setReleaseTo(releasetoField.getText());
-        properties.setRspTo(rsptoField.getText());
-        properties.setShutdownDelay(shutdowndelayField.getText());
-        properties.setSndpdulen(sndpdulenField.getText());
-        properties.setSoCloseDelay(soclosedelayField.getText());
-        properties.setSorcvbuf(sorcvbufField.getText());
-        properties.setSosndbuf(sosndbufField.getText());
-        properties.setStgcmt(stgcmtYes.isSelected());
-        properties.setTcpDelay(tcpdelayYes.isSelected());
-        if (tlsaes.isSelected()) {
-            properties.setTls("aes");
-        } else if (tls3des.isSelected()) {
-            properties.setTls("3des");
-        } else if (tlswithout.isSelected()) {
-            properties.setTls("without");
+        if (noclientauthYes.isSelected()) {
+            properties.put(DICOMSenderProperties.DICOM_NOCLIENTAUTH, UIConstants.YES_OPTION);
         } else {
-            properties.setTls("notls");
+            properties.put(DICOMSenderProperties.DICOM_NOCLIENTAUTH, UIConstants.NO_OPTION);
         }
-        properties.setTrustStore(truststoreField.getText());
-        properties.setTrustStorePW(truststorepwField.getText());
-        properties.setTs1(ts1Yes.isSelected());
-        properties.setUidnegrsp(uidnegrspYes.isSelected());
-
-        properties.setUsername(usernameField.getText());
-        properties.setApplicationEntity(applicationEntityField.getText());
-        properties.setLocalApplicationEntity(localApplicationEntityField.getText());
+        if (nossl2Yes.isSelected()) {
+            properties.put(DICOMSenderProperties.DICOM_NOSSL2, UIConstants.YES_OPTION);
+        } else {
+            properties.put(DICOMSenderProperties.DICOM_NOSSL2, UIConstants.NO_OPTION);
+        }
+        properties.put(DICOMSenderProperties.DICOM_PASSCODE, passcodeField.getText());
+        if (pdv1Yes.isSelected()) {
+            properties.put(DICOMSenderProperties.DICOM_PDV1, UIConstants.YES_OPTION);
+        } else {
+            properties.put(DICOMSenderProperties.DICOM_PDV1, UIConstants.NO_OPTION);
+        }
+        if (lowPriority.isSelected()) {
+            properties.put(DICOMSenderProperties.DICOM_PRIORITY, "low");
+        } else if (mediumPriority.isSelected()) {
+            properties.put(DICOMSenderProperties.DICOM_PRIORITY, "med");
+        } else if (highPriority.isSelected()) {
+            properties.put(DICOMSenderProperties.DICOM_PRIORITY, "high");
+        }
+        properties.put(DICOMSenderProperties.DICOM_RCVPDULEN, rcvpdulenField.getText());
+        properties.put(DICOMSenderProperties.DICOM_REAPER, reaperField.getText());
+        properties.put(DICOMSenderProperties.DICOM_RELEASETO, releasetoField.getText());
+        properties.put(DICOMSenderProperties.DICOM_RSPTO, rsptoField.getText());
+        properties.put(DICOMSenderProperties.DICOM_SHUTDOWNDELAY, shutdowndelayField.getText());
+        properties.put(DICOMSenderProperties.DICOM_SNDPDULEN, sndpdulenField.getText());
+        properties.put(DICOMSenderProperties.DICOM_SOCLOSEDELAY, soclosedelayField.getText());
+        properties.put(DICOMSenderProperties.DICOM_SORCVBUF, sorcvbufField.getText());
+        properties.put(DICOMSenderProperties.DICOM_SOSNDBUF, sosndbufField.getText());
+        if (stgcmtYes.isSelected()) {
+            properties.put(DICOMSenderProperties.DICOM_STGCMT, UIConstants.YES_OPTION);
+        } else {
+            properties.put(DICOMSenderProperties.DICOM_STGCMT, UIConstants.NO_OPTION);
+        }
+        if (tcpdelayYes.isSelected()) {
+            properties.put(DICOMSenderProperties.DICOM_TCPDELAY, UIConstants.YES_OPTION);
+        } else {
+            properties.put(DICOMSenderProperties.DICOM_TCPDELAY, UIConstants.NO_OPTION);
+        }
+        if (tlsaes.isSelected()) {
+            properties.put(DICOMSenderProperties.DICOM_TLS, "aes");
+        } else if (tls3des.isSelected()) {
+            properties.put(DICOMSenderProperties.DICOM_TLS, "3des");
+        } else if (tlswithout.isSelected()) {
+            properties.put(DICOMSenderProperties.DICOM_TLS, "without");
+        } else {
+            properties.put(DICOMSenderProperties.DICOM_TLS, "notls");
+        }
+        properties.put(DICOMSenderProperties.DICOM_TRUSTSTORE, truststoreField.getText());
+        properties.put(DICOMSenderProperties.DICOM_TRUSTSTOREPW, truststorepwField.getText());
+        if (ts1Yes.isSelected()) {
+            properties.put(DICOMSenderProperties.DICOM_TS1, UIConstants.YES_OPTION);
+        } else {
+            properties.put(DICOMSenderProperties.DICOM_TS1, UIConstants.NO_OPTION);
+        }
+        if (uidnegrspYes.isSelected()) {
+            properties.put(DICOMSenderProperties.DICOM_UIDNEGRSP, UIConstants.YES_OPTION);
+        } else {
+            properties.put(DICOMSenderProperties.DICOM_UIDNEGRSP, UIConstants.NO_OPTION);
+        }
+        properties.put(DICOMSenderProperties.DICOM_USERNAME, usernameField.getText());
+        properties.put(DICOMSenderProperties.DICOM_APPENTITY, applicationEntityField.getText());
+        properties.put(DICOMSenderProperties.DICOM_LOCALAPPENTITY, localApplicationEntityField.getText());
         return properties;
     }
 
     @Override
-    public void setProperties(ConnectorProperties properties) {
-        DICOMDispatcherProperties props = (DICOMDispatcherProperties) properties;
+    public void setProperties(Properties props) {
+        resetInvalidProperties();
 
-        listenerAddressField.setText(props.getHost());
-        listenerPortField.setText(props.getPort());
-        localAddressField.setText(props.getLocalHost());
-        localPortField.setText(props.getLocalPort());
-        fileContentsTextPane.setText(props.getTemplate());
-        accepttoField.setText(props.getAcceptTo());
-        asyncField.setText(props.getAsync());
-        bufsizeField.setText(props.getBufSize());
-        connecttoField.setText(props.getConnectTo());
-        keyPasswordField.setText(props.getKeyPW());
-        keyStoreField.setText(props.getKeyStore());
-        keyStorePasswordField.setText(props.getKeyStorePW());
-        passcodeField.setText(props.getPasscode());
-        rcvpdulenField.setText(props.getRcvpdulen());
-        reaperField.setText(props.getReaper());
-        releasetoField.setText(props.getReleaseTo());
-        rsptoField.setText(props.getRspTo());
-        shutdowndelayField.setText(props.getShutdownDelay());
-        sndpdulenField.setText(props.getSndpdulen());
-        soclosedelayField.setText(props.getSoCloseDelay());
-        sorcvbufField.setText(props.getSorcvbuf());
-        sosndbufField.setText(props.getSosndbuf());
-        truststoreField.setText(props.getTrustStore());
-        truststorepwField.setText(props.getTrustStorePW());
-        usernameField.setText(props.getUsername());
-        applicationEntityField.setText(props.getApplicationEntity());
-        localApplicationEntityField.setText(props.getLocalApplicationEntity());
+        listenerAddressField.setText((String) props.get(DICOMSenderProperties.DICOM_ADDRESS));
+        listenerPortField.setText((String) props.get(DICOMSenderProperties.DICOM_PORT));
+        localAddressField.setText((String) props.get(DICOMSenderProperties.DICOM_LOCALADDRESS));
+        localPortField.setText((String) props.get(DICOMSenderProperties.DICOM_LOCALPORT));
+        fileContentsTextPane.setText((String) props.get(DICOMSenderProperties.DICOM_TEMPLATE));
+        accepttoField.setText((String) props.get(DICOMSenderProperties.DICOM_ACCECPTTO));
+        asyncField.setText((String) props.get(DICOMSenderProperties.DICOM_ASYNC));
+        bufsizeField.setText((String) props.get(DICOMSenderProperties.DICOM_BUFSIZE));
+        connecttoField.setText((String) props.get(DICOMSenderProperties.DICOM_CONNECTTO));
+        keyPasswordField.setText((String) props.get(DICOMSenderProperties.DICOM_KEYPW));
+        keyStoreField.setText((String) props.get(DICOMSenderProperties.DICOM_KEYSTORE));
+        keyStorePasswordField.setText((String) props.get(DICOMSenderProperties.DICOM_KEYSTOREPW));
+        passcodeField.setText((String) props.get(DICOMSenderProperties.DICOM_PASSCODE));
+        rcvpdulenField.setText((String) props.get(DICOMSenderProperties.DICOM_RCVPDULEN));
+        reaperField.setText((String) props.get(DICOMSenderProperties.DICOM_REAPER));
+        releasetoField.setText((String) props.get(DICOMSenderProperties.DICOM_RELEASETO));
+        rsptoField.setText((String) props.get(DICOMSenderProperties.DICOM_RSPTO));
+        shutdowndelayField.setText((String) props.get(DICOMSenderProperties.DICOM_SHUTDOWNDELAY));
+        sndpdulenField.setText((String) props.get(DICOMSenderProperties.DICOM_SNDPDULEN));
+        soclosedelayField.setText((String) props.get(DICOMSenderProperties.DICOM_SOCLOSEDELAY));
+        sorcvbufField.setText((String) props.get(DICOMSenderProperties.DICOM_SORCVBUF));
+        sosndbufField.setText((String) props.get(DICOMSenderProperties.DICOM_SOSNDBUF));
+        truststoreField.setText((String) props.get(DICOMSenderProperties.DICOM_TRUSTSTORE));
+        truststorepwField.setText((String) props.get(DICOMSenderProperties.DICOM_TRUSTSTOREPW));
+        usernameField.setText((String) props.get(DICOMSenderProperties.DICOM_USERNAME));
+        applicationEntityField.setText((String) props.get(DICOMSenderProperties.DICOM_APPENTITY));
+        localApplicationEntityField.setText((String) props.get(DICOMSenderProperties.DICOM_LOCALAPPENTITY));
 
-        if (props.isNoClientAuth()) {
+        if (((String) props.get(DICOMSenderProperties.DICOM_NOCLIENTAUTH)).equals(UIConstants.YES_OPTION)) {
             noclientauthYes.setSelected(true);
         } else {
             noclientauthNo.setSelected(true);
         }
-        if (props.isNossl2()) {
+        if (((String) props.get(DICOMSenderProperties.DICOM_NOSSL2)).equals(UIConstants.YES_OPTION)) {
             nossl2Yes.setSelected(true);
         } else {
             nossl2No.setSelected(true);
         }
-        if (props.isPdv1()) {
+        if (((String) props.get(DICOMSenderProperties.DICOM_PDV1)).equals(UIConstants.YES_OPTION)) {
             pdv1Yes.setSelected(true);
         } else {
             pdv1No.setSelected(true);
         }
-        if (props.getPriority().equals("low")) {
+        if (((String) props.get(DICOMSenderProperties.DICOM_PRIORITY)).equals("low")) {
             lowPriority.setSelected(true);
-        } else if (props.getPriority().equals("med")) {
+        } else if (((String) props.get(DICOMSenderProperties.DICOM_PRIORITY)).equals("med")) {
             mediumPriority.setSelected(true);
         } else {
             highPriority.setSelected(true);
         }
-        if (props.isStgcmt()) {
+        if (((String) props.get(DICOMSenderProperties.DICOM_STGCMT)).equals(UIConstants.YES_OPTION)) {
             stgcmtYes.setSelected(true);
         } else {
             stgcmtNo.setSelected(true);
         }
-        if (props.isTcpDelay()) {
+        if (((String) props.get(DICOMSenderProperties.DICOM_TCPDELAY)).equals(UIConstants.YES_OPTION)) {
             tcpdelayYes.setSelected(true);
         } else {
             tcpdelayNo.setSelected(true);
         }
-        if (props.getTls().equals("aes")) {
+        if (((String) props.get(DICOMSenderProperties.DICOM_TLS)).equals("aes")) {
             tlsaes.setSelected(true);
             tlsaesActionPerformed(null);
-        } else if (props.getTls().equals("3des")) {
+        } else if (((String) props.get(DICOMSenderProperties.DICOM_TLS)).equals("3des")) {
             tls3des.setSelected(true);
             tls3desActionPerformed(null);
-        } else if (props.getTls().equals("without")) {
+        } else if (((String) props.get(DICOMSenderProperties.DICOM_TLS)).equals("without")) {
             tlswithout.setSelected(true);
             tlswithoutActionPerformed(null);
         } else {
             tlsno.setSelected(true);
             tlsnoActionPerformed(null);
         }
-        if (props.isTs1()) {
+        if (((String) props.get(DICOMSenderProperties.DICOM_TS1)).equals(UIConstants.YES_OPTION)) {
             ts1Yes.setSelected(true);
         } else {
             ts1No.setSelected(true);
         }
-        if (props.isUidnegrsp()) {
+        if (((String) props.get(DICOMSenderProperties.DICOM_UIDNEGRSP)).equals(UIConstants.YES_OPTION)) {
             uidnegrspYes.setSelected(true);
         } else {
             uidnegrspNo.setSelected(true);
         }
+
+        boolean enabled = parent.isSaveEnabled();
+
+        updateResponseDropDown();
+
+        parent.setSaveEnabled(enabled);
     }
 
     @Override
-    public ConnectorProperties getDefaults() {
-        return new DICOMDispatcherProperties();
+    public Properties getDefaults() {
+        return new DICOMSenderProperties().getDefaults();
     }
 
     @Override
-    public boolean checkProperties(ConnectorProperties properties, boolean highlight) {
-        DICOMDispatcherProperties props = (DICOMDispatcherProperties) properties;
-
+    public boolean checkProperties(Properties props, boolean highlight) {
+        resetInvalidProperties();
         boolean valid = true;
 
-        if ((props.getHost()).length() <= 3) {
+        if (((String) props.get(DICOMSenderProperties.DICOM_ADDRESS)).length() <= 3) {
             valid = false;
             if (highlight) {
                 listenerAddressField.setBackground(UIConstants.INVALID_COLOR);
             }
         }
-        if ((props.getPort()).length() == 0) {
+        if (((String) props.get(DICOMSenderProperties.DICOM_PORT)).length() == 0) {
             valid = false;
             if (highlight) {
                 listenerPortField.setBackground(UIConstants.INVALID_COLOR);
             }
         }
-        if ((props.getTemplate()).length() == 0) {
+        if (((String) props.get(DICOMSenderProperties.DICOM_TEMPLATE)).length() == 0) {
             valid = false;
             if (highlight) {
                 fileContentsTextPane.setBackground(UIConstants.INVALID_COLOR);
@@ -210,11 +255,22 @@ public class DICOMSender extends ConnectorSettingsPanel {
         return valid;
     }
 
-    @Override
-    public void resetInvalidProperties() {
+    private void resetInvalidProperties() {
         listenerAddressField.setBackground(null);
         listenerPortField.setBackground(null);
         fileContentsTextPane.setBackground(null);
+        accepttoField.setBackground(null);
+    }
+
+    @Override
+    public String doValidate(Properties props, boolean highlight) {
+        String error = null;
+
+        if (!checkProperties(props, highlight)) {
+            error = "Error in the form for connector \"" + getName() + "\".\n\n";
+        }
+
+        return error;
     }
 
     /**
@@ -361,6 +417,11 @@ public class DICOMSender extends ConnectorSettingsPanel {
         highPriority.setText("High");
         highPriority.setToolTipText("Priority of the C-STORE operation, MEDIUM by default.");
         highPriority.setMargin(new java.awt.Insets(0, 0, 0, 0));
+        highPriority.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                highPriorityActionPerformed(evt);
+            }
+        });
 
         mediumPriority.setBackground(new java.awt.Color(255, 255, 255));
         mediumPriority.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
@@ -369,6 +430,11 @@ public class DICOMSender extends ConnectorSettingsPanel {
         mediumPriority.setText("Medium");
         mediumPriority.setToolTipText("Priority of the C-STORE operation, MEDIUM by default.");
         mediumPriority.setMargin(new java.awt.Insets(0, 0, 0, 0));
+        mediumPriority.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                mediumPriorityActionPerformed(evt);
+            }
+        });
 
         lowPriority.setBackground(new java.awt.Color(255, 255, 255));
         lowPriority.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 0, 0, 0));
@@ -376,6 +442,11 @@ public class DICOMSender extends ConnectorSettingsPanel {
         lowPriority.setText("Low");
         lowPriority.setToolTipText("Priority of the C-STORE operation, MEDIUM by default.");
         lowPriority.setMargin(new java.awt.Insets(0, 0, 0, 0));
+        lowPriority.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                lowPriorityActionPerformed(evt);
+            }
+        });
 
         jLabel9.setText("Keystore Password:");
 
@@ -633,50 +704,41 @@ public class DICOMSender extends ConnectorSettingsPanel {
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(jLabel14)
-                    .addComponent(jLabel15)
-                    .addComponent(jLabel17)
-                    .addComponent(jLabel19)
-                    .addComponent(jLabel20)
-                    .addComponent(jLabel18)
-                    .addComponent(jLabel26)
-                    .addComponent(jLabel32)
-                    .addComponent(jLabel8)
-                    .addComponent(jLabel2)
-                    .addComponent(jLabel1)
-                    .addComponent(jLabel33)
-                    .addComponent(jLabel5)
-                    .addComponent(jLabel21)
-                    .addComponent(jLabel23)
-                    .addComponent(jLabel4)
-                    .addComponent(jLabel7)
-                    .addComponent(jLabel27)
-                    .addComponent(jLabel31)
-                    .addComponent(jLabel28)
-                    .addComponent(jLabel12)
-                    .addComponent(jLabel13)
-                    .addComponent(jLabel10)
-                    .addComponent(jLabel29)
-                    .addComponent(jLabel11)
-                    .addComponent(jLabel3))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(jLabel28)
+                            .addComponent(jLabel10)
+                            .addComponent(jLabel29)
+                            .addComponent(jLabel3)
+                            .addComponent(jLabel27)
+                            .addComponent(jLabel14)
+                            .addComponent(jLabel15)
+                            .addComponent(jLabel17)
+                            .addComponent(jLabel19)
+                            .addComponent(jLabel20)
+                            .addComponent(jLabel21)
+                            .addComponent(jLabel18)
+                            .addComponent(jLabel23)
+                            .addComponent(jLabel4)
+                            .addComponent(jLabel26)
+                            .addComponent(jLabel32)
+                            .addComponent(jLabel7)
+                            .addComponent(jLabel31)
+                            .addComponent(jLabel12)
+                            .addComponent(jLabel13)
+                            .addComponent(jLabel11)
+                            .addComponent(jLabel8)
+                            .addComponent(jLabel2)
+                            .addComponent(jLabel1)
+                            .addComponent(jLabel33)
+                            .addComponent(jLabel5))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(layout.createSequentialGroup()
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(keyStoreField, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(truststoreField, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addComponent(ts1Yes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(jLabel9, javax.swing.GroupLayout.Alignment.TRAILING)
-                                    .addComponent(jLabel30, javax.swing.GroupLayout.Alignment.TRAILING))
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addComponent(keyStorePasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, 75, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(truststorepwField, javax.swing.GroupLayout.PREFERRED_SIZE, 75, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                            .addComponent(keyPasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addComponent(ts1No, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addGroup(layout.createSequentialGroup()
                                 .addComponent(nossl2Yes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -686,6 +748,31 @@ public class DICOMSender extends ConnectorSettingsPanel {
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(noclientauthNo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addGroup(layout.createSequentialGroup()
+                                .addComponent(tcpdelayYes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(tcpdelayNo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(stgcmtYes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(stgcmtNo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(uidnegrspYes, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(uidnegrspNo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(pdv1Yes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(pdv1No, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(accepttoField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(passcodeField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(usernameField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(highPriority, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(mediumPriority, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(lowPriority, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(layout.createSequentialGroup()
                                 .addComponent(tls3des, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(tlsaes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -694,15 +781,18 @@ public class DICOMSender extends ConnectorSettingsPanel {
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addComponent(tlsno, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                             .addGroup(layout.createSequentialGroup()
-                                .addComponent(ts1Yes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(keyStoreField, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(truststoreField, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(18, 18, 18)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(jLabel9)
+                                    .addComponent(jLabel30))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(ts1No, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(tcpdelayYes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(tcpdelayNo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addComponent(connecttoField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(accepttoField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(keyStorePasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, 75, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(truststorepwField, javax.swing.GroupLayout.PREFERRED_SIZE, 75, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addComponent(asyncField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addGroup(layout.createSequentialGroup()
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                                     .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
@@ -722,53 +812,33 @@ public class DICOMSender extends ConnectorSettingsPanel {
                                     .addComponent(localApplicationEntityField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addComponent(localPortField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addComponent(localAddressField, javax.swing.GroupLayout.PREFERRED_SIZE, 124, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                            .addComponent(asyncField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(highPriority, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(mediumPriority, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(lowPriority, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addComponent(usernameField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(passcodeField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(pdv1Yes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(pdv1No, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(uidnegrspYes, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(uidnegrspNo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(stgcmtYes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(stgcmtNo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(keyPasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, 150, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(connecttoField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addGroup(layout.createSequentialGroup()
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                    .addGroup(layout.createSequentialGroup()
-                                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                                            .addComponent(rsptoField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addComponent(releasetoField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                            .addComponent(reaperField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                        .addGap(18, 18, 18)
-                                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                            .addComponent(jLabel22)
-                                            .addComponent(jLabel16)
-                                            .addComponent(jLabel25)
-                                            .addComponent(jLabel24)
-                                            .addComponent(jLabel6)))
+                                    .addComponent(soclosedelayField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addComponent(shutdowndelayField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(soclosedelayField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                    .addComponent(rsptoField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(releasetoField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                    .addComponent(reaperField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE))
+                                .addGap(18, 18, 18)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(jLabel22)
+                                    .addComponent(jLabel6)
+                                    .addComponent(jLabel16)
+                                    .addComponent(jLabel25)
+                                    .addComponent(jLabel24))
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(sorcvbufField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addComponent(sosndbufField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
                                     .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                                         .addComponent(rcvpdulenField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                        .addComponent(sndpdulenField, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE))
-                                    .addComponent(sorcvbufField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(bufsizeField, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE))))
-                        .addGap(0, 43, Short.MAX_VALUE))
-                    .addComponent(fileContentsTextPane, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                        .addComponent(sndpdulenField, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                        .addComponent(bufsizeField, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE))))))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(206, 206, 206)
+                        .addComponent(fileContentsTextPane, javax.swing.GroupLayout.DEFAULT_SIZE, 370, Short.MAX_VALUE)))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -839,7 +909,27 @@ public class DICOMSender extends ConnectorSettingsPanel {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(jLabel20)
-                            .addComponent(rsptoField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addComponent(rsptoField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createSequentialGroup()
+                                .addGap(25, 25, 25)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                    .addComponent(jLabel23)
+                                    .addComponent(soclosedelayField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                .addComponent(jLabel21)
+                                .addComponent(shutdowndelayField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addGroup(layout.createSequentialGroup()
+                                .addGap(50, 50, 50)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                    .addComponent(jLabel4)
+                                    .addComponent(accepttoField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                            .addGroup(layout.createSequentialGroup()
+                                .addGap(75, 75, 75)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                    .addComponent(jLabel7)
+                                    .addComponent(connecttoField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))))
                     .addGroup(layout.createSequentialGroup()
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
@@ -852,53 +942,8 @@ public class DICOMSender extends ConnectorSettingsPanel {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(sosndbufField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(jLabel25))))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel21)
-                            .addComponent(shutdowndelayField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(jLabel25))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel23)
-                            .addComponent(soclosedelayField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel4)
-                            .addComponent(accepttoField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel7)
-                            .addComponent(connecttoField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel27)
-                            .addComponent(tcpdelayYes, javax.swing.GroupLayout.PREFERRED_SIZE, 15, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(tcpdelayNo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel31)
-                            .addComponent(ts1Yes, javax.swing.GroupLayout.PREFERRED_SIZE, 15, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(ts1No, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel28)
-                            .addComponent(tls3des, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(tlsaes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(tlswithout, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(tlsno, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel12)
-                            .addComponent(noclientauthYes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(noclientauthNo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel13)
-                            .addComponent(nossl2Yes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addComponent(nossl2No, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                    .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(sorcvbufField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(jLabel24))
@@ -906,33 +951,64 @@ public class DICOMSender extends ConnectorSettingsPanel {
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                             .addComponent(bufsizeField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addComponent(jLabel6))))
+                .addGap(6, 6, 6)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel27)
+                    .addComponent(tcpdelayYes, javax.swing.GroupLayout.PREFERRED_SIZE, 15, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(tcpdelayNo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel10)
-                    .addComponent(keyStoreField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel9)
-                    .addComponent(keyStorePasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jLabel31)
+                    .addComponent(ts1Yes, javax.swing.GroupLayout.PREFERRED_SIZE, 15, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(ts1No, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel29)
-                    .addComponent(truststoreField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(jLabel30)
-                    .addComponent(truststorepwField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jLabel28)
+                    .addComponent(tls3des, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(tlsaes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(tlswithout, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(tlsno, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(jLabel11)
-                    .addComponent(keyPasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jLabel12)
+                    .addComponent(noclientauthYes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(noclientauthNo, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel13)
+                    .addComponent(nossl2Yes, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(nossl2No, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel10)
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(jLabel3)
-                        .addGap(0, 0, Short.MAX_VALUE))
-                    .addComponent(fileContentsTextPane, javax.swing.GroupLayout.DEFAULT_SIZE, 105, Short.MAX_VALUE))
+                        .addComponent(keyStoreField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(truststoreField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jLabel29))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(jLabel11)
+                            .addComponent(keyPasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(keyStorePasswordField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jLabel9))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(truststorepwField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jLabel30))))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jLabel3)
+                    .addComponent(fileContentsTextPane, javax.swing.GroupLayout.DEFAULT_SIZE, 125, Short.MAX_VALUE))
                 .addContainerGap())
         );
     }// </editor-fold>//GEN-END:initComponents
 
     private void tlsnoActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_tlsnoActionPerformed
+// TODO add your handling code here:
         // disable
         keyStoreField.setEnabled(false);
         keyPasswordField.setEnabled(false);
@@ -951,9 +1027,11 @@ public class DICOMSender extends ConnectorSettingsPanel {
         jLabel29.setEnabled(false);
         jLabel11.setEnabled(false);
 
+
     }//GEN-LAST:event_tlsnoActionPerformed
 
     private void tls3desActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_tls3desActionPerformed
+// TODO add your handling code here:
         keyStoreField.setEnabled(true);
         keyPasswordField.setEnabled(true);
         keyStorePasswordField.setEnabled(true);
@@ -973,6 +1051,7 @@ public class DICOMSender extends ConnectorSettingsPanel {
     }//GEN-LAST:event_tls3desActionPerformed
 
     private void tlsaesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_tlsaesActionPerformed
+// TODO add your handling code here:
         keyStoreField.setEnabled(true);
         keyPasswordField.setEnabled(true);
         keyStorePasswordField.setEnabled(true);
@@ -992,6 +1071,7 @@ public class DICOMSender extends ConnectorSettingsPanel {
     }//GEN-LAST:event_tlsaesActionPerformed
 
     private void tlswithoutActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_tlswithoutActionPerformed
+// TODO add your handling code here:
         keyStoreField.setEnabled(true);
         keyPasswordField.setEnabled(true);
         keyStorePasswordField.setEnabled(true);
@@ -1009,6 +1089,83 @@ public class DICOMSender extends ConnectorSettingsPanel {
         jLabel29.setEnabled(true);
         jLabel11.setEnabled(true);
     }//GEN-LAST:event_tlswithoutActionPerformed
+
+    private void lowPriorityActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_lowPriorityActionPerformed
+// TODO add your handling code here:
+    }//GEN-LAST:event_lowPriorityActionPerformed
+
+    private void mediumPriorityActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_mediumPriorityActionPerformed
+// TODO add your handling code here:
+    }//GEN-LAST:event_mediumPriorityActionPerformed
+
+    private void highPriorityActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_highPriorityActionPerformed
+// TODO add your handling code here:
+    }//GEN-LAST:event_highPriorityActionPerformed
+
+    @Override
+    public void updateResponseDropDown() {
+        boolean enabled = parent.isSaveEnabled();
+
+        Channel channel = parent.channelEditPanel.currentChannel;
+
+        Set<String> variables = new LinkedHashSet<String>();
+
+        variables.add("None");
+
+        List<Step> stepsToCheck = new ArrayList<Step>();
+        stepsToCheck.addAll(channel.getSourceConnector().getTransformer().getSteps());
+
+        List<String> scripts = new ArrayList<String>();
+
+        for (Connector connector : channel.getDestinationConnectors()) {
+            if (connector.getTransportName().equals("Database Writer")) {
+                if (connector.getProperties().getProperty("useScript").equals(UIConstants.YES_OPTION)) {
+                    scripts.add(connector.getProperties().getProperty("script"));
+                }
+            } else if (connector.getTransportName().equals("JavaScript Writer")) {
+                scripts.add(connector.getProperties().getProperty("script"));
+            }
+            variables.add(connector.getName());
+            stepsToCheck.addAll(connector.getTransformer().getSteps());
+        }
+
+        Pattern pattern = Pattern.compile(RESULT_PATTERN);
+
+        int i = 0;
+        for (Iterator it = stepsToCheck.iterator(); it.hasNext();) {
+            Step step = (Step) it.next();
+            Map data;
+            data = (Map) step.getData();
+
+            if (step.getType().equalsIgnoreCase(TransformerPane.JAVASCRIPT_TYPE)) {
+                Matcher matcher = pattern.matcher(step.getScript());
+                while (matcher.find()) {
+                    String key = matcher.group(1);
+                    variables.add(key);
+                }
+            } else if (step.getType().equalsIgnoreCase(TransformerPane.MAPPER_TYPE)) {
+                if (data.containsKey(UIConstants.IS_GLOBAL)) {
+                    if (((String) data.get(UIConstants.IS_GLOBAL)).equalsIgnoreCase(UIConstants.IS_GLOBAL_RESPONSE)) {
+                        variables.add((String) data.get("Variable"));
+                    }
+                }
+            }
+        }
+        scripts.add(channel.getPreprocessingScript());
+        scripts.add(channel.getPostprocessingScript());
+
+        for (String script : scripts) {
+            if (script != null && script.length() > 0) {
+                Matcher matcher = pattern.matcher(script);
+                while (matcher.find()) {
+                    String key = matcher.group(1);
+                    variables.add(key);
+                }
+            }
+        }
+
+        parent.setSaveEnabled(enabled);
+    }
 
     private void ackOnNewConnectionNoActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_ackOnNewConnectionNoActionPerformed
     {// GEN-HEADEREND:event_ackOnNewConnectionNoActionPerformed

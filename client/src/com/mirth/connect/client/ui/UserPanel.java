@@ -1,10 +1,10 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.client.ui;
@@ -12,12 +12,10 @@ package com.mirth.connect.client.ui;
 import java.awt.Point;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.prefs.Preferences;
 
 import javax.swing.BorderFactory;
-import javax.swing.DropMode;
 import javax.swing.ImageIcon;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
@@ -26,7 +24,6 @@ import org.jdesktop.swingx.decorator.Highlighter;
 import org.jdesktop.swingx.decorator.HighlighterFactory;
 
 import com.mirth.connect.client.ui.components.MirthTable;
-import com.mirth.connect.client.ui.components.MirthTableTransferHandler;
 import com.mirth.connect.model.User;
 
 public class UserPanel extends javax.swing.JPanel {
@@ -39,10 +36,6 @@ public class UserPanel extends javax.swing.JPanel {
     private final String USERPHONENUMBER_COLUMN_NAME = "Phone Number";
     private final String USERDESCRIPTION_COLUMN_NAME = "Description";
     private final String USERLASTLOGIN_COLUMN_NAME = "Last Login";
-
-    private final int USERNAME_COLUMN_NUMBER = 0;
-    private final int USER_EMAIL_COLUMN_NUMBER = 4;
-
     private Frame parent;
     private int lastRow;
 
@@ -87,18 +80,6 @@ public class UserPanel extends javax.swing.JPanel {
 
         usersPane.setViewportView(usersTable);
 
-        usersTable.setDragEnabled(true);
-        usersTable.setDropMode(DropMode.ON);
-        usersTable.setTransferHandler(new MirthTableTransferHandler(USERNAME_COLUMN_NUMBER, USER_EMAIL_COLUMN_NUMBER) {
-            @Override
-            public void importFile(File file, boolean showAlerts) {}
-
-            @Override
-            public boolean canImport(TransferSupport support) {
-                return false;
-            }
-        });
-
         usersTable.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
 
             public void valueChanged(ListSelectionEvent evt) {
@@ -135,9 +116,11 @@ public class UserPanel extends javax.swing.JPanel {
                 }
             }
 
-            public void keyReleased(KeyEvent e) {}
+            public void keyReleased(KeyEvent e) {
+            }
 
-            public void keyTyped(KeyEvent e) {}
+            public void keyTyped(KeyEvent e) {
+            }
         });
 
     }
@@ -157,11 +140,7 @@ public class UserPanel extends javax.swing.JPanel {
                 tableData[i][3] = temp.getOrganization();
                 tableData[i][4] = temp.getEmail();
                 tableData[i][5] = temp.getPhoneNumber();
-
-                if (temp.getLastLogin() != null) {
-                    tableData[i][6] = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(temp.getLastLogin().getTime());
-                }
-
+                tableData[i][6] = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(temp.getLastLogin().getTime());
                 tableData[i][7] = temp.getDescription();
             }
         }
@@ -172,14 +151,9 @@ public class UserPanel extends javax.swing.JPanel {
             model.refreshDataVector(tableData);
         } else {
             usersTable = new MirthTable();
-            usersTable.setModel(new RefreshTableModel(tableData, new String[] {
-                    USERNAME_COLUMN_NAME, USERFIRSTNAME_COLUMN_NAME, USERLASTNAME_COLUMN_NAME,
-                    USERORGANIZATION_COLUMN_NAME, USER_EMAIL_COLUMN_NAME,
-                    USERPHONENUMBER_COLUMN_NAME, USERLASTLOGIN_COLUMN_NAME,
-                    USERDESCRIPTION_COLUMN_NAME }) {
+            usersTable.setModel(new RefreshTableModel(tableData, new String[]{USERNAME_COLUMN_NAME, USERFIRSTNAME_COLUMN_NAME, USERLASTNAME_COLUMN_NAME, USERORGANIZATION_COLUMN_NAME, USER_EMAIL_COLUMN_NAME, USERPHONENUMBER_COLUMN_NAME, USERLASTLOGIN_COLUMN_NAME, USERDESCRIPTION_COLUMN_NAME}) {
 
-                boolean[] canEdit = new boolean[] { false, false, false, false, false, false,
-                        false, false };
+                boolean[] canEdit = new boolean[]{false, false, false, false, false, false, false, false};
 
                 public boolean isCellEditable(int rowIndex, int columnIndex) {
                     return canEdit[columnIndex];
@@ -203,7 +177,7 @@ public class UserPanel extends javax.swing.JPanel {
 
     /**
      * Shows the popup menu when the trigger button (right-click) has been
-     * pushed. Deselects the rows if no row was selected.
+     * pushed.  Deselects the rows if no row was selected.
      */
     private void checkSelectionAndPopupMenu(java.awt.event.MouseEvent evt) {
         int row = usersTable.rowAtPoint(new Point(evt.getX(), evt.getY()));

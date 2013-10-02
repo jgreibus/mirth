@@ -1,41 +1,45 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.client.ui;
 
 import java.awt.Dimension;
 import java.awt.Point;
-import java.util.ArrayList;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
+import java.util.prefs.Preferences;
 
-import com.mirth.connect.client.ui.components.ItemSelectionTable;
-import com.mirth.connect.client.ui.components.ItemSelectionTableModel;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
+
+import org.jdesktop.swingx.decorator.Highlighter;
+import org.jdesktop.swingx.decorator.HighlighterFactory;
+
 import com.mirth.connect.client.ui.components.MirthTable;
 import com.mirth.connect.model.Channel;
 import com.mirth.connect.model.Connector;
-import com.mirth.connect.model.filters.MessageFilter;
+import com.mirth.connect.model.filters.MessageObjectFilter;
 
 public class ReprocessMessagesDialog extends javax.swing.JDialog {
 
     private Frame parent;
-    private MessageFilter filter = null;
-    private String channelId;
+    private MessageObjectFilter filter = null;
     private final String INCLUDED_DESTINATION_NAME_COLUMN_NAME = "Destination";
     private final String INCLUDED_STATUS_COLUMN_NAME = "Include";
     private final String INCLUDED_ID_COLUMN_NAME = "Id";
 
-    public ReprocessMessagesDialog(String channelId, MessageFilter filter, Map<Integer, String> destinationsConnectors, Integer selectedMetaDataId) {
+    public ReprocessMessagesDialog(MessageObjectFilter filter) {
         super(PlatformUI.MIRTH_FRAME);
         this.parent = PlatformUI.MIRTH_FRAME;
         initComponents();
-        this.channelId = channelId;
         this.filter = filter;
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setModal(true);
@@ -51,7 +55,7 @@ public class ReprocessMessagesDialog extends javax.swing.JDialog {
             setLocation((frmSize.width - dlgSize.width) / 2 + loc.x, (frmSize.height - dlgSize.height) / 2 + loc.y);
         }
 
-        makeIncludedDestinationsTable(destinationsConnectors, selectedMetaDataId);
+        makeIncludedDestinationsTable();
         okButton.requestFocus();
         setVisible(true);
     }
@@ -60,16 +64,32 @@ public class ReprocessMessagesDialog extends javax.swing.JDialog {
      * Makes the alert table with a parameter that is true if a new alert should
      * be added as well.
      */
-    public void makeIncludedDestinationsTable(Map<Integer, String> destinationsConnectors, Integer selectedMetaDataId) {
-        List<Integer> selectedMetaDataIds = null;
+    public void makeIncludedDestinationsTable() {
+        updateIncludedDestinationsTable(parent.channels.get(parent.getSelectedChannelIdFromDashboard()));
 
-        if (selectedMetaDataId != null && selectedMetaDataId > 0) {
-            selectedMetaDataIds = new ArrayList<Integer>();
-            selectedMetaDataIds.add(selectedMetaDataId);
+        includedDestinationsTable.setDragEnabled(false);
+        includedDestinationsTable.setRowSelectionAllowed(false);
+        includedDestinationsTable.setRowHeight(UIConstants.ROW_HEIGHT);
+        includedDestinationsTable.setFocusable(false);
+        includedDestinationsTable.setOpaque(true);
+        includedDestinationsTable.getTableHeader().setReorderingAllowed(false);
+        includedDestinationsTable.setSortable(false);
+
+        includedDestinationsTable.getColumnExt(INCLUDED_STATUS_COLUMN_NAME).setMaxWidth(50);
+        includedDestinationsTable.getColumnExt(INCLUDED_STATUS_COLUMN_NAME).setMinWidth(50);
+        includedDestinationsTable.getColumnExt(INCLUDED_ID_COLUMN_NAME).setVisible(false);
+
+        if (Preferences.userNodeForPackage(Mirth.class).getBoolean("highlightRows", true)) {
+            Highlighter highlighter = HighlighterFactory.createAlternateStriping(UIConstants.HIGHLIGHTER_COLOR, UIConstants.BACKGROUND_COLOR);
+            includedDestinationsTable.setHighlighters(highlighter);
         }
 
-        includedDestinationsTable = new ItemSelectionTable();
-        includedDestinationsTable.setModel(new ItemSelectionTableModel<Integer, String>(destinationsConnectors, selectedMetaDataIds, "Destination", "Included"));
+        includedDestinationsTable.getSelectionModel().addListSelectionListener(new ListSelectionListener() {
+
+            public void valueChanged(ListSelectionEvent e) {
+            }
+        });
+
         includedDestinationsPane.setViewportView(includedDestinationsTable);
     }
 
@@ -98,9 +118,9 @@ public class ReprocessMessagesDialog extends javax.swing.JDialog {
             model.refreshDataVector(tableData);
         } else {
             includedDestinationsTable = new MirthTable();
-            includedDestinationsTable.setModel(new RefreshTableModel(tableData, new String[] { INCLUDED_DESTINATION_NAME_COLUMN_NAME, INCLUDED_STATUS_COLUMN_NAME, INCLUDED_ID_COLUMN_NAME }) {
+            includedDestinationsTable.setModel(new RefreshTableModel(tableData, new String[]{INCLUDED_DESTINATION_NAME_COLUMN_NAME, INCLUDED_STATUS_COLUMN_NAME, INCLUDED_ID_COLUMN_NAME}) {
 
-                boolean[] canEdit = new boolean[] { false, true, false };
+                boolean[] canEdit = new boolean[]{false, true, false};
 
                 public boolean isCellEditable(int rowIndex, int columnIndex) {
                     return canEdit[columnIndex];
@@ -111,6 +131,17 @@ public class ReprocessMessagesDialog extends javax.swing.JDialog {
 
     public boolean isReprocessOriginal() {
         return reprocessOriginal.isSelected();
+    }
+
+    public List<String> getConnectors() {
+        LinkedList<String> connectors = new LinkedList<String>();
+
+        for (int i = 0; i < includedDestinationsTable.getModel().getRowCount(); i++) {
+            if (((Boolean) includedDestinationsTable.getModel().getValueAt(i, 1)).booleanValue()) {
+                connectors.add((String) includedDestinationsTable.getModel().getValueAt(i, 2));
+            }
+        }
+        return connectors;
     }
 
     /**
@@ -144,7 +175,7 @@ public class ReprocessMessagesDialog extends javax.swing.JDialog {
             }
         });
 
-        okButton.setText("OK");
+        okButton.setText("Ok");
         okButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 okButtonActionPerformed(evt);
@@ -157,7 +188,7 @@ public class ReprocessMessagesDialog extends javax.swing.JDialog {
 
         includedDestinationsPane.setViewportView(includedDestinationsTable);
 
-        jLabel1.setText("Reprocess through the following destinations:");
+        jLabel1.setText("Reprocess to the following destinations:");
 
         javax.swing.GroupLayout jPanel1Layout = new javax.swing.GroupLayout(jPanel1);
         jPanel1.setLayout(jPanel1Layout);
@@ -211,21 +242,14 @@ public class ReprocessMessagesDialog extends javax.swing.JDialog {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void cancelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cancelButtonActionPerformed
-        this.dispose();
-    }//GEN-LAST:event_cancelButtonActionPerformed
+private void cancelButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_cancelButtonActionPerformed
+    this.dispose();
+}//GEN-LAST:event_cancelButtonActionPerformed
 
-    private void okButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okButtonActionPerformed
-        ItemSelectionTableModel<Integer, String> model = (ItemSelectionTableModel<Integer, String>) includedDestinationsTable.getModel();
-        List<Integer> metaDataIds = model.getKeys(true);
-
-        if (metaDataIds.size() == model.getRowCount()) {
-            metaDataIds = null;
-        }
-
-        parent.reprocessMessage(channelId, filter, isReprocessOriginal(), metaDataIds);
-        this.dispose();
-    }//GEN-LAST:event_okButtonActionPerformed
+private void okButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_okButtonActionPerformed
+    parent.reprocessMessage(filter, isReprocessOriginal(), getConnectors());
+    this.dispose();
+}//GEN-LAST:event_okButtonActionPerformed
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton cancelButton;
     private javax.swing.JScrollPane includedDestinationsPane;

@@ -1,67 +1,68 @@
 /*
  * Copyright (c) Mirth Corporation. All rights reserved.
- * 
  * http://www.mirthcorp.com
- * 
- * The software in this package is published under the terms of the MPL license a copy of which has
- * been included with this distribution in the LICENSE.txt file.
+ *
+ * The software in this package is published under the terms of the MPL
+ * license a copy of which has been included with this distribution in
+ * the LICENSE.txt file.
  */
 
 package com.mirth.connect.connectors.doc;
 
+import java.util.Properties;
+
 import javax.swing.SwingWorker;
 
 import com.mirth.connect.client.core.ClientException;
-import com.mirth.connect.client.ui.Frame;
-import com.mirth.connect.client.ui.PlatformUI;
 import com.mirth.connect.client.ui.UIConstants;
-import com.mirth.connect.client.ui.panels.connectors.ConnectorSettingsPanel;
-import com.mirth.connect.donkey.model.channel.ConnectorProperties;
+import com.mirth.connect.connectors.ConnectorClass;
 import com.mirth.connect.util.ConnectionTestResponse;
 
-public class DocumentWriter extends ConnectorSettingsPanel {
+/**
+ * A form that extends from ConnectorClass. All methods implemented are
+ * described in ConnectorClass.
+ */
+public class DocumentWriter extends ConnectorClass {
 
-    private Frame parent;
-
+    /**
+     * Creates new form DocumentWriter
+     */
     public DocumentWriter() {
-        this.parent = PlatformUI.MIRTH_FRAME;
+        name = DocumentWriterProperties.name;
         initComponents();
     }
 
-    @Override
-    public String getConnectorName() {
-        return new DocumentDispatcherProperties().getName();
-    }
-
-    @Override
-    public ConnectorProperties getProperties() {
-        DocumentDispatcherProperties properties = new DocumentDispatcherProperties();
-
-        properties.setHost(directoryField.getText().replace('\\', '/'));
-        properties.setOutputPattern(fileNameField.getText());
+    public Properties getProperties() {
+        Properties properties = new Properties();
+        properties.put(DocumentWriterProperties.DATATYPE, name);
+        properties.put(DocumentWriterProperties.FILE_DIRECTORY, directoryField.getText().replace('\\', '/'));
+        properties.put(DocumentWriterProperties.FILE_NAME, fileNameField.getText());
 
         if (pdf.isSelected()) {
-            properties.setDocumentType(DocumentDispatcherProperties.DOCUMENT_TYPE_PDF);
+            properties.put(DocumentWriterProperties.DOCUMENT_TYPE, "pdf");
         } else {
-            properties.setDocumentType(DocumentDispatcherProperties.DOCUMENT_TYPE_RTF);
+            properties.put(DocumentWriterProperties.DOCUMENT_TYPE, "rtf");
         }
 
-        properties.setEncrypt(passwordYes.isSelected());
+        if (passwordYes.isSelected()) {
+            properties.put(DocumentWriterProperties.DOCUMENT_PASSWORD_PROTECTED, UIConstants.YES_OPTION);
+        } else {
+            properties.put(DocumentWriterProperties.DOCUMENT_PASSWORD_PROTECTED, UIConstants.NO_OPTION);
+        }
 
-        properties.setPassword(new String(passwordField.getPassword()));
-        properties.setTemplate(fileContentsTextPane.getText());
+        properties.put(DocumentWriterProperties.DOCUMENT_PASSWORD, new String(passwordField.getPassword()));
+        properties.put(DocumentWriterProperties.FILE_CONTENTS, fileContentsTextPane.getText());
 
         return properties;
     }
 
-    @Override
-    public void setProperties(ConnectorProperties properties) {
-        DocumentDispatcherProperties props = (DocumentDispatcherProperties) properties;
+    public void setProperties(Properties props) {
+        resetInvalidProperties();
 
-        directoryField.setText(props.getHost());
-        fileNameField.setText(props.getOutputPattern());
+        directoryField.setText((String) props.get(DocumentWriterProperties.FILE_DIRECTORY));
+        fileNameField.setText((String) props.get(DocumentWriterProperties.FILE_NAME));
 
-        if (props.isEncrypt()) {
+        if (((String) props.get(DocumentWriterProperties.DOCUMENT_PASSWORD_PROTECTED)).equalsIgnoreCase(UIConstants.YES_OPTION)) {
             passwordYes.setSelected(true);
             passwordYesActionPerformed(null);
         } else {
@@ -69,50 +70,45 @@ public class DocumentWriter extends ConnectorSettingsPanel {
             passwordNoActionPerformed(null);
         }
 
-        if (props.getDocumentType().equals(DocumentDispatcherProperties.DOCUMENT_TYPE_PDF)) {
+        if (((String) props.get(DocumentWriterProperties.DOCUMENT_TYPE)).equals("pdf")) {
             pdf.setSelected(true);
-            pdfActionPerformed(null);
         } else {
             rtf.setSelected(true);
-            rtfActionPerformed(null);
         }
 
-        passwordField.setText(props.getPassword());
+        passwordField.setText((String) props.get(DocumentWriterProperties.DOCUMENT_PASSWORD));
 
-        fileContentsTextPane.setText(props.getTemplate());
+        fileContentsTextPane.setText((String) props.get(DocumentWriterProperties.FILE_CONTENTS));
     }
 
-    @Override
-    public ConnectorProperties getDefaults() {
-        return new DocumentDispatcherProperties();
+    public Properties getDefaults() {
+        return new DocumentWriterProperties().getDefaults();
     }
 
-    @Override
-    public boolean checkProperties(ConnectorProperties properties, boolean highlight) {
-        DocumentDispatcherProperties props = (DocumentDispatcherProperties) properties;
-
+    public boolean checkProperties(Properties props, boolean highlight) {
+        resetInvalidProperties();
         boolean valid = true;
 
-        if (props.getHost().length() == 0) {
+        if (((String) props.get(DocumentWriterProperties.FILE_DIRECTORY)).length() == 0) {
             valid = false;
             if (highlight) {
                 directoryField.setBackground(UIConstants.INVALID_COLOR);
             }
         }
-        if (props.getOutputPattern().length() == 0) {
+        if (((String) props.get(DocumentWriterProperties.FILE_NAME)).length() == 0) {
             valid = false;
             if (highlight) {
                 fileNameField.setBackground(UIConstants.INVALID_COLOR);
             }
         }
-        if (props.getTemplate().length() == 0) {
+        if (((String) props.get(DocumentWriterProperties.FILE_CONTENTS)).length() == 0) {
             valid = false;
             if (highlight) {
                 fileContentsTextPane.setBackground(UIConstants.INVALID_COLOR);
             }
         }
-        if (props.isEncrypt()) {
-            if (props.getPassword().length() == 0) {
+        if (((String) props.get(DocumentWriterProperties.DOCUMENT_PASSWORD_PROTECTED)).equals(UIConstants.YES_OPTION)) {
+            if (((String) props.get(DocumentWriterProperties.DOCUMENT_PASSWORD)).length() == 0) {
                 valid = false;
                 if (highlight) {
                     passwordField.setBackground(UIConstants.INVALID_COLOR);
@@ -123,12 +119,21 @@ public class DocumentWriter extends ConnectorSettingsPanel {
         return valid;
     }
 
-    @Override
-    public void resetInvalidProperties() {
+    private void resetInvalidProperties() {
         directoryField.setBackground(null);
         fileNameField.setBackground(null);
         fileContentsTextPane.setBackground(null);
         passwordField.setBackground(null);
+    }
+
+    public String doValidate(Properties props, boolean highlight) {
+        String error = null;
+
+        if (!checkProperties(props, highlight)) {
+            error = "Error in the form for connector \"" + getName() + "\".\n\n";
+        }
+
+        return error;
     }
 
     /**
@@ -310,7 +315,7 @@ public class DocumentWriter extends ConnectorSettingsPanel {
             public Void doInBackground() {
 
                 try {
-                    ConnectionTestResponse response = (ConnectionTestResponse) parent.mirthClient.invokeConnectorService(parent.channelEditPanel.currentChannel.getId(), getConnectorName(), "testWrite", getProperties());
+                    ConnectionTestResponse response = (ConnectionTestResponse) parent.mirthClient.invokeConnectorService(name, "testWrite", getProperties());
 
                     if (response == null) {
                         throw new ClientException("Failed to invoke service.");
@@ -333,7 +338,7 @@ public class DocumentWriter extends ConnectorSettingsPanel {
         };
 
         worker.execute();
-    }//GEN-LAST:event_testConnectionActionPerformed
+}//GEN-LAST:event_testConnectionActionPerformed
 
     private void pdfActionPerformed(java.awt.event.ActionEvent evt)// GEN-FIRST:event_pdfActionPerformed
     {// GEN-HEADEREND:event_pdfActionPerformed
