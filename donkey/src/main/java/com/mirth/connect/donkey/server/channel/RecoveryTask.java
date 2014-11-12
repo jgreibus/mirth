@@ -154,7 +154,7 @@ public class RecoveryTask implements Callable<Void> {
                             // Execute the recovery process for this message
                             channel.process(sourceConnectorMessage, true);
                             // Use this to decrement the queue size
-                            channel.getSourceQueue().decrementSize();
+                            channel.getSourceQueue().release(sourceConnectorMessage, true);
                             // Increment the number of successfully recovered messages
                             recoveredMessages++;
                         }

@@ -43,8 +43,6 @@ import org.apache.commons.math3.util.Precision;
 import org.apache.log4j.Logger;
 
 import com.mirth.connect.donkey.model.channel.ConnectorProperties;
-import com.mirth.connect.donkey.model.channel.DestinationConnectorProperties;
-import com.mirth.connect.donkey.model.channel.DestinationConnectorPropertiesInterface;
 import com.mirth.connect.donkey.model.channel.MetaDataColumn;
 import com.mirth.connect.donkey.model.channel.MetaDataColumnException;
 import com.mirth.connect.donkey.model.channel.MetaDataColumnType;
@@ -80,8 +78,8 @@ import com.mirth.connect.donkey.server.data.passthru.DelayedStatisticsUpdater;
 import com.mirth.connect.donkey.server.data.passthru.PassthruDaoFactory;
 import com.mirth.connect.donkey.server.event.EventDispatcher;
 import com.mirth.connect.donkey.server.message.DataType;
+import com.mirth.connect.donkey.server.queue.ConnectorMessageQueue;
 import com.mirth.connect.donkey.server.queue.ConnectorMessageQueueDataSource;
-import com.mirth.connect.donkey.server.queue.DestinationQueue;
 import com.mirth.connect.donkey.util.ResourceUtil;
 
 public class TestUtils {
@@ -241,8 +239,7 @@ public class TestUtils {
         destinationConnector.setResponseTransformerExecutor(createDefaultResponseTransformerExecutor());
         destinationConnector.setMetaDataId(metaDataId);
 
-        DestinationConnectorProperties destinationConnectorProperties = ((DestinationConnectorPropertiesInterface) connectorProperties).getDestinationConnectorProperties();
-        DestinationQueue destinationConnectorQueue = new DestinationQueue(destinationConnectorProperties.getThreadAssignmentVariable(), destinationConnectorProperties.getThreadCount(), destinationConnectorProperties.isRegenerateTemplate(), destinationConnector.getSerializer(), destinationConnector.getMessageMaps());
+        ConnectorMessageQueue destinationConnectorQueue = new ConnectorMessageQueue();
         destinationConnectorQueue.setDataSource(new ConnectorMessageQueueDataSource(channelId, serverId, metaDataId, Status.QUEUED, false, getDaoFactory()));
         destinationConnector.setQueue(destinationConnectorQueue);
     }

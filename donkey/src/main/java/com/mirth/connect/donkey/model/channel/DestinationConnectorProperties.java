@@ -27,7 +27,6 @@ public class DestinationConnectorProperties implements Serializable, Migratable,
     private int retryCount;
     private boolean rotate;
     private int threadCount;
-    private String threadAssignmentVariable;
     private boolean validateResponse;
 
     public DestinationConnectorProperties() {
@@ -42,7 +41,6 @@ public class DestinationConnectorProperties implements Serializable, Migratable,
         retryCount = 0;
         rotate = false;
         threadCount = 1;
-        threadAssignmentVariable = "";
         this.validateResponse = validateResponse;
     }
 
@@ -54,7 +52,6 @@ public class DestinationConnectorProperties implements Serializable, Migratable,
         retryCount = props.getRetryCount();
         rotate = props.isRotate();
         threadCount = props.getThreadCount();
-        threadAssignmentVariable = props.getThreadAssignmentVariable();
         validateResponse = props.isValidateResponse();
     }
 
@@ -112,14 +109,6 @@ public class DestinationConnectorProperties implements Serializable, Migratable,
 
     public void setThreadCount(int threadCount) {
         this.threadCount = threadCount;
-    }
-
-    public String getThreadAssignmentVariable() {
-        return threadAssignmentVariable;
-    }
-
-    public void setThreadAssignmentVariable(String threadAssignmentVariable) {
-        this.threadAssignmentVariable = threadAssignmentVariable;
     }
 
     public boolean isValidateResponse() {

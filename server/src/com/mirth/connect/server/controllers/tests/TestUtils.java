@@ -39,8 +39,6 @@ import com.mirth.connect.connectors.tests.TestSerializer;
 import com.mirth.connect.connectors.tests.TestSourceConnector;
 import com.mirth.connect.connectors.vm.VmDispatcherProperties;
 import com.mirth.connect.connectors.vm.VmReceiverProperties;
-import com.mirth.connect.donkey.model.channel.DestinationConnectorProperties;
-import com.mirth.connect.donkey.model.channel.DestinationConnectorPropertiesInterface;
 import com.mirth.connect.donkey.model.message.ConnectorMessage;
 import com.mirth.connect.donkey.model.message.ContentType;
 import com.mirth.connect.donkey.model.message.Message;
@@ -61,8 +59,8 @@ import com.mirth.connect.donkey.server.controllers.ChannelController;
 import com.mirth.connect.donkey.server.data.DonkeyDao;
 import com.mirth.connect.donkey.server.data.buffered.BufferedDaoFactory;
 import com.mirth.connect.donkey.server.message.DataType;
+import com.mirth.connect.donkey.server.queue.ConnectorMessageQueue;
 import com.mirth.connect.donkey.server.queue.ConnectorMessageQueueDataSource;
-import com.mirth.connect.donkey.server.queue.DestinationQueue;
 import com.mirth.connect.model.Connector;
 import com.mirth.connect.model.Connector.Mode;
 import com.mirth.connect.model.Filter;
@@ -214,8 +212,7 @@ public class TestUtils {
         responseTransformerExecutor.setResponseTransformer(new TestResponseTransformer());
         destinationConnector.setResponseTransformerExecutor(responseTransformerExecutor);
 
-        DestinationConnectorProperties destinationConnectorProperties = ((DestinationConnectorPropertiesInterface) destinationConnector.getConnectorProperties()).getDestinationConnectorProperties();
-        DestinationQueue queue = new DestinationQueue(destinationConnectorProperties.getThreadAssignmentVariable(), destinationConnectorProperties.getThreadCount(), destinationConnectorProperties.isRegenerateTemplate(), destinationConnector.getSerializer(), destinationConnector.getMessageMaps());
+        ConnectorMessageQueue queue = new ConnectorMessageQueue();
         queue.setDataSource(new ConnectorMessageQueueDataSource(channelId, serverId, 1, Status.QUEUED, false, Donkey.getInstance().getDaoFactory()));
         destinationConnector.setQueue(queue);
 
@@ -261,16 +258,14 @@ public class TestUtils {
             channel.getDestinationChains().add(chain);
 
             for (int j = 0; j < destinationsPerChain; j++) {
+                ConnectorMessageQueue queue = new ConnectorMessageQueue();
+                queue.setDataSource(new ConnectorMessageQueueDataSource(channelId, serverId, metaDataId, Status.QUEUED, false, Donkey.getInstance().getDaoFactory()));
+
                 TestDestinationConnector testDestinationConnector = new TestDestinationConnector();
                 testDestinationConnector.setChannelId(channelId);
                 testDestinationConnector.setDestinationName("destination" + metaDataId);
                 testDestinationConnector.setEnabled(true);
-
-                DestinationConnectorProperties destinationConnectorProperties = ((DestinationConnectorPropertiesInterface) testDestinationConnector.getConnectorProperties()).getDestinationConnectorProperties();
-                DestinationQueue queue = new DestinationQueue(destinationConnectorProperties.getThreadAssignmentVariable(), destinationConnectorProperties.getThreadCount(), destinationConnectorProperties.isRegenerateTemplate(), testDestinationConnector.getSerializer(), testDestinationConnector.getMessageMaps());
-                queue.setDataSource(new ConnectorMessageQueueDataSource(channelId, serverId, metaDataId, Status.QUEUED, false, Donkey.getInstance().getDaoFactory()));
                 testDestinationConnector.setQueue(queue);
-
                 testDestinationConnector.setResponseValidator(new HL7v2ResponseValidator(new HL7v2SerializationProperties(), new HL7v2ResponseValidationProperties()));
 
                 ResponseTransformerExecutor responseTransformerExecutor = new ResponseTransformerExecutor(dataType, dataType);

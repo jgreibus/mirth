@@ -39,8 +39,6 @@ import org.apache.log4j.Logger;
 import com.mirth.commons.encryption.Encryptor;
 import com.mirth.connect.donkey.model.channel.ConnectorProperties;
 import com.mirth.connect.donkey.model.channel.DeployedState;
-import com.mirth.connect.donkey.model.channel.DestinationConnectorProperties;
-import com.mirth.connect.donkey.model.channel.DestinationConnectorPropertiesInterface;
 import com.mirth.connect.donkey.model.channel.SourceConnectorProperties;
 import com.mirth.connect.donkey.model.channel.SourceConnectorPropertiesInterface;
 import com.mirth.connect.donkey.model.event.ErrorEventType;
@@ -85,8 +83,7 @@ import com.mirth.connect.donkey.server.message.batch.BatchMessageException;
 import com.mirth.connect.donkey.server.message.batch.BatchMessageReader;
 import com.mirth.connect.donkey.server.message.batch.ResponseHandler;
 import com.mirth.connect.donkey.server.message.batch.SimpleResponseHandler;
-import com.mirth.connect.donkey.server.queue.DestinationQueue;
-import com.mirth.connect.donkey.server.queue.SourceQueue;
+import com.mirth.connect.donkey.server.queue.ConnectorMessageQueue;
 import com.mirth.connect.model.ChannelProperties;
 import com.mirth.connect.model.CodeTemplate.ContextType;
 import com.mirth.connect.model.ConnectorMetaData;
@@ -111,7 +108,6 @@ import com.mirth.connect.server.channel.ChannelFuture;
 import com.mirth.connect.server.channel.ChannelTask;
 import com.mirth.connect.server.channel.ChannelTaskHandler;
 import com.mirth.connect.server.channel.LoggingTaskHandler;
-import com.mirth.connect.server.channel.MirthMessageMaps;
 import com.mirth.connect.server.channel.MirthMetaDataReplacer;
 import com.mirth.connect.server.message.DataTypeFactory;
 import com.mirth.connect.server.message.DefaultResponseValidator;
@@ -544,9 +540,8 @@ public class DonkeyEngineController implements EngineController {
         channel.setSourceConnector(createSourceConnector(channel, channelModel.getSourceConnector(), storageSettings, destinationIdMap));
         channel.setResponseSelector(new ResponseSelector(channel.getSourceConnector().getInboundDataType()));
         channel.setSourceFilterTransformer(createFilterTransformerExecutor(channelId, channelModel.getSourceConnector(), destinationIdMap));
-        channel.setMessageMaps(new MirthMessageMaps(channelId));
 
-        SourceQueue sourceQueue = new SourceQueue();
+        ConnectorMessageQueue sourceQueue = new ConnectorMessageQueue();
         sourceQueue.setBufferCapacity(queueBufferSize);
         channel.setSourceQueue(sourceQueue);
 
@@ -902,8 +897,7 @@ public class DonkeyEngineController implements EngineController {
         destinationConnector.setResponseValidator(responseValidator);
         destinationConnector.setResponseTransformerExecutor(createResponseTransformerExecutor(channel.getChannelId(), connectorModel, destinationIdMap));
 
-        DestinationConnectorProperties destinationConnectorProperties = ((DestinationConnectorPropertiesInterface) connectorProperties).getDestinationConnectorProperties();
-        DestinationQueue queue = new DestinationQueue(destinationConnectorProperties.getThreadAssignmentVariable(), destinationConnectorProperties.getThreadCount(), destinationConnectorProperties.isRegenerateTemplate(), destinationConnector.getSerializer(), destinationConnector.getMessageMaps());
+        ConnectorMessageQueue queue = new ConnectorMessageQueue();
         queue.setBufferCapacity(queueBufferSize);
         queue.setRotate(destinationConnector.isQueueRotate());
         destinationConnector.setQueue(queue);

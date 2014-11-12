@@ -36,7 +36,6 @@ import com.mirth.connect.donkey.server.controllers.ChannelController;
 import com.mirth.connect.donkey.server.data.DonkeyDaoFactory;
 import com.mirth.connect.donkey.server.queue.ConnectorMessageQueue;
 import com.mirth.connect.donkey.server.queue.ConnectorMessageQueueDataSource;
-import com.mirth.connect.donkey.server.queue.SourceQueue;
 import com.mirth.connect.donkey.test.util.TestChannel;
 import com.mirth.connect.donkey.test.util.TestDispatcher;
 import com.mirth.connect.donkey.test.util.TestDispatcherProperties;
@@ -85,7 +84,7 @@ public class QueueTests {
 
         TestUtils.initChannel(channelId);
 
-        SourceQueue queue = new SourceQueue();
+        ConnectorMessageQueue queue = new ConnectorMessageQueue();
         queue.setBufferCapacity(bufferCapacity);
         queue.setDataSource(new ConnectorMessageQueueDataSource(channelId, serverId, 0, Status.RECEIVED, false, daoFactory));
         queue.updateSize();
