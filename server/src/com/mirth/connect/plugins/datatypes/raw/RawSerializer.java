@@ -13,12 +13,12 @@ import java.util.Map;
 
 import org.apache.log4j.Logger;
 
-import com.mirth.connect.donkey.model.message.MessageSerializer;
-import com.mirth.connect.donkey.model.message.MessageSerializerException;
-import com.mirth.connect.model.converters.IMessageSerializer;
+import com.mirth.connect.donkey.model.message.XmlSerializer;
+import com.mirth.connect.donkey.model.message.XmlSerializerException;
+import com.mirth.connect.model.converters.IXMLSerializer;
 import com.mirth.connect.model.datatype.SerializerProperties;
 
-public class RawSerializer implements IMessageSerializer {
+public class RawSerializer implements IXMLSerializer {
     private Logger logger = Logger.getLogger(this.getClass());
 
     public RawSerializer(SerializerProperties properties) {}
@@ -31,17 +31,17 @@ public class RawSerializer implements IMessageSerializer {
     }
 
     @Override
-    public String transformWithoutSerializing(String message, MessageSerializer outboundSerializer) {
+    public String transformWithoutSerializing(String message, XmlSerializer outboundSerializer) {
         return null;
     }
 
     @Override
-    public String toXML(String source) throws MessageSerializerException {
+    public String toXML(String source) throws XmlSerializerException {
         return null;
     }
 
     @Override
-    public String fromXML(String source) throws MessageSerializerException {
+    public String fromXML(String source) throws XmlSerializerException {
         return null;
     }
 
@@ -52,14 +52,4 @@ public class RawSerializer implements IMessageSerializer {
 
     @Override
     public void populateMetaData(String message, Map<String, Object> map) {}
-
-    @Override
-    public String toJSON(String message) throws MessageSerializerException {
-        return null;
-    }
-
-    @Override
-    public String fromJSON(String message) throws MessageSerializerException {
-        return null;
-    }
 }

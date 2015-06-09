@@ -19,15 +19,15 @@ import org.xml.sax.InputSource;
 import org.xml.sax.XMLReader;
 import org.xml.sax.helpers.XMLReaderFactory;
 
-import com.mirth.connect.donkey.model.message.MessageSerializer;
-import com.mirth.connect.donkey.model.message.MessageSerializerException;
-import com.mirth.connect.model.converters.IMessageSerializer;
+import com.mirth.connect.donkey.model.message.XmlSerializer;
+import com.mirth.connect.donkey.model.message.XmlSerializerException;
+import com.mirth.connect.model.converters.IXMLSerializer;
 import com.mirth.connect.model.converters.XMLPrettyPrinter;
 import com.mirth.connect.model.datatype.SerializerProperties;
 import com.mirth.connect.model.util.DefaultMetaData;
 import com.mirth.connect.util.ErrorMessageBuilder;
 
-public class DelimitedSerializer implements IMessageSerializer {
+public class DelimitedSerializer implements IXMLSerializer {
     private Logger logger = Logger.getLogger(this.getClass());
 
     private DelimitedSerializationProperties serializationProperties;
@@ -57,12 +57,12 @@ public class DelimitedSerializer implements IMessageSerializer {
     }
 
     @Override
-    public String transformWithoutSerializing(String message, MessageSerializer outboundSerializer) throws MessageSerializerException {
+    public String transformWithoutSerializing(String message, XmlSerializer outboundSerializer) throws XmlSerializerException {
         return null;
     }
 
     @Override
-    public String fromXML(String source) throws MessageSerializerException {
+    public String fromXML(String source) throws XmlSerializerException {
         StringBuilder builder = new StringBuilder();
 
         try {
@@ -75,14 +75,14 @@ public class DelimitedSerializer implements IMessageSerializer {
         } catch (Exception e) {
             String exceptionMessage = e.getClass().getName() + ":" + e.getMessage();
             logger.error(exceptionMessage);
-            throw new MessageSerializerException("Error converting XML to delimited text", e, ErrorMessageBuilder.buildErrorMessage(this.getClass().getSimpleName(), "Error converting XML to delimited text", e));
+            throw new XmlSerializerException("Error converting XML to delimited text", e, ErrorMessageBuilder.buildErrorMessage(this.getClass().getSimpleName(), "Error converting XML to delimited text", e));
         }
 
         return builder.toString();
     }
 
     @Override
-    public String toXML(String source) throws MessageSerializerException {
+    public String toXML(String source) throws XmlSerializerException {
         try {
             StringWriter stringWriter = new StringWriter();
             XMLPrettyPrinter serializer = new XMLPrettyPrinter(stringWriter);
@@ -92,7 +92,7 @@ public class DelimitedSerializer implements IMessageSerializer {
             delimitedReader.parse(new InputSource(new StringReader(source)));
             return stringWriter.toString();
         } catch (Exception e) {
-            throw new MessageSerializerException("Error converting delimited text to XML", e, ErrorMessageBuilder.buildErrorMessage(this.getClass().getSimpleName(), "Error converting delimited text to XML", e));
+            throw new XmlSerializerException("Error converting delimited text to XML", e, ErrorMessageBuilder.buildErrorMessage(this.getClass().getSimpleName(), "Error converting delimited text to XML", e));
         }
     }
 
@@ -106,14 +106,4 @@ public class DelimitedSerializer implements IMessageSerializer {
 
     @Override
     public void populateMetaData(String message, Map<String, Object> map) {}
-
-    @Override
-    public String toJSON(String message) throws MessageSerializerException {
-        return null;
-    }
-
-    @Override
-    public String fromJSON(String message) throws MessageSerializerException {
-        return null;
-    }
 }

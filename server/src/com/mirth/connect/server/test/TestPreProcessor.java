@@ -33,11 +33,11 @@ import com.mirth.connect.donkey.model.message.Message;
 import com.mirth.connect.donkey.model.message.MessageContent;
 import com.mirth.connect.donkey.model.message.Response;
 import com.mirth.connect.donkey.model.message.Status;
-import com.mirth.connect.donkey.model.message.MessageSerializer;
-import com.mirth.connect.donkey.model.message.MessageSerializerException;
+import com.mirth.connect.donkey.model.message.XmlSerializer;
+import com.mirth.connect.donkey.model.message.XmlSerializerException;
 import com.mirth.connect.model.CodeTemplate.ContextType;
 import com.mirth.connect.model.ServerEventContext;
-import com.mirth.connect.plugins.datatypes.xml.XMLSerializer;
+import com.mirth.connect.plugins.datatypes.xml.DefaultXMLSerializer;
 import com.mirth.connect.server.Mirth;
 import com.mirth.connect.server.controllers.ChannelController;
 import com.mirth.connect.server.controllers.ConfigurationController;
@@ -231,14 +231,14 @@ public class TestPreProcessor {
         assertTrue(executor.awaitTermination(1000, TimeUnit.MILLISECONDS));
     }
 
-    private ConnectorMessage createConnectorMessage(String channelId, long messageId, int metaDataId) throws MessageSerializerException {
+    private ConnectorMessage createConnectorMessage(String channelId, long messageId, int metaDataId) throws XmlSerializerException {
         ConnectorMessage connectorMessage = new ConnectorMessage();
         connectorMessage.setChannelId(channelId);
         connectorMessage.setMessageId(messageId);
         connectorMessage.setMetaDataId(metaDataId);
         connectorMessage.setMessageContent(new MessageContent(channelId, messageId, metaDataId, ContentType.RAW, TEST_HL7_MESSAGE, "HL7V2", false));
 
-        MessageSerializer xmlSerializer = new XMLSerializer(null);
+        XmlSerializer xmlSerializer = new DefaultXMLSerializer(null);
         String serializedMessage = xmlSerializer.toXML(connectorMessage.getRaw().getContent());
 
         connectorMessage.setTransformed(new MessageContent(channelId, messageId, metaDataId, ContentType.TRANSFORMED, serializedMessage, "XML", false));

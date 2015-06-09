@@ -65,12 +65,8 @@ import org.jdesktop.swingx.decorator.Highlighter;
 import org.jdesktop.swingx.decorator.HighlighterFactory;
 import org.jdesktop.swingx.table.TableColumnExt;
 import org.syntax.jedit.SyntaxDocument;
-import org.syntax.jedit.tokenmarker.JSONTokenMarker;
 import org.syntax.jedit.tokenmarker.XMLTokenMarker;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import com.mirth.connect.client.core.ClientException;
 import com.mirth.connect.client.core.Operation;
 import com.mirth.connect.client.core.Operations;
@@ -283,8 +279,8 @@ public class MessageBrowser extends javax.swing.JPanel {
     }
 
     public void loadChannel(String channelId, Map<Integer, String> connectors, List<MetaDataColumn> metaDataColumns, List<Integer> selectedMetaDataIds) {
-        //Set the FormatCheckboxes to their default setting
-        formatMessageCheckBox.setSelected(Preferences.userNodeForPackage(Mirth.class).getBoolean("messageBrowserFormat", true));
+        //Set the FormatXmlCheckboxes to their default setting
+        formatXmlMessageCheckBox.setSelected(Preferences.userNodeForPackage(Mirth.class).getBoolean("messageBrowserFormatXml", true));
 
         this.channelId = channelId;
         this.connectors = connectors;
@@ -953,27 +949,13 @@ public class MessageBrowser extends javax.swing.JPanel {
 
         if (StringUtils.isNotEmpty(message)) {
             String trimmedMessage = message.trim();
-            char firstChar = trimmedMessage.charAt(0);
-            boolean isXml = trimmedMessage.length() > 0 && firstChar == '<';
-            boolean isJson = trimmedMessage.length() > 0 && (firstChar == '{' || firstChar == '[');
+            boolean isXml = trimmedMessage.length() > 0 && trimmedMessage.charAt(0) == '<';
 
             if (isXml) {
                 newDoc.setTokenMarker(new XMLTokenMarker());
-                if (formatMessageCheckBox.isSelected()) {
+                if (formatXmlMessageCheckBox.isSelected()) {
                     try {
                         message = MirthXmlUtil.prettyPrint(message);
-                    } catch (Exception e) {
-                        System.out.println(e.getMessage());
-                    }
-                }
-            } else if (isJson) {
-                newDoc.setTokenMarker(new JSONTokenMarker());
-                if (formatMessageCheckBox.isSelected()) {
-                    try {
-                        ObjectMapper mapper = new ObjectMapper();
-                        mapper.enable(SerializationFeature.INDENT_OUTPUT);
-                        JsonNode json = mapper.readTree(message);
-                        message = mapper.writeValueAsString(json);
                     } catch (Exception e) {
                         System.out.println(e.getMessage());
                     }
@@ -1462,7 +1444,7 @@ public class MessageBrowser extends javax.swing.JPanel {
         updateMappingsTable(new String[0][0], true);
         updateAttachmentsTable(null);
         descriptionTabbedPane.remove(attachmentsPane);
-        formatMessageCheckBox.setEnabled(false);
+        formatXmlMessageCheckBox.setEnabled(false);
     }
 
     public Message getSelectedMessage() {
@@ -1980,20 +1962,15 @@ public class MessageBrowser extends javax.swing.JPanel {
                         trimmedContent = content.getContent().trim();
                     }
 
-                    if (trimmedContent.length() > 0) {
-                        char firstChar = trimmedContent.charAt(0);
-                        if (firstChar == '<' || firstChar == '{' || firstChar == '[') {
-                            formatMessageCheckBox.setEnabled(true);
-                        }
-                    }
+                    formatXmlMessageCheckBox.setEnabled(trimmedContent.length() > 0 && trimmedContent.charAt(0) == '<');
                 }
             } else {
-                formatMessageCheckBox.setEnabled(false);
+                formatXmlMessageCheckBox.setEnabled(false);
             }
         }
     }
 
-    private void formatCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {
+    private void formatXmlCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {
         int row = getSelectedMessageIndex();
 
         if (row >= 0) {
@@ -2060,7 +2037,7 @@ public class MessageBrowser extends javax.swing.JPanel {
         processedResponseStatusLabel = new javax.swing.JLabel();
         processedResponseStatusTextField = new javax.swing.JTextField();
         processedResponseLabel = new javax.swing.JLabel();
-        formatMessageCheckBox = new javax.swing.JCheckBox();
+        formatXmlMessageCheckBox = new javax.swing.JCheckBox();
         mappingsPane = new javax.swing.JScrollPane();
         mappingsTable = null;
         ErrorsPanel = new javax.swing.JPanel();
@@ -2346,12 +2323,12 @@ public class MessageBrowser extends javax.swing.JPanel {
 
         MessagesCardPane.add(ProcessedResponseTextPane, "Processed Response");
 
-        formatMessageCheckBox.setBackground(new java.awt.Color(255, 255, 255));
-        formatMessageCheckBox.setText("Format Messages");
-        formatMessageCheckBox.setToolTipText("Pretty print messages.");
-        formatMessageCheckBox.addActionListener(new java.awt.event.ActionListener() {
+        formatXmlMessageCheckBox.setBackground(new java.awt.Color(255, 255, 255));
+        formatXmlMessageCheckBox.setText("Format XML Messages");
+        formatXmlMessageCheckBox.setToolTipText("Pretty print messages that are XML.");
+        formatXmlMessageCheckBox.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                formatMessageCheckBoxActionPerformed(evt);
+                formatXmlMessageCheckBoxActionPerformed(evt);
             }
         });
 
@@ -2364,7 +2341,7 @@ public class MessageBrowser extends javax.swing.JPanel {
                 .addGroup(MessagesPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addComponent(MessagesCardPane, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addGroup(MessagesPanelLayout.createSequentialGroup()
-                        .addComponent(formatMessageCheckBox)
+                        .addComponent(formatXmlMessageCheckBox)
                         .addGap(0, 0, Short.MAX_VALUE))
                     .addComponent(MessagesRadioPane, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addContainerGap())
@@ -2377,7 +2354,7 @@ public class MessageBrowser extends javax.swing.JPanel {
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(MessagesCardPane, javax.swing.GroupLayout.DEFAULT_SIZE, 134, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(formatMessageCheckBox)
+                .addComponent(formatXmlMessageCheckBox)
                 .addContainerGap())
         );
 
@@ -2837,9 +2814,9 @@ public class MessageBrowser extends javax.swing.JPanel {
         worker.execute();
     }//GEN-LAST:event_countButtonActionPerformed
 
-    private void formatMessageCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_formatMessageCheckBoxActionPerformed
-        formatCheckBoxActionPerformed(evt);
-    }//GEN-LAST:event_formatMessageCheckBoxActionPerformed
+    private void formatXmlMessageCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_formatXmlMessageCheckBoxActionPerformed
+        formatXmlCheckBoxActionPerformed(evt);
+    }//GEN-LAST:event_formatXmlMessageCheckBoxActionPerformed
 
     private void RawMessageRadioButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_RawMessageRadioButtonActionPerformed
         messagesRadioButtonActionPerformed(evt);
@@ -2941,7 +2918,7 @@ public class MessageBrowser extends javax.swing.JPanel {
     private javax.swing.JTabbedPane descriptionTabbedPane;
     private javax.swing.ButtonGroup errorsGroup;
     private javax.swing.JButton filterButton;
-    private javax.swing.JCheckBox formatMessageCheckBox;
+    private javax.swing.JCheckBox formatXmlMessageCheckBox;
     private javax.swing.JDialog jDialog1;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel3;
