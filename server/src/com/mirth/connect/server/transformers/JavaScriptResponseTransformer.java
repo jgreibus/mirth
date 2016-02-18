@@ -122,7 +122,7 @@ public class JavaScriptResponseTransformer implements ResponseTransformer {
         private String template;
 
         public ResponseTransformerTask(MirthContextFactory contextFactory, Response response, ConnectorMessage connectorMessage, String scriptId, String template) {
-            super(contextFactory, "Response Transformer", connector);
+            super(contextFactory);
             this.response = response;
             this.connectorMessage = connectorMessage;
             this.scriptId = scriptId;
@@ -130,7 +130,7 @@ public class JavaScriptResponseTransformer implements ResponseTransformer {
         }
 
         @Override
-        public String doCall() throws Exception {
+        public String call() throws Exception {
             Logger scriptLogger = Logger.getLogger("response");
 
             // Get the script from the cache

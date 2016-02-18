@@ -21,7 +21,7 @@ import com.mirth.connect.donkey.model.channel.PollConnectorPropertiesInterface;
 import com.mirth.connect.donkey.model.channel.PollingType;
 import com.mirth.connect.donkey.server.Donkey;
 import com.mirth.connect.donkey.server.StartException;
-import com.mirth.connect.donkey.server.channel.DestinationChainProvider;
+import com.mirth.connect.donkey.server.channel.DestinationChain;
 import com.mirth.connect.donkey.server.channel.MetaDataReplacer;
 import com.mirth.connect.donkey.server.channel.SourceConnector;
 import com.mirth.connect.donkey.server.controllers.ChannelController;
@@ -46,8 +46,10 @@ public class ConnectorTests {
     }
 
     /*
-     * Create a new poll connector channel Set the polling frequency to 500 ms Starts the channel,
-     * waits 3250 ms, asserts that: - 7 messages are processed by the channel
+     * Create a new poll connector channel
+     * Set the polling frequency to 500 ms
+     * Starts the channel, waits 3250 ms, asserts that:
+     * - 7 messages are processed by the channel
      */
     @Test
     @Ignore
@@ -62,7 +64,7 @@ public class ConnectorTests {
         if (ChannelController.getInstance().channelExists(channelId)) {
             ChannelController.getInstance().deleteAllMessages(channelId);
         }
-
+        
         TestChannel channel = new TestChannel();
 
         channel.setChannelId(channelId);
@@ -90,13 +92,13 @@ public class ConnectorTests {
         TestDestinationConnector destinationConnector = (TestDestinationConnector) TestUtils.createDefaultDestinationConnector();
         destinationConnector.setChannelId(channelId);
 
-        DestinationChainProvider chain = new DestinationChainProvider();
+        DestinationChain chain = new DestinationChain();
         chain.setChannelId(channelId);
         destinationConnector.setMetaDataReplacer(sourceConnector.getMetaDataReplacer());
         destinationConnector.setMetaDataColumns(channel.getMetaDataColumns());
         destinationConnector.setFilterTransformerExecutor(TestUtils.createDefaultFilterTransformerExecutor());
         chain.addDestination(1, destinationConnector);
-        channel.addDestinationChainProvider(chain);
+        channel.addDestinationChain(chain);
 
         channel.deploy();
         channel.start(null);

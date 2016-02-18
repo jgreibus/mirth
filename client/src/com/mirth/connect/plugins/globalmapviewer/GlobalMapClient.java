@@ -22,7 +22,7 @@ import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
 
 import com.mirth.connect.client.core.ClientException;
-import com.mirth.connect.client.core.ForbiddenException;
+import com.mirth.connect.client.core.UnauthorizedException;
 import com.mirth.connect.client.ui.PlatformUI;
 import com.mirth.connect.donkey.util.MapUtil;
 import com.mirth.connect.donkey.util.Serializer;
@@ -33,6 +33,8 @@ import com.mirth.connect.util.StringUtil;
 
 public class GlobalMapClient extends DashboardTabPlugin {
 
+    public static final String PLUGINPOINT = "Global Maps";
+    private static final String GET_GLOBAL_MAPS = "getGlobalMaps";
     private GlobalMapPanel globalMapPanel;
     private Vector<Object> data;
 
@@ -58,6 +60,9 @@ public class GlobalMapClient extends DashboardTabPlugin {
         // Use this map to look up channel names from channel Ids
         final Map<String, String> channelNameMap = new HashMap<String, String>();
 
+        // Always retrieve the global map
+        channelIds.add(null);
+
         // Determine which global channel maps to retrieve
         try {
             SwingUtilities.invokeAndWait(new Runnable() {
@@ -82,11 +87,10 @@ public class GlobalMapClient extends DashboardTabPlugin {
             Serializer serializer = ObjectXMLSerializer.getInstance();
             Map<String, String> globalMaps = null;
             try {
-                globalMaps = (Map<String, String>) PlatformUI.MIRTH_FRAME.mirthClient.getServlet(GlobalMapServletInterface.class).getAllMaps(channelIds, true);
+                globalMaps = (Map<String, String>) PlatformUI.MIRTH_FRAME.mirthClient.invokePluginMethodAsync(PLUGINPOINT, GET_GLOBAL_MAPS, channelIds);
             } catch (ClientException e) {
-                if (e instanceof ForbiddenException) {
+                if (e.getCause() instanceof UnauthorizedException) {
                     // Don't error. Let an empty map be processed
-                    parent.alertThrowable(parent, e, false);
                 } else {
                     throw e;
                 }
@@ -161,7 +165,7 @@ public class GlobalMapClient extends DashboardTabPlugin {
 
     @Override
     public String getPluginPointName() {
-        return GlobalMapServletInterface.PLUGIN_POINT;
+        return PLUGINPOINT;
     }
 
     @Override
@@ -172,4 +176,5 @@ public class GlobalMapClient extends DashboardTabPlugin {
 
     @Override
     public void reset() {}
+
 }

@@ -20,13 +20,11 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
 
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.log4j.Logger;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.EvaluatorException;
 
-import com.mirth.connect.client.core.ControllerException;
 import com.mirth.connect.model.CodeTemplate;
 import com.mirth.connect.model.CodeTemplateLibrary;
 import com.mirth.connect.model.CodeTemplateLibrarySaveResult;
@@ -69,11 +67,6 @@ public class DefaultCodeTemplateController extends CodeTemplateController {
     @Override
     public List<CodeTemplateLibrary> getLibraries(Set<String> libraryIds, boolean includeCodeTemplates) throws ControllerException {
         logger.debug("Getting code template libraries, libraryIds=" + String.valueOf(libraryIds));
-        if (CollectionUtils.isEmpty(libraryIds)) {
-            libraryIds = null;
-        } else {
-            libraryIds = new HashSet<String>(libraryIds);
-        }
 
         Map<String, CodeTemplateLibrary> libraryMap = libraryCache.getAllItems();
         List<CodeTemplateLibrary> libraries = new ArrayList<CodeTemplateLibrary>();
@@ -133,7 +126,7 @@ public class DefaultCodeTemplateController extends CodeTemplateController {
     }
 
     @Override
-    public synchronized boolean updateLibraries(Set<CodeTemplateLibrary> libraries, ServerEventContext context, boolean override) throws ControllerException {
+    public synchronized boolean updateLibraries(List<CodeTemplateLibrary> libraries, ServerEventContext context, boolean override) throws ControllerException {
         Map<String, CodeTemplateLibrary> libraryMap = libraryCache.getAllItems();
         List<CodeTemplateLibrary> librariesToRemove = new ArrayList<CodeTemplateLibrary>(libraryMap.values());
         Map<String, String> codeTemplateMap = new HashMap<String, String>();
@@ -245,9 +238,6 @@ public class DefaultCodeTemplateController extends CodeTemplateController {
     @Override
     public List<CodeTemplate> getCodeTemplates(Set<String> codeTemplateIds) throws ControllerException {
         logger.debug("Getting code templates, codeTemplateIds=" + String.valueOf(codeTemplateIds));
-        if (CollectionUtils.isEmpty(codeTemplateIds)) {
-            codeTemplateIds = null;
-        }
 
         Map<String, CodeTemplate> codeTemplateMap = codeTemplateCache.getAllItems();
         List<CodeTemplate> codeTemplates = new ArrayList<CodeTemplate>();
@@ -444,9 +434,9 @@ public class DefaultCodeTemplateController extends CodeTemplateController {
     }
 
     @Override
-    public synchronized void removeCodeTemplate(String codeTemplateId, ServerEventContext context) throws ControllerException {
+    public synchronized void removeCodeTemplate(CodeTemplate codeTemplate, ServerEventContext context) throws ControllerException {
         // Do a lookup to get the latest model object
-        CodeTemplate codeTemplate = getCodeTemplateById(codeTemplateId);
+        codeTemplate = getCodeTemplateById(codeTemplate.getId());
         if (codeTemplate == null) {
             return;
         }
@@ -470,7 +460,7 @@ public class DefaultCodeTemplateController extends CodeTemplateController {
         }
 
         // Update any libraries that were using the code template
-        Set<CodeTemplateLibrary> libraries = new HashSet<CodeTemplateLibrary>(libraryCache.getAllItems().values());
+        List<CodeTemplateLibrary> libraries = new ArrayList<CodeTemplateLibrary>(libraryCache.getAllItems().values());
         boolean changed = false;
 
         for (CodeTemplateLibrary library : libraries) {
@@ -488,7 +478,7 @@ public class DefaultCodeTemplateController extends CodeTemplateController {
     }
 
     @Override
-    public synchronized CodeTemplateLibrarySaveResult updateLibrariesAndTemplates(Set<CodeTemplateLibrary> libraries, Set<String> removedLibraryIds, Set<CodeTemplate> updatedCodeTemplates, Set<String> removedCodeTemplateIds, ServerEventContext context, boolean override) {
+    public synchronized CodeTemplateLibrarySaveResult updateLibrariesAndTemplates(List<CodeTemplateLibrary> libraries, List<CodeTemplateLibrary> removedLibraries, List<CodeTemplate> updatedCodeTemplates, List<CodeTemplate> removedCodeTemplates, ServerEventContext context, boolean override) {
         // If override is disabled, first check all libraries and templates to make sure they haven't been modified already
         if (!override) {
             Map<String, CodeTemplateLibrary> libraryMap = libraryCache.getAllItems();
@@ -515,8 +505,8 @@ public class DefaultCodeTemplateController extends CodeTemplateController {
             }
 
             // Remove any libraries that were expected to be removed
-            for (String removedLibraryId : removedLibraryIds) {
-                libraryMap.remove(removedLibraryId);
+            for (CodeTemplateLibrary library : removedLibraries) {
+                libraryMap.remove(library.getId());
             }
 
             // If any libraries are left, the client is out of sync
@@ -581,18 +571,18 @@ public class DefaultCodeTemplateController extends CodeTemplateController {
         }
 
         // Try removing each code template, storing the result in the summary
-        for (String removedCodeTemplateId : removedCodeTemplateIds) {
+        for (CodeTemplate codeTemplate : removedCodeTemplates) {
             CodeTemplateUpdateResult result = new CodeTemplateUpdateResult();
 
             try {
-                removeCodeTemplate(removedCodeTemplateId, context);
+                removeCodeTemplate(codeTemplate, context);
                 result.setSuccess(true);
             } catch (Throwable t) {
                 result.setSuccess(false);
                 result.setCause(convertUpdateCause(t));
             }
 
-            updateSummary.getCodeTemplateResults().put(removedCodeTemplateId, result);
+            updateSummary.getCodeTemplateResults().put(codeTemplate.getId(), result);
         }
 
         return updateSummary;

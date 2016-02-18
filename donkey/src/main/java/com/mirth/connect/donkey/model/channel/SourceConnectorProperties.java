@@ -11,9 +11,9 @@ package com.mirth.connect.donkey.model.channel;
 
 import java.io.Serializable;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 
@@ -73,8 +73,7 @@ public class SourceConnectorProperties implements Serializable, Migratable, Purg
     private boolean respondAfterProcessing;
     private boolean processBatch;
     private boolean firstResponse;
-    private int processingThreads;
-    private Map<String, String> resourceIds;
+    private Set<String> resourceIds;
 
     public SourceConnectorProperties() {
         this(RESPONSE_NONE);
@@ -85,9 +84,8 @@ public class SourceConnectorProperties implements Serializable, Migratable, Purg
         this.respondAfterProcessing = true;
         this.processBatch = false;
         this.firstResponse = false;
-        this.processingThreads = 1;
-        this.resourceIds = new LinkedHashMap<String, String>();
-        resourceIds.put("Default Resource", "[Default Resource]");
+        this.resourceIds = new LinkedHashSet<String>();
+        this.resourceIds.add("Default Resource");
     }
 
     public String getResponseVariable() {
@@ -122,19 +120,11 @@ public class SourceConnectorProperties implements Serializable, Migratable, Purg
         this.firstResponse = firstResponse;
     }
 
-    public int getProcessingThreads() {
-        return processingThreads;
-    }
-
-    public void setProcessingThreads(int processingThreads) {
-        this.processingThreads = processingThreads;
-    }
-
-    public Map<String, String> getResourceIds() {
+    public Set<String> getResourceIds() {
         return resourceIds;
     }
 
-    public void setResourceIds(Map<String, String> resourceIds) {
+    public void setResourceIds(Set<String> resourceIds) {
         this.resourceIds = resourceIds;
     }
 
@@ -168,33 +158,11 @@ public class SourceConnectorProperties implements Serializable, Migratable, Purg
     public void migrate3_3_0(DonkeyElement element) {}
 
     @Override
-    public void migrate3_4_0(DonkeyElement element) {
-        element.addChildElementIfNotExists("processingThreads", "1");
-
-        DonkeyElement resourceIdsElement = element.getChildElement("resourceIds");
-        List<DonkeyElement> resourceIdsList = resourceIdsElement.getChildElements();
-        resourceIdsElement.removeChildren();
-        resourceIdsElement.setAttribute("class", "linked-hash-map");
-
-        for (DonkeyElement resourceId : resourceIdsList) {
-            DonkeyElement entry = resourceIdsElement.addChildElement("entry");
-            String resourceIdText = resourceId.getTextContent();
-            entry.addChildElement("string", resourceIdText);
-            if (resourceIdText.equals("Default Resource")) {
-                entry.addChildElement("string", "[Default Resource]");
-            } else {
-                entry.addChildElement("string");
-            }
-        }
-    }
-
-    @Override
     public Map<String, Object> getPurgedProperties() {
         Map<String, Object> purgedProperties = new HashMap<String, Object>();
         purgedProperties.put("respondAfterProcessing", respondAfterProcessing);
         purgedProperties.put("processBatch", processBatch);
         purgedProperties.put("firstResponse", firstResponse);
-        purgedProperties.put("processingThreads", processingThreads);
         purgedProperties.put("resourceIdsCount", resourceIds.size());
         return purgedProperties;
     }

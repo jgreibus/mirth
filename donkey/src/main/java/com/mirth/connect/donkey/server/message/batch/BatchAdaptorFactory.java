@@ -22,7 +22,7 @@ public abstract class BatchAdaptorFactory {
     private AtomicInteger batches = new AtomicInteger();
     private AtomicBoolean finished = new AtomicBoolean();
     private boolean useFirstReponse = false;
-    private volatile String contextFactoryId;
+    private String contextFactoryId;
 
     public BatchAdaptorFactory(SourceConnector sourceConnector) {
         this.sourceConnector = sourceConnector;

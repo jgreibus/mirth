@@ -47,7 +47,7 @@ public class DashboardStatisticsActionBean extends BaseActionBean {
             }
 
             try {
-                dashboardStatusList = client.getAllChannelStatuses();
+                dashboardStatusList = client.getChannelStatusList();
                 setShowAlert(false);
             } catch (ClientException e) {
                 setShowAlert(true);
@@ -82,7 +82,7 @@ public class DashboardStatisticsActionBean extends BaseActionBean {
 
         if (client != null) {
             try {
-                dashboardStatusList = client.getAllChannelStatuses();
+                dashboardStatusList = client.getChannelStatusList();
 
                 // Check if channel was deployed/undeployed
                 if (getContext().getRequest().getSession().getAttribute("size") != null) {

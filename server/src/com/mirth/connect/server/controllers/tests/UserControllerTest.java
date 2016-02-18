@@ -18,9 +18,9 @@ import java.util.Properties;
 import junit.framework.Assert;
 import junit.framework.TestCase;
 
-import com.mirth.connect.client.core.ControllerException;
 import com.mirth.connect.model.LoginStatus;
 import com.mirth.connect.model.User;
+import com.mirth.connect.server.controllers.ControllerException;
 import com.mirth.connect.server.controllers.ControllerFactory;
 import com.mirth.connect.server.controllers.UserController;
 import com.mirth.connect.server.tools.ScriptRunner;
@@ -52,9 +52,10 @@ public class UserControllerTest extends TestCase {
     public void testUpdateUser() throws ControllerException {
         User sampleUser = sampleUserList.get(0);
         userController.updateUser(sampleUser);
-        User testUser = userController.getUser(sampleUser.getId(), sampleUser.getUsername());
+        List<User> testUserList = userController.getUser(sampleUser);
+        User testUser = testUserList.get(0);
 
-        Assert.assertNotNull(testUser);
+        Assert.assertEquals(1, testUserList.size());
         Assert.assertEquals(sampleUser.getUsername(), testUser.getUsername());
     }
 
@@ -63,8 +64,8 @@ public class UserControllerTest extends TestCase {
 
         for (Iterator iter = sampleUserList.iterator(); iter.hasNext();) {
             User sampleUser = (User) iter.next();
-            User testUser = userController.getUser(sampleUser.getId(), sampleUser.getUsername());
-            Assert.assertNotNull(testUser);
+            List<User> testUserList = userController.getUser(sampleUser);
+            Assert.assertFalse(testUserList.isEmpty());
         }
     }
 
@@ -72,8 +73,8 @@ public class UserControllerTest extends TestCase {
         insertSampleUsers();
 
         User sampleUser = sampleUserList.get(0);
-        userController.removeUser(sampleUser.getId(), new Integer(1));
-        List<User> testUserList = userController.getAllUsers();
+        userController.removeUser(sampleUser, new Integer(1));
+        List<User> testUserList = userController.getUser(null);
 
         Assert.assertFalse(testUserList.contains(sampleUser));
     }
@@ -87,24 +88,24 @@ public class UserControllerTest extends TestCase {
     public void testLoginUser() throws ControllerException {
         insertSampleUsers();
 
-        User testUser = userController.getAllUsers().get(0);
+        User testUser = userController.getUser(null).get(0);
         userController.loginUser(testUser);
-        assertTrue(userController.isUserLoggedIn(testUser.getId()));
+        assertTrue(userController.isUserLoggedIn(testUser));
     }
 
     public void testLogoutUser() throws ControllerException {
         insertSampleUsers();
 
-        User testUser = userController.getAllUsers().get(0);
+        User testUser = userController.getUser(null).get(0);
         userController.logoutUser(testUser);
-        assertFalse(userController.isUserLoggedIn(testUser.getId()));
+        assertFalse(userController.isUserLoggedIn(testUser));
     }
 
     public void insertSampleUsers() throws ControllerException {
         for (Iterator iter = sampleUserList.iterator(); iter.hasNext();) {
             User sampleUser = (User) iter.next();
             userController.updateUser(sampleUser);
-            User validUser = userController.getUser(sampleUser.getId(), sampleUser.getUsername());
+            User validUser = userController.getUser(sampleUser).get(0);
             userController.checkOrUpdateUserPassword(validUser.getId(), "password");
         }
     }
@@ -112,17 +113,17 @@ public class UserControllerTest extends TestCase {
     public void testGetUserPreferences() throws ControllerException {
         insertSampleUsers();
 
-        User testUser = userController.getAllUsers().get(0);
-        userController.setUserPreference(testUser.getId(), "test.property", "Hello world!");
-        Properties preferences = userController.getUserPreferences(testUser.getId(), null);
+        User testUser = userController.getUser(null).get(0);
+        userController.setUserPreference(testUser, "test.property", "Hello world!");
+        Properties preferences = userController.getUserPreferences(testUser, null);
         assertFalse(preferences.isEmpty());
     }
 
     public void testSetUserPreference() throws ControllerException {
         insertSampleUsers();
 
-        User testUser = userController.getAllUsers().get(0);
-        userController.setUserPreference(testUser.getId(), "test.property", "Hello world!");
+        User testUser = userController.getUser(null).get(0);
+        userController.setUserPreference(testUser, "test.property", "Hello world!");
     }
 
 }

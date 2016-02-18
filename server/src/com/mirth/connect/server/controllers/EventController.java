@@ -11,7 +11,6 @@ package com.mirth.connect.server.controllers;
 
 import java.util.List;
 
-import com.mirth.connect.client.core.ControllerException;
 import com.mirth.connect.donkey.model.event.Event;
 import com.mirth.connect.model.ServerEvent;
 import com.mirth.connect.model.filters.EventFilter;

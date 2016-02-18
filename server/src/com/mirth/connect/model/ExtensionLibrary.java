@@ -11,8 +11,6 @@ package com.mirth.connect.model;
 
 import java.io.Serializable;
 
-import org.apache.commons.lang3.builder.ToStringBuilder;
-
 import com.thoughtworks.xstream.annotations.XStreamAlias;
 import com.thoughtworks.xstream.annotations.XStreamAsAttribute;
 
@@ -44,8 +42,4 @@ public class ExtensionLibrary implements Serializable {
         this.path = path;
     }
 
-    @Override
-    public String toString() {
-        return ToStringBuilder.reflectionToString(this, CalendarToStringStyle.instance());
-    }
 }

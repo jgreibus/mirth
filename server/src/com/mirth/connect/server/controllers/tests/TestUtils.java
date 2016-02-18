@@ -49,7 +49,7 @@ import com.mirth.connect.donkey.model.message.RawMessage;
 import com.mirth.connect.donkey.model.message.Status;
 import com.mirth.connect.donkey.server.Donkey;
 import com.mirth.connect.donkey.server.channel.Channel;
-import com.mirth.connect.donkey.server.channel.DestinationChainProvider;
+import com.mirth.connect.donkey.server.channel.DestinationChain;
 import com.mirth.connect.donkey.server.channel.DestinationConnector;
 import com.mirth.connect.donkey.server.channel.DispatchResult;
 import com.mirth.connect.donkey.server.channel.FilterTransformerExecutor;
@@ -206,12 +206,12 @@ public class TestUtils {
         sourceConnector.setChannelId(channel.getChannelId());
         sourceConnector.setChannel(channel);
 
-        DestinationChainProvider chain = new DestinationChainProvider();
+        DestinationChain chain = new DestinationChain();
         filterTransformer = new FilterTransformerExecutor(new DataType("XML", new TestSerializer(), new TestAutoResponder()), new DataType("XML", new TestSerializer(), new TestAutoResponder()));
         filterTransformer.setFilterTransformer(new TestFilterTransformer());
         destinationConnector.setFilterTransformerExecutor(filterTransformer);
         chain.addDestination(1, destinationConnector);
-        channel.getDestinationChainProviders().add(chain);
+        channel.getDestinationChains().add(chain);
         destinationConnector.setChannelId(channelId);
 
         ResponseTransformerExecutor responseTransformerExecutor = new ResponseTransformerExecutor(new DataType("XML", new TestSerializer(), new TestAutoResponder()), new DataType("XML", new TestSerializer(), new TestAutoResponder()));
@@ -237,7 +237,7 @@ public class TestUtils {
             public Serializer getSerializer(Integer metaDataId) {
                 return new XStreamSerializer();
             }
-        }, Donkey.getInstance().getStatisticsUpdater()));
+        }));
         channel.setPreProcessor(new TestPreProcessor());
         channel.setPostProcessor(new TestPostProcessor());
 
@@ -263,10 +263,10 @@ public class TestUtils {
 
         // create destination chains
         for (int i = 0; i < numChains; i++) {
-            DestinationChainProvider chain = new DestinationChainProvider();
+            DestinationChain chain = new DestinationChain();
             chain.setChannelId(channelId);
 
-            channel.getDestinationChainProviders().add(chain);
+            channel.getDestinationChains().add(chain);
 
             for (int j = 0; j < destinationsPerChain; j++) {
                 TestDestinationConnector testDestinationConnector = new TestDestinationConnector();
@@ -330,7 +330,7 @@ public class TestUtils {
     }
 
     public static Connection getConnection() throws Exception {
-        Properties configuration = Donkey.getInstance().getConfiguration().getDonkeyProperties();
+        Properties configuration = Donkey.getInstance().getConfiguration().getDatabaseProperties();
         String driver = configuration.getProperty("database.driver");
 
         if (driver != null) {
@@ -546,7 +546,7 @@ public class TestUtils {
     public static void fixMessageIdSequence(String channelId) throws Exception {
         Connection connection = null;
         long localChannelId = ChannelController.getInstance().getLocalChannelId(channelId);
-        String database = (String) Donkey.getInstance().getConfiguration().getDonkeyProperties().get("database");
+        String database = (String) Donkey.getInstance().getConfiguration().getDatabaseProperties().get("database");
         Long maxId = null;
 
         if (database.equals("derby") || database.equals("mysql") || database.equals("sqlserver")) {

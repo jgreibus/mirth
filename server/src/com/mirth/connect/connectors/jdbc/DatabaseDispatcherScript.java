@@ -103,12 +103,12 @@ public class DatabaseDispatcherScript implements DatabaseDispatcherDelegate {
         private ConnectorMessage connectorMessage;
 
         public DatabaseDispatcherTask(MirthContextFactory contextFactory, ConnectorMessage connectorMessage) {
-            super(contextFactory, connector);
+            super(contextFactory);
             this.connectorMessage = connectorMessage;
         }
 
         @Override
-        public Object doCall() {
+        public Object call() {
             String responseData = null;
             String responseError = null;
             String responseStatusMessage = "Database write success";

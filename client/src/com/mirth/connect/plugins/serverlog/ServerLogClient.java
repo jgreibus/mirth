@@ -15,16 +15,19 @@ import java.util.List;
 import javax.swing.JComponent;
 
 import com.mirth.connect.client.core.ClientException;
-import com.mirth.connect.client.core.ForbiddenException;
+import com.mirth.connect.client.core.UnauthorizedException;
 import com.mirth.connect.client.ui.PlatformUI;
 import com.mirth.connect.model.DashboardStatus;
 import com.mirth.connect.plugins.DashboardTabPlugin;
 
 public class ServerLogClient extends DashboardTabPlugin {
+    private static final String SERVER_LOG_SERVICE_PLUGINPOINT = "Server Log";
     private ServerLogPanel serverLogPanel;
     private LinkedList<String[]> serverLogs;
     private static final String[] unauthorizedLog = new String[] { "0",
             "You are not authorized to view the server log." };
+    private static final String GET_SERVER_LOGS = "getMirthServerLogs";
+    private static final String REMOVE_SESSIONID = "removeSessionId";
     private int currentServerLogSize;
     private boolean receivedNewLogs;
 
@@ -69,16 +72,15 @@ public class ServerLogClient extends DashboardTabPlugin {
             LinkedList<String[]> serverLogReceived = new LinkedList<String[]>();
             //get logs from server
             try {
-                serverLogReceived = PlatformUI.MIRTH_FRAME.mirthClient.getServlet(ServerLogServletInterface.class).getServerLogs();
+                serverLogReceived = (LinkedList<String[]>) PlatformUI.MIRTH_FRAME.mirthClient.invokePluginMethodAsync(SERVER_LOG_SERVICE_PLUGINPOINT, GET_SERVER_LOGS, null);
             } catch (ClientException e) {
-                if (e instanceof ForbiddenException) {
+                if (e.getCause() instanceof UnauthorizedException) {
                     LinkedList<String[]> unauthorizedLogs = new LinkedList<String[]>();
                     // Add the unauthorized log message if it's not already there.
                     if (serverLogs.isEmpty() || !serverLogs.getLast().equals(unauthorizedLog)) {
                         unauthorizedLogs.add(unauthorizedLog);
                     }
                     serverLogReceived = unauthorizedLogs;
-                    parent.alertThrowable(parent, e, false);
                 } else {
                     throw e;
                 }
@@ -147,7 +149,7 @@ public class ServerLogClient extends DashboardTabPlugin {
             // returned 'true' - sessionId found and removed.
             // returned 'false' - sessionId not found. - should never be this case.
             // either way, the sessionId is gone.
-            PlatformUI.MIRTH_FRAME.mirthClient.getServlet(ServerLogServletInterface.class).stopSession();
+            PlatformUI.MIRTH_FRAME.mirthClient.invokePluginMethodAsync(SERVER_LOG_SERVICE_PLUGINPOINT, REMOVE_SESSIONID, null);
         } catch (ClientException e) {
             parent.alertThrowable(parent, e);
         }
@@ -155,6 +157,6 @@ public class ServerLogClient extends DashboardTabPlugin {
 
     @Override
     public String getPluginPointName() {
-        return ServerLogServletInterface.PLUGIN_POINT;
+        return "Server Log";
     }
 }

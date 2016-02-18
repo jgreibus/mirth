@@ -31,7 +31,7 @@ public class DICOMViewer extends AttachmentViewer {
         return true;
     }
 
-    public void viewAttachments(String channelId, Long messageId, String attachmentId) {
+    public void viewAttachments(String channelId, String attachmentId, Long messageId) {
         // do viewing code
         try {
             ConnectorMessage message = parent.messageBrowser.getSelectedConnectorMessage();

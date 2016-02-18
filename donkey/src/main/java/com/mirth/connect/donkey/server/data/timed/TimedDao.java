@@ -21,7 +21,6 @@ import com.mirth.connect.donkey.model.message.Status;
 import com.mirth.connect.donkey.model.message.attachment.Attachment;
 import com.mirth.connect.donkey.server.channel.Statistics;
 import com.mirth.connect.donkey.server.data.DonkeyDao;
-import com.mirth.connect.donkey.server.data.StatisticsUpdater;
 import com.mirth.connect.donkey.util.ActionTimer;
 
 public class TimedDao implements DonkeyDao {
@@ -57,11 +56,6 @@ public class TimedDao implements DonkeyDao {
     @Override
     public void setDecryptData(boolean decryptData) {
         dao.setDecryptData(decryptData);
-    }
-    
-    @Override
-    public void setStatisticsUpdater(StatisticsUpdater statisticsUpdater) {
-        dao.setStatisticsUpdater(statisticsUpdater);
     }
 
     @Override
@@ -552,11 +546,11 @@ public class TimedDao implements DonkeyDao {
     }
 
     @Override
-    public Map<Integer, ConnectorMessage> getConnectorMessages(String channelId, long messageId, List<Integer> metaDataIds) {
+    public Map<Integer, ConnectorMessage> getConnectorMessages(String channelId, long messageId) {
         long startTime = System.currentTimeMillis();
 
         try {
-            return dao.getConnectorMessages(channelId, messageId, metaDataIds);
+            return dao.getConnectorMessages(channelId, messageId);
         } finally {
             timer.log("getConnectorMessages", System.currentTimeMillis() - startTime);
         }

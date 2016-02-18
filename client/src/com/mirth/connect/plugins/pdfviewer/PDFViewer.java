@@ -31,10 +31,10 @@ public class PDFViewer extends AttachmentViewer {
         return false;
     }
 
-    public void viewAttachments(String channelId, Long messageId, String attachmentId) {
+    public void viewAttachments(String channelId, String attachmentId, Long messageId) {
 
         try {
-            Attachment attachment = parent.mirthClient.getAttachment(channelId, messageId, attachmentId);
+            Attachment attachment = parent.mirthClient.getAttachment(channelId, attachmentId, messageId);
             byte[] rawData = attachment.getContent();
             Base64InputStream in = new Base64InputStream(new ByteArrayInputStream(rawData));
 

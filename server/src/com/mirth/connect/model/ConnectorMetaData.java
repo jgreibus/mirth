@@ -28,6 +28,7 @@ public class ConnectorMetaData extends MetaData implements Serializable, Purgabl
     private String serverClassName;
     private String sharedClassName;
     private String clientClassName;
+    private String serviceClassName;
     private String transformers;
     private String protocol;
     private Type type;
@@ -56,6 +57,14 @@ public class ConnectorMetaData extends MetaData implements Serializable, Purgabl
         this.clientClassName = clientClassName;
     }
 
+    public String getServiceClassName() {
+        return serviceClassName;
+    }
+
+    public void setServiceClassName(String serviceClassName) {
+        this.serviceClassName = serviceClassName;
+    }
+
     public String getProtocol() {
         return this.protocol;
     }
@@ -80,12 +89,10 @@ public class ConnectorMetaData extends MetaData implements Serializable, Purgabl
         this.type = type;
     }
 
-    @Override
     public boolean equals(Object obj) {
         return EqualsBuilder.reflectionEquals(this, obj);
     }
 
-    @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this, CalendarToStringStyle.instance());
     }
@@ -96,6 +103,7 @@ public class ConnectorMetaData extends MetaData implements Serializable, Purgabl
         purgedProperties.put("serverClassName", serverClassName);
         purgedProperties.put("sharedClassName", sharedClassName);
         purgedProperties.put("clientClassName", clientClassName);
+        purgedProperties.put("serviceClassName", serviceClassName);
         purgedProperties.put("transformers", transformers);
         purgedProperties.put("protocol", protocol);
         purgedProperties.put("type", type);

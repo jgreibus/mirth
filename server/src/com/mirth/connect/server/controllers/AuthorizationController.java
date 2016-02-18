@@ -15,37 +15,47 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import org.apache.commons.collections.MapUtils;
+import org.apache.commons.lang3.StringUtils;
 
-import com.mirth.connect.client.core.ControllerException;
-import com.mirth.connect.client.core.ExtensionOperation;
 import com.mirth.connect.client.core.Operation;
+import com.mirth.connect.client.core.Operations;
 import com.mirth.connect.model.Auditable;
 import com.mirth.connect.model.ExtensionPermission;
 import com.mirth.connect.model.ServerEvent;
 import com.mirth.connect.model.ServerEvent.Level;
 
-import edu.emory.mathcs.backport.java.util.Collections;
-
 public abstract class AuthorizationController {
     private EventController eventController = ControllerFactory.getFactory().createEventController();
-    private ChannelController channelController = ControllerFactory.getFactory().createChannelController();
     private String serverId = ControllerFactory.getFactory().createConfigurationController().getServerId();
 
-    public abstract boolean isUserAuthorized(Integer userId, Operation operation, Map<String, Object> parameterMap, String address, boolean audit) throws ControllerException;
+    public abstract boolean isUserAuthorized(Integer userId, String operation, Map<String, Object> parameterMap, String address) throws ControllerException;
+
+    public abstract boolean isUserAuthorizedForExtension(Integer userId, String extensionName, String operation, Map<String, Object> parameterMap, String address) throws ControllerException;
 
     public abstract void addExtensionPermission(ExtensionPermission extensionPermission);
-
+    
     public abstract boolean doesUserHaveChannelRestrictions(Integer userId) throws ControllerException;
-
+    
     public abstract List<String> getAuthorizedChannelIds(Integer userId) throws ControllerException;
 
-    public void auditAuthorizationRequest(Integer userId, Operation operation, Map<String, Object> parameterMap, ServerEvent.Outcome outcome, String address) {
-        if (operation != null && operation.isAuditable()) {
-            String displayName = operation.getDisplayName();
-            if (operation instanceof ExtensionOperation) {
-                displayName += " invoked through " + ((ExtensionOperation) operation).getExtensionName();
-            }
-            ServerEvent serverEvent = new ServerEvent(serverId, displayName);
+    public void auditAuthorizationRequest(Integer userId, String operationName, Map<String, Object> parameterMap, ServerEvent.Outcome outcome, String address) {
+        Operation operation = null;
+        String extensionName = null;
+
+        /*
+         * If this is an operation being invoked through an extension, get the
+         * name of the extension
+         */
+        if (StringUtils.contains(operationName, "#")) {
+            String[] parts = StringUtils.split(operationName, '#');
+            extensionName = parts[0];
+            operation = Operations.getOperation(parts[1]);
+        } else {
+            operation = Operations.getOperation(operationName);
+        }
+
+        if ((operation != null) && operation.isAuditable()) {
+            ServerEvent serverEvent = new ServerEvent(serverId, operation.getDisplayName() + ((extensionName == null) ? "" : (" invoked through " + extensionName)));
             serverEvent.setLevel(Level.INFORMATION);
             serverEvent.setUserId(userId);
             serverEvent.setOutcome(outcome);
@@ -53,33 +63,9 @@ public abstract class AuthorizationController {
 
             if (MapUtils.isNotEmpty(parameterMap)) {
                 for (Entry<String, Object> entry : parameterMap.entrySet()) {
-                    String key = entry.getKey();
-                    Object value = entry.getValue();
-
-                    // If channelId was one of the params, print out each channel as separate attributes and add the channel name
-                    if (key.contains("channelId")) {
-                        Collection<String> collection = null;
-
-                        if (value instanceof Collection) {
-                            collection = (Collection<String>) value;
-                        } else if (value instanceof String) {
-                            collection = Collections.singleton(value);
-                        }
-
-                        if (collection != null) {
-                            String[] channelIds = collection.toArray(new String[collection.size()]);
-                            for (int i = 0; i < channelIds.length; i++) {
-                                String name = "channel";
-                                if (channelIds.length > 1) {
-                                    name = "channel[" + i + "]";
-                                }
-                                value = channelController.getChannelById(channelIds[i]);
-                                addAttribute(serverEvent.getAttributes(), name, value);
-                            }
-                        }
-                    } else {
-                        addAttribute(serverEvent.getAttributes(), key, value);
-                    }
+                    StringBuilder builder = new StringBuilder();
+                    getAuditDescription(entry.getValue(), builder);
+                    serverEvent.getAttributes().put(entry.getKey(), builder.toString());
                 }
             }
             eventController.dispatchEvent(serverEvent);
@@ -96,11 +82,5 @@ public abstract class AuthorizationController {
         } else if (value != null) {
             builder.append(value.toString() + "\n");
         }
-    }
-
-    private void addAttribute(Map<String, String> attributes, String name, Object value) {
-        StringBuilder builder = new StringBuilder();
-        getAuditDescription(value, builder);
-        attributes.put(name, builder.toString());
     }
 }

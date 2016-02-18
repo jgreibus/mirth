@@ -18,12 +18,9 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
-import java.security.Principal;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -37,10 +34,7 @@ import java.util.zip.GZIPOutputStream;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMultipart;
 import javax.mail.util.ByteArrayDataSource;
-import javax.security.auth.Subject;
 import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.xml.parsers.ParserConfigurationException;
@@ -58,26 +52,15 @@ import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.entity.ContentType;
 import org.apache.http.protocol.HTTP;
 import org.apache.log4j.Logger;
-import org.eclipse.jetty.http.HttpMethod;
-import org.eclipse.jetty.security.ConstraintMapping;
-import org.eclipse.jetty.security.ConstraintSecurityHandler;
-import org.eclipse.jetty.security.DefaultUserIdentity;
-import org.eclipse.jetty.security.MappedLoginService.KnownUser;
-import org.eclipse.jetty.security.ServerAuthException;
-import org.eclipse.jetty.security.UserAuthentication;
-import org.eclipse.jetty.server.Authentication;
-import org.eclipse.jetty.server.Authentication.User;
-import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.http.HttpMethods;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.AbstractHandler;
 import org.eclipse.jetty.server.handler.ContextHandler;
 import org.eclipse.jetty.server.handler.HandlerCollection;
 import org.eclipse.jetty.util.URIUtil;
-import org.eclipse.jetty.util.security.Constraint;
 
 import com.mirth.connect.connectors.http.HttpStaticResource.ResourceType;
-import com.mirth.connect.donkey.model.channel.ConnectorPluginProperties;
 import com.mirth.connect.donkey.model.event.ConnectionStatusEventType;
 import com.mirth.connect.donkey.model.event.ErrorEventType;
 import com.mirth.connect.donkey.model.message.BatchRawMessage;
@@ -97,14 +80,6 @@ import com.mirth.connect.donkey.server.message.batch.ResponseHandler;
 import com.mirth.connect.donkey.server.message.batch.SimpleResponseHandler;
 import com.mirth.connect.donkey.util.Base64Util;
 import com.mirth.connect.donkey.util.DonkeyElement.DonkeyElementException;
-import com.mirth.connect.plugins.httpauth.AuthenticationResult;
-import com.mirth.connect.plugins.httpauth.Authenticator;
-import com.mirth.connect.plugins.httpauth.AuthenticatorProvider;
-import com.mirth.connect.plugins.httpauth.AuthenticatorProviderFactory;
-import com.mirth.connect.plugins.httpauth.HttpAuthConnectorPluginProperties;
-import com.mirth.connect.plugins.httpauth.HttpAuthConnectorPluginProperties.AuthType;
-import com.mirth.connect.plugins.httpauth.RequestInfo;
-import com.mirth.connect.plugins.httpauth.RequestInfo.EntityProvider;
 import com.mirth.connect.server.controllers.ChannelController;
 import com.mirth.connect.server.controllers.ConfigurationController;
 import com.mirth.connect.server.controllers.ControllerFactory;
@@ -127,8 +102,6 @@ public class HttpReceiver extends SourceConnector implements BinaryContentTypeRe
     private int timeout;
     private String[] binaryMimeTypesArray;
     private Pattern binaryMimeTypesRegex;
-    private HttpAuthConnectorPluginProperties authProps;
-    private AuthenticatorProvider authenticatorProvider;
 
     @Override
     public void onDeploy() throws ConnectorTaskException {
@@ -163,20 +136,6 @@ public class HttpReceiver extends SourceConnector implements BinaryContentTypeRe
             }
         } else {
             binaryMimeTypesArray = StringUtils.split(replacedBinaryMimeTypes.replaceAll("\\s*,\\s*", ",").trim(), ',');
-        }
-
-        for (ConnectorPluginProperties pluginProperties : connectorProperties.getPluginProperties()) {
-            if (pluginProperties instanceof HttpAuthConnectorPluginProperties) {
-                authProps = (HttpAuthConnectorPluginProperties) pluginProperties;
-            }
-        }
-
-        if (authProps != null && authProps.getAuthType() != AuthType.NONE) {
-            try {
-                authenticatorProvider = AuthenticatorProviderFactory.getAuthenticatorProvider(this, authProps);
-            } catch (Exception e) {
-                throw new ConnectorTaskException("Error creating authenticator provider.", e);
-            }
         }
     }
 
@@ -213,7 +172,6 @@ public class HttpReceiver extends SourceConnector implements BinaryContentTypeRe
             configuration.configureReceiver(this);
 
             HandlerCollection handlers = new HandlerCollection();
-            Handler serverHandler = handlers;
 
             // Add handlers for each static resource
             if (connectorProperties.getStaticResources() != null) {
@@ -279,11 +237,7 @@ public class HttpReceiver extends SourceConnector implements BinaryContentTypeRe
             contextHandler.setHandler(new RequestHandler());
             handlers.addHandler(contextHandler);
 
-            // Wrap the handler collection in a security handler if needed
-            if (authenticatorProvider != null) {
-                serverHandler = createSecurityHandler(handlers);
-            }
-            server.setHandler(serverHandler);
+            server.setHandler(handlers);
 
             logger.debug("starting HTTP server with address: " + host + ":" + port);
             server.start();
@@ -296,23 +250,13 @@ public class HttpReceiver extends SourceConnector implements BinaryContentTypeRe
 
     @Override
     public void onStop() throws ConnectorTaskException {
-        ConnectorTaskException firstCause = null;
-
         if (server != null) {
             try {
                 logger.debug("stopping HTTP server");
                 server.stop();
             } catch (Exception e) {
-                firstCause = new ConnectorTaskException("Failed to stop HTTP Listener", e.getCause());
+                throw new ConnectorTaskException("Failed to stop HTTP Listener", e.getCause());
             }
-        }
-
-        if (authenticatorProvider != null) {
-            authenticatorProvider.shutdown();
-        }
-
-        if (firstCause != null) {
-            throw firstCause;
         }
     }
 
@@ -327,10 +271,8 @@ public class HttpReceiver extends SourceConnector implements BinaryContentTypeRe
             logger.debug("received HTTP request");
             eventController.dispatchEvent(new ConnectionStatusEvent(getChannelId(), getMetaDataId(), getSourceName(), ConnectionStatusEventType.CONNECTED));
             DispatchResult dispatchResult = null;
-            String originalThreadName = Thread.currentThread().getName();
 
             try {
-                Thread.currentThread().setName("HTTP Receiver Thread on " + getChannel().getName() + " (" + getChannelId() + ") < " + originalThreadName);
                 Map<String, Object> sourceMap = new HashMap<String, Object>();
                 Object messageContent = null;
 
@@ -380,7 +322,6 @@ public class HttpReceiver extends SourceConnector implements BinaryContentTypeRe
                 }
             } finally {
                 eventController.dispatchEvent(new ConnectionStatusEvent(getChannelId(), getMetaDataId(), getSourceName(), ConnectionStatusEventType.IDLE));
-                Thread.currentThread().setName(originalThreadName);
             }
             baseRequest.setHandled(true);
         }
@@ -600,14 +541,11 @@ public class HttpReceiver extends SourceConnector implements BinaryContentTypeRe
         @Override
         public void handle(String target, Request baseRequest, HttpServletRequest servletRequest, HttpServletResponse servletResponse) throws IOException, ServletException {
             // Only allow GET requests, otherwise pass to the next request handler
-            if (!baseRequest.getMethod().equalsIgnoreCase(HttpMethod.GET.asString())) {
+            if (!baseRequest.getMethod().equalsIgnoreCase(HttpMethods.GET)) {
                 return;
             }
-            
-            String originalThreadName = Thread.currentThread().getName();
 
             try {
-                Thread.currentThread().setName("HTTP Receiver Thread on " + getChannel().getName() + " (" + getChannelId() + ") < " + originalThreadName);
                 HttpRequestMessage requestMessage = createRequestMessage(baseRequest, true);
 
                 String contextPath = URLDecoder.decode(requestMessage.getContextPath(), "US-ASCII");
@@ -716,8 +654,6 @@ public class HttpReceiver extends SourceConnector implements BinaryContentTypeRe
                 servletResponse.setContentType(ContentType.TEXT_PLAIN.toString());
                 servletResponse.setStatus(HttpStatus.SC_INTERNAL_SERVER_ERROR);
                 servletResponse.getOutputStream().write(ExceptionUtils.getStackTrace(t).getBytes());
-            } finally {
-                Thread.currentThread().setName(originalThreadName);
             }
 
             baseRequest.setHandled(true);
@@ -763,7 +699,7 @@ public class HttpReceiver extends SourceConnector implements BinaryContentTypeRe
         request.extractParameters();
         Map<String, List<String>> parameterMap = new HashMap<String, List<String>>();
 
-        for (Entry<String, String[]> entry : request.getParameterMap().entrySet()) {
+        for (Entry<String, Object> entry : request.getParameters().entrySet()) {
             List<String> list = parameterMap.get(entry.getKey());
 
             if (list == null) {
@@ -771,7 +707,11 @@ public class HttpReceiver extends SourceConnector implements BinaryContentTypeRe
                 parameterMap.put(entry.getKey(), list);
             }
 
-            list.addAll(Arrays.asList(entry.getValue()));
+            if (entry.getValue() instanceof List) {
+                list.addAll((List<String>) entry.getValue());
+            } else {
+                list.add((String) entry.getValue());
+            }
         }
 
         return parameterMap;
@@ -817,118 +757,6 @@ public class HttpReceiver extends SourceConnector implements BinaryContentTypeRe
         }
 
         return requestURL;
-    }
-
-    private ConstraintSecurityHandler createSecurityHandler(Handler handler) throws Exception {
-        final Authenticator authenticator = authenticatorProvider.getAuthenticator();
-
-        final String authMethod;
-        switch (authProps.getAuthType()) {
-            case BASIC:
-                authMethod = Constraint.__BASIC_AUTH;
-                break;
-            case DIGEST:
-                authMethod = Constraint.__DIGEST_AUTH;
-                break;
-            default:
-                authMethod = "customauth";
-        }
-
-        Constraint constraint = new Constraint();
-        constraint.setName(authMethod);
-        constraint.setRoles(new String[] { "user" });
-        constraint.setAuthenticate(true);
-
-        ConstraintMapping constraintMapping = new ConstraintMapping();
-        constraintMapping.setConstraint(constraint);
-        constraintMapping.setPathSpec("/*");
-
-        ConstraintSecurityHandler securityHandler = new ConstraintSecurityHandler();
-        securityHandler.setAuthenticator(new org.eclipse.jetty.security.Authenticator() {
-            @Override
-            public void setConfiguration(AuthConfiguration configuration) {}
-
-            @Override
-            public String getAuthMethod() {
-                return authMethod;
-            }
-
-            @Override
-            public void prepareRequest(ServletRequest request) {}
-
-            @Override
-            public Authentication validateRequest(final ServletRequest req, ServletResponse res, boolean mandatory) throws ServerAuthException {
-                HttpServletRequest request = (HttpServletRequest) req;
-                HttpServletResponse response = (HttpServletResponse) res;
-
-                String remoteAddress = StringUtils.trimToEmpty(request.getRemoteAddr());
-                int remotePort = request.getRemotePort();
-                String localAddress = StringUtils.trimToEmpty(request.getLocalAddr());
-                int localPort = request.getLocalPort();
-                String protocol = StringUtils.trimToEmpty(request.getProtocol());
-                String method = StringUtils.trimToEmpty(request.getMethod());
-                String requestURI = StringUtils.trimToEmpty(request.getRequestURI());
-                Map<String, List<String>> headers = HttpMessageConverter.convertFieldEnumerationToMap(request);
-
-                Map<String, List<String>> queryParameters = new LinkedHashMap<String, List<String>>();
-                for (Entry<String, String[]> entry : req.getParameterMap().entrySet()) {
-                    queryParameters.put(entry.getKey(), Arrays.asList(entry.getValue()));
-                }
-
-                EntityProvider entityProvider = new EntityProvider() {
-                    @Override
-                    public InputStream getEntity() throws IOException {
-                        return req.getInputStream();
-                    }
-                };
-
-                RequestInfo requestInfo = new RequestInfo(remoteAddress, remotePort, localAddress, localPort, protocol, method, requestURI, headers, queryParameters, entityProvider);
-
-                try {
-                    AuthenticationResult result = authenticator.authenticate(requestInfo);
-
-                    for (Entry<String, List<String>> entry : result.getResponseHeaders().entrySet()) {
-                        if (StringUtils.isNotBlank(entry.getKey()) && entry.getValue() != null) {
-                            for (int i = 0; i < entry.getValue().size(); i++) {
-                                if (i == 0) {
-                                    response.setHeader(entry.getKey(), entry.getValue().get(i));
-                                } else {
-                                    response.addHeader(entry.getKey(), entry.getValue().get(i));
-                                }
-                            }
-                        }
-                    }
-
-                    switch (result.getStatus()) {
-                        case CHALLENGED:
-                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
-                            return org.eclipse.jetty.server.Authentication.SEND_CONTINUE;
-                        case SUCCESS:
-                            Principal userPrincipal = new KnownUser(StringUtils.trimToEmpty(result.getUsername()), null);
-                            Subject subject = new Subject();
-                            subject.getPrincipals().add(userPrincipal);
-                            return new UserAuthentication(getAuthMethod(), new DefaultUserIdentity(subject, userPrincipal, new String[] { "user" }));
-                        case FAILURE:
-                        default:
-                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
-                            return org.eclipse.jetty.server.Authentication.SEND_FAILURE;
-                    }
-                } catch (Throwable t) {
-                    logger.error("Error in HTTP authentication for " + connectorProperties.getName() + " (" + connectorProperties.getName() + " \"Source\" on channel " + getChannelId() + ").", t);
-                    eventController.dispatchEvent(new ErrorEvent(getChannelId(), getMetaDataId(), null, ErrorEventType.DESTINATION_CONNECTOR, "Source", connectorProperties.getName(), "Error in HTTP authentication for " + connectorProperties.getName(), t));
-                    throw new ServerAuthException(t);
-                }
-            }
-
-            @Override
-            public boolean secureResponse(ServletRequest request, ServletResponse response, boolean mandatory, User validatedUser) throws ServerAuthException {
-                return true;
-            }
-        });
-        securityHandler.addConstraintMapping(constraintMapping);
-
-        securityHandler.setHandler(handler);
-        return securityHandler;
     }
 
     @Override

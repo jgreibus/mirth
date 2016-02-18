@@ -95,89 +95,87 @@ public class SettingsPanelAdministrator extends AbstractSettingsPanel {
     }
 
     public void doRefresh() {
-        if (PlatformUI.MIRTH_FRAME.alertRefresh()) {
-            return;
-        }
+        if (getFrame().confirmLeave()) {
+            dashboardRefreshIntervalField.setDocument(new MirthFieldConstraints(3, false, false, true));
+            messageBrowserPageSizeField.setDocument(new MirthFieldConstraints(3, false, false, true));
+            eventBrowserPageSizeField.setDocument(new MirthFieldConstraints(3, false, false, true));
+            userPreferences = Preferences.userNodeForPackage(Mirth.class);
+            int interval = userPreferences.getInt("intervalTime", 10);
+            dashboardRefreshIntervalField.setText(interval + "");
 
-        dashboardRefreshIntervalField.setDocument(new MirthFieldConstraints(3, false, false, true));
-        messageBrowserPageSizeField.setDocument(new MirthFieldConstraints(3, false, false, true));
-        eventBrowserPageSizeField.setDocument(new MirthFieldConstraints(3, false, false, true));
-        userPreferences = Preferences.userNodeForPackage(Mirth.class);
-        int interval = userPreferences.getInt("intervalTime", 10);
-        dashboardRefreshIntervalField.setText(interval + "");
+            int messageBrowserPageSize = userPreferences.getInt("messageBrowserPageSize", 20);
+            messageBrowserPageSizeField.setText(messageBrowserPageSize + "");
 
-        int messageBrowserPageSize = userPreferences.getInt("messageBrowserPageSize", 20);
-        messageBrowserPageSizeField.setText(messageBrowserPageSize + "");
+            int eventBrowserPageSize = userPreferences.getInt("eventBrowserPageSize", 100);
+            eventBrowserPageSizeField.setText(eventBrowserPageSize + "");
 
-        int eventBrowserPageSize = userPreferences.getInt("eventBrowserPageSize", 100);
-        eventBrowserPageSizeField.setText(eventBrowserPageSize + "");
-
-        if (userPreferences.getBoolean("messageBrowserFormat", true)) {
-            formatYesRadio.setSelected(true);
-        } else {
-            formatNoRadio.setSelected(true);
-        }
-
-        if (userPreferences.getBoolean("textSearchWarning", true)) {
-            textSearchWarningYesRadio.setSelected(true);
-        } else {
-            textSearchWarningNoRadio.setSelected(true);
-        }
-
-        String importChannelCodeTemplateLibraries = userPreferences.get("importChannelCodeTemplateLibraries", null);
-        if (importChannelCodeTemplateLibraries == null) {
-            importChannelLibrariesAskRadio.setSelected(true);
-        } else if (Boolean.parseBoolean(importChannelCodeTemplateLibraries)) {
-            importChannelLibrariesYesRadio.setSelected(true);
-        } else {
-            importChannelLibrariesNoRadio.setSelected(true);
-        }
-
-        String exportChannelCodeTemplateLibraries = userPreferences.get("exportChannelCodeTemplateLibraries", null);
-        if (exportChannelCodeTemplateLibraries == null) {
-            exportChannelLibrariesAskRadio.setSelected(true);
-        } else if (Boolean.parseBoolean(exportChannelCodeTemplateLibraries)) {
-            exportChannelLibrariesYesRadio.setSelected(true);
-        } else {
-            exportChannelLibrariesNoRadio.setSelected(true);
-        }
-
-        final String workingId = getFrame().startWorking("Loading " + getTabName() + " settings...");
-
-        SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
-
-            private String checkForNotifications = null;
-
-            public Void doInBackground() {
-                try {
-                    checkForNotifications = getFrame().mirthClient.getUserPreference(currentUser.getId(), "checkForNotifications");
-                } catch (ClientException e) {
-                    getFrame().alertThrowable(getFrame(), e);
-                }
-                return null;
+            if (userPreferences.getBoolean("messageBrowserFormat", true)) {
+                formatYesRadio.setSelected(true);
+            } else {
+                formatNoRadio.setSelected(true);
             }
 
-            @Override
-            public void done() {
-                if (checkForNotifications == null || BooleanUtils.toBoolean(checkForNotifications)) {
-                    checkForNotificationsYesRadio.setSelected(true);
-                } else {
-                    checkForNotificationsNoRadio.setSelected(true);
-                }
-                getFrame().stopWorking(workingId);
+            if (userPreferences.getBoolean("textSearchWarning", true)) {
+                textSearchWarningYesRadio.setSelected(true);
+            } else {
+                textSearchWarningNoRadio.setSelected(true);
             }
-        };
 
-        worker.execute();
+            String importChannelCodeTemplateLibraries = userPreferences.get("importChannelCodeTemplateLibraries", null);
+            if (importChannelCodeTemplateLibraries == null) {
+                importChannelLibrariesAskRadio.setSelected(true);
+            } else if (Boolean.parseBoolean(importChannelCodeTemplateLibraries)) {
+                importChannelLibrariesYesRadio.setSelected(true);
+            } else {
+                importChannelLibrariesNoRadio.setSelected(true);
+            }
 
-        RSTAPreferences rstaPreferences = MirthRSyntaxTextArea.getRSTAPreferences();
-        updateShortcutKeyTable(rstaPreferences);
-        updateRestoreDefaultsButton();
+            String exportChannelCodeTemplateLibraries = userPreferences.get("exportChannelCodeTemplateLibraries", null);
+            if (exportChannelCodeTemplateLibraries == null) {
+                exportChannelLibrariesAskRadio.setSelected(true);
+            } else if (Boolean.parseBoolean(exportChannelCodeTemplateLibraries)) {
+                exportChannelLibrariesYesRadio.setSelected(true);
+            } else {
+                exportChannelLibrariesNoRadio.setSelected(true);
+            }
 
-        AutoCompleteProperties autoCompleteProperties = rstaPreferences.getAutoCompleteProperties();
-        autoCompleteIncludeLettersCheckBox.setSelected(autoCompleteProperties.isActivateAfterLetters());
-        autoCompleteCharactersField.setText(autoCompleteProperties.getActivateAfterOthers());
-        autoCompleteDelayField.setText(String.valueOf(autoCompleteProperties.getActivationDelay()));
+            final String workingId = getFrame().startWorking("Loading " + getTabName() + " settings...");
+
+            SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+
+                private String checkForNotifications = null;
+
+                public Void doInBackground() {
+                    try {
+                        checkForNotifications = getFrame().mirthClient.getUserPreference(currentUser, "checkForNotifications");
+                    } catch (ClientException e) {
+                        getFrame().alertThrowable(getFrame(), e);
+                    }
+                    return null;
+                }
+
+                @Override
+                public void done() {
+                    if (checkForNotifications == null || BooleanUtils.toBoolean(checkForNotifications)) {
+                        checkForNotificationsYesRadio.setSelected(true);
+                    } else {
+                        checkForNotificationsNoRadio.setSelected(true);
+                    }
+                    getFrame().stopWorking(workingId);
+                }
+            };
+
+            worker.execute();
+
+            RSTAPreferences rstaPreferences = MirthRSyntaxTextArea.getRSTAPreferences();
+            updateShortcutKeyTable(rstaPreferences);
+            updateRestoreDefaultsButton();
+
+            AutoCompleteProperties autoCompleteProperties = rstaPreferences.getAutoCompleteProperties();
+            autoCompleteIncludeLettersCheckBox.setSelected(autoCompleteProperties.isActivateAfterLetters());
+            autoCompleteCharactersField.setText(autoCompleteProperties.getActivateAfterOthers());
+            autoCompleteDelayField.setText(String.valueOf(autoCompleteProperties.getActivationDelay()));
+        }
     }
 
     public boolean doSave() {
@@ -233,7 +231,7 @@ public class SettingsPanelAdministrator extends AbstractSettingsPanel {
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
             public Void doInBackground() {
                 try {
-                    getFrame().mirthClient.setUserPreference(currentUser.getId(), "checkForNotifications", Boolean.toString(checkForNotificationsYesRadio.isSelected()));
+                    getFrame().mirthClient.setUserPreference(currentUser, "checkForNotifications", Boolean.toString(checkForNotificationsYesRadio.isSelected()));
                 } catch (ClientException e) {
                     getFrame().alertThrowable(getFrame(), e);
                 }

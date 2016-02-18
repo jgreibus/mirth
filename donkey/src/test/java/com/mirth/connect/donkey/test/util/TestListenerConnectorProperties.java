@@ -76,10 +76,8 @@ public class TestListenerConnectorProperties extends ConnectorProperties impleme
     public void migrate3_3_0(DonkeyElement element) {}
 
     @Override
-    public void migrate3_4_0(DonkeyElement element) {}
-
-    @Override
     public Map<String, Object> getPurgedProperties() {
+        // TODO Auto-generated method stub
         return null;
     }
 }

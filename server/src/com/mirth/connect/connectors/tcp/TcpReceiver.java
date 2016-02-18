@@ -117,7 +117,7 @@ public class TcpReceiver extends SourceConnector {
         if (pluginPointName.equals("Basic")) {
             transmissionModeProvider = new BasicModeProvider();
         } else {
-            transmissionModeProvider = (TransmissionModeProvider) extensionController.getTransmissionModeProviders().get(pluginPointName);
+            transmissionModeProvider = (TransmissionModeProvider) extensionController.getServicePlugins().get(pluginPointName);
         }
 
         if (transmissionModeProvider == null) {
@@ -161,7 +161,7 @@ public class TcpReceiver extends SourceConnector {
         }
 
         // Create the acceptor thread
-        thread = new Thread("TCP Receiver Server Acceptor Thread on " + getChannel().getName() + " (" + getChannelId() + ")") {
+        thread = new Thread() {
             @Override
             public void run() {
                 while (getCurrentState() == DeployedState.STARTED) {
@@ -518,11 +518,8 @@ public class TcpReceiver extends SourceConnector {
             boolean done = false;
 
             eventController.dispatchEvent(new ConnectorCountEvent(getChannelId(), getMetaDataId(), getSourceName(), ConnectionStatusEventType.CONNECTED, SocketUtil.getLocalAddress(socket) + " -> " + SocketUtil.getInetAddress(socket), true));
-            String originalThreadName = Thread.currentThread().getName();
 
             try {
-                Thread.currentThread().setName("TCP Receiver Thread on " + getChannel().getName() + " (" + getChannelId() + ") < " + originalThreadName);
-                
                 while (!done && getCurrentState() == DeployedState.STARTED) {
                     ThreadUtils.checkInterruptedStatus();
                     streamHandler = null;
@@ -748,8 +745,6 @@ public class TcpReceiver extends SourceConnector {
                 synchronized (clientReaders) {
                     clientReaders.remove(this);
                 }
-
-                Thread.currentThread().setName(originalThreadName);
             }
 
             return t;

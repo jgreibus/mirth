@@ -52,7 +52,6 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.jdesktop.swingx.decorator.HighlighterFactory;
 
 import com.mirth.connect.client.core.ClientException;
-import com.mirth.connect.client.core.TaskConstants;
 import com.mirth.connect.client.ui.components.MirthCheckBox;
 import com.mirth.connect.client.ui.components.MirthComboBoxTableCellEditor;
 import com.mirth.connect.client.ui.components.MirthComboBoxTableCellRenderer;
@@ -78,32 +77,23 @@ public class SettingsPanelResources extends AbstractSettingsPanel implements Lis
     private JScrollPane exceptionScrollPane;
     private JTextPane exceptionTextPane;
     private int selectedRow = -1;
-    private int addResourceTaskIndex;
     private int removeResourceTaskIndex;
     private int reloadResourceTaskIndex;
-
-    private List<ResourceProperties> cachedResources;
 
     public SettingsPanelResources(String tabName) {
         super(tabName);
         initComponents();
 
-        addResourceTaskIndex = addTask(TaskConstants.SETTINGS_ADD_RESOURCE, "Add Resource", "Add new resource.", "", new ImageIcon(Frame.class.getResource("images/add.png")));
-        removeResourceTaskIndex = addTask(TaskConstants.SETTINGS_REMOVE_RESOURCE, "Remove Resource", "Remove selected resource.", "", new ImageIcon(Frame.class.getResource("images/delete.png")));
-        reloadResourceTaskIndex = addTask(TaskConstants.SETTINGS_RELOAD_RESOURCE, "Reload Resource", "Reloads the selected resource on the server.", "", new ImageIcon(Frame.class.getResource("images/arrow_rotate_clockwise.png")));
+        addTask("doAddResource", "Add Resource", "Add new resource.", "", new ImageIcon(Frame.class.getResource("images/add.png")));
+        removeResourceTaskIndex = addTask("doRemoveResource", "Remove Resource", "Remove selected resource.", "", new ImageIcon(Frame.class.getResource("images/delete.png")));
+        reloadResourceTaskIndex = addTask("doReloadResource", "Reload Resource", "Reloads the selected resource on the server.", "", new ImageIcon(Frame.class.getResource("images/arrow_rotate_clockwise.png")));
 
-        setVisibleTasks(addResourceTaskIndex, reloadResourceTaskIndex, false);
-        setVisibleTasks(addResourceTaskIndex, addResourceTaskIndex, true);
-        setVisibleTasks(reloadResourceTaskIndex, reloadResourceTaskIndex, true);
-    }
-
-    public List<ResourceProperties> getCachedResources() {
-        return cachedResources;
+        setVisibleTasks(removeResourceTaskIndex, removeResourceTaskIndex, false);
     }
 
     @Override
     public void doRefresh() {
-        if (PlatformUI.MIRTH_FRAME.alertRefresh()) {
+        if (!getFrame().confirmLeave()) {
             return;
         }
 
@@ -120,7 +110,44 @@ public class SettingsPanelResources extends AbstractSettingsPanel implements Lis
             @Override
             public void done() {
                 try {
-                    updateResourcesTable(get(), selectedRow, true);
+                    List<ResourceProperties> resources = get();
+
+                    ResourceProperties defaultResource = null;
+                    for (ResourceProperties properties : resources) {
+                        if (properties.getId().equals(ResourceProperties.DEFAULT_RESOURCE_ID)) {
+                            defaultResource = properties;
+                        }
+                    }
+
+                    Object[][] data = new Object[resources.size()][4];
+
+                    data[0][PROPERTIES_COLUMN] = defaultResource;
+                    data[0][NAME_COLUMN] = defaultResource.getName();
+                    data[0][TYPE_COLUMN] = defaultResource.getType();
+                    data[0][GLOBAL_SCRIPTS_COLUMN] = defaultResource.isIncludeWithGlobalScripts();
+
+                    int i = 1;
+                    for (ResourceProperties properties : resources) {
+                        if (!properties.getId().equals(ResourceProperties.DEFAULT_RESOURCE_ID)) {
+                            data[i][PROPERTIES_COLUMN] = properties;
+                            data[i][NAME_COLUMN] = properties.getName();
+                            data[i][TYPE_COLUMN] = properties.getType();
+                            data[i][GLOBAL_SCRIPTS_COLUMN] = properties.isIncludeWithGlobalScripts();
+                            i++;
+                        }
+                    }
+
+                    SettingsPanelResources.this.selectedRow = -1;
+                    changePropertiesPanel(null);
+
+                    ((RefreshTableModel) resourceTable.getModel()).refreshDataVector(data);
+                    if (selectedRow > -1 && selectedRow < resourceTable.getRowCount()) {
+                        resourceTable.setRowSelectionInterval(selectedRow, selectedRow);
+                    } else if (resourceTable.getRowCount() > 0) {
+                        resourceTable.setRowSelectionInterval(0, 0);
+                    }
+
+                    getFrame().setSaveEnabled(false);
                 } catch (Throwable t) {
                     if (t instanceof ExecutionException) {
                         t = t.getCause();
@@ -133,64 +160,6 @@ public class SettingsPanelResources extends AbstractSettingsPanel implements Lis
         };
 
         worker.execute();
-    }
-
-    public void refresh() {
-        try {
-            updateResourcesTable(getFrame().mirthClient.getResources(), resourceTable.getSelectedRow(), false);
-        } catch (Throwable t) {
-            getFrame().alertThrowable(getFrame(), t, "Error loading resources: " + t.toString(), false);
-        }
-    }
-
-    private void updateResourcesTable(List<ResourceProperties> resources, int selectedRow, boolean clearSaveEnabled) {
-        try {
-            cachedResources = resources;
-
-            ResourceProperties defaultResource = null;
-            for (ResourceProperties properties : resources) {
-                if (properties.getId().equals(ResourceProperties.DEFAULT_RESOURCE_ID)) {
-                    defaultResource = properties;
-                }
-            }
-
-            Object[][] data = new Object[resources.size()][4];
-
-            data[0][PROPERTIES_COLUMN] = defaultResource;
-            data[0][NAME_COLUMN] = defaultResource.getName();
-            data[0][TYPE_COLUMN] = defaultResource.getType();
-            data[0][GLOBAL_SCRIPTS_COLUMN] = defaultResource.isIncludeWithGlobalScripts();
-
-            int i = 1;
-            for (ResourceProperties properties : resources) {
-                if (!properties.getId().equals(ResourceProperties.DEFAULT_RESOURCE_ID)) {
-                    data[i][PROPERTIES_COLUMN] = properties;
-                    data[i][NAME_COLUMN] = properties.getName();
-                    data[i][TYPE_COLUMN] = properties.getType();
-                    data[i][GLOBAL_SCRIPTS_COLUMN] = properties.isIncludeWithGlobalScripts();
-                    i++;
-                }
-            }
-
-            this.selectedRow = -1;
-            changePropertiesPanel(null);
-
-            ((RefreshTableModel) resourceTable.getModel()).refreshDataVector(data);
-            if (selectedRow > -1 && selectedRow < resourceTable.getRowCount()) {
-                resourceTable.setRowSelectionInterval(selectedRow, selectedRow);
-            } else if (resourceTable.getRowCount() > 0) {
-                resourceTable.setRowSelectionInterval(0, 0);
-            }
-
-            if (clearSaveEnabled) {
-                getFrame().setSaveEnabled(false);
-            }
-        } catch (Throwable t) {
-            if (t instanceof ExecutionException) {
-                t = t.getCause();
-            }
-            getFrame().alertThrowable(getFrame(), t, "Error loading resources: " + t.toString());
-        }
     }
 
     @Override

@@ -36,17 +36,6 @@ public class RecoveryTask implements Callable<Void> {
 
     @Override
     public Void call() throws Exception {
-        String originalThreadName = Thread.currentThread().getName();
-
-        try {
-            Thread.currentThread().setName("Recovery Task Thread on " + channel.getName() + " (" + channel.getChannelId() + ") < " + originalThreadName);
-            return doCall();
-        } finally {
-            Thread.currentThread().setName(originalThreadName);
-        }
-    }
-
-    private Void doCall() throws Exception {
         StorageSettings storageSettings = channel.getStorageSettings();
         Long maxMessageId = null;
         // The number of messages that were attempted to be recovered
@@ -243,48 +232,51 @@ public class RecoveryTask implements Callable<Void> {
 
             if (metaDataId != 0) {
                 if (status == Status.RECEIVED || status == Status.PENDING) {
-                    for (DestinationChainProvider chainProvider : channel.getDestinationChainProviders()) {
-                        List<Integer> chainMetaDataIds = chainProvider.getMetaDataIds();
+                    for (DestinationChain chain : channel.getDestinationChains()) {
+                        List<Integer> chainMetaDataIds = chain.getMetaDataIds();
                         if (chainMetaDataIds.contains(metaDataId)) {
-                            DestinationChain chain = chainProvider.getChain();
-
-                            List<Integer> enabledMetaDataIds = new ArrayList<Integer>();
-                            // The order of the enabledMetaDataId list needs to be based on the chain order.
-                            // We do not use ListUtils here because there is no official guarantee of order.
-                            for (Integer id : chainMetaDataIds) {
-                                if (metaDataIds == null || metaDataIds.contains(id)) {
-                                    // Don't add the ID to the enabled list if it already exists in the database
-                                    // This doesn't apply to the current metadata ID, which will always be there
-                                    if (!unfinishedMessage.getConnectorMessages().containsKey(id) || id == metaDataId) {
-                                        enabledMetaDataIds.add(id);
+                            try {
+                                List<Integer> enabledMetaDataIds = new ArrayList<Integer>();
+                                // The order of the enabledMetaDataId list needs to be based on the chain order.
+                                // We do not use ListUtils here because there is no official guarantee of order.
+                                for (Integer id : chainMetaDataIds) {
+                                    if (metaDataIds == null || metaDataIds.contains(id)) {
+                                        // Don't add the ID to the enabled list if it already exists in the database
+                                        // This doesn't apply to the current metadata ID, which will always be there
+                                        if (!unfinishedMessage.getConnectorMessages().containsKey(id) || id == metaDataId) {
+                                            enabledMetaDataIds.add(id);
+                                        }
                                     }
                                 }
-                            }
 
-                            if (!enabledMetaDataIds.contains(metaDataId)) {
-                                enabledMetaDataIds.add(metaDataId);
-                            }
-
-                            chain.setEnabledMetaDataIds(enabledMetaDataIds);
-                            chain.setMessage(connectorMessage);
-                            chain.setName("Recovery Task Destination Chain Thread on " + channel.getName() + " (" + channel.getChannelId() + ")");
-                            List<ConnectorMessage> recoveredConnectorMessages = chain.call();
-
-                            /*
-                             * Check for null here in case DestinationChain.call() returned null,
-                             * which indicates that the chain did not process and should be skipped.
-                             * This would only happen in very rare circumstances, possibly if a
-                             * message is sent to the chain and the destination connector that the
-                             * message belongs to has been removed or disabled.
-                             */
-                            if (recoveredConnectorMessages != null) {
-                                for (ConnectorMessage recoveredConnectorMessage : recoveredConnectorMessages) {
-                                    unfinishedMessage.getConnectorMessages().put(recoveredConnectorMessage.getMetaDataId(), recoveredConnectorMessage);
-                                    sourceMessage.getResponseMap().putAll(recoveredConnectorMessage.getResponseMap());
+                                if (!enabledMetaDataIds.contains(metaDataId)) {
+                                    enabledMetaDataIds.add(metaDataId);
                                 }
-                            }
 
-                            break;
+                                chain.setEnabledMetaDataIds(enabledMetaDataIds);
+                                chain.setMessage(connectorMessage);
+                                List<ConnectorMessage> recoveredConnectorMessages = chain.call();
+
+                                /*
+                                 * Check for null here in case DestinationChain.call() returned
+                                 * null, which indicates that the chain did not process and should
+                                 * be skipped. This would only happen in very rare circumstances,
+                                 * possibly if a message is sent to the chain and the destination
+                                 * connector that the message belongs to has been removed or
+                                 * disabled.
+                                 */
+                                if (recoveredConnectorMessages != null) {
+                                    for (ConnectorMessage recoveredConnectorMessage : recoveredConnectorMessages) {
+                                        unfinishedMessage.getConnectorMessages().put(recoveredConnectorMessage.getMetaDataId(), recoveredConnectorMessage);
+                                        sourceMessage.getResponseMap().putAll(recoveredConnectorMessage.getResponseMap());
+                                    }
+                                }
+
+                                break;
+                            } finally {
+                                chain.getEnabledMetaDataIds().clear();
+                                chain.getEnabledMetaDataIds().addAll(chainMetaDataIds);
+                            }
                         }
                     }
                 } else {
@@ -315,20 +307,22 @@ public class RecoveryTask implements Callable<Void> {
     private void recoverPendingMessage(Message pendingMessage) throws InterruptedException {
         for (ConnectorMessage pendingConnectorMessage : pendingMessage.getConnectorMessages().values()) {
             Integer metaDataId = pendingConnectorMessage.getMetaDataId();
-            for (DestinationChainProvider chainProvider : channel.getDestinationChainProviders()) {
-                List<Integer> chainMetaDataIds = chainProvider.getMetaDataIds();
+            for (DestinationChain chain : channel.getDestinationChains()) {
+                List<Integer> chainMetaDataIds = chain.getMetaDataIds();
                 if (chainMetaDataIds.contains(metaDataId)) {
-                    DestinationChain chain = chainProvider.getChain();
+                    try {
+                        List<Integer> enabledMetaDataIds = new ArrayList<Integer>();
+                        enabledMetaDataIds.add(metaDataId);
 
-                    List<Integer> enabledMetaDataIds = new ArrayList<Integer>();
-                    enabledMetaDataIds.add(metaDataId);
+                        chain.setEnabledMetaDataIds(enabledMetaDataIds);
+                        chain.setMessage(pendingConnectorMessage);
+                        chain.call();
 
-                    chain.setEnabledMetaDataIds(enabledMetaDataIds);
-                    chain.setMessage(pendingConnectorMessage);
-                    chain.setName("Recovery Task Destination Chain Thread on " + channel.getName() + " (" + channel.getChannelId() + ")");
-                    chain.call();
-
-                    break;
+                        break;
+                    } finally {
+                        chain.getEnabledMetaDataIds().clear();
+                        chain.getEnabledMetaDataIds().addAll(chainMetaDataIds);
+                    }
                 }
             }
         }

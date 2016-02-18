@@ -91,9 +91,6 @@ public class HL7v2DeserializationProperties extends DeserializationProperties {
     public void migrate3_3_0(DonkeyElement element) {}
 
     @Override
-    public void migrate3_4_0(DonkeyElement element) {}
-
-    @Override
     public Map<String, Object> getPurgedProperties() {
         Map<String, Object> purgedProperties = new HashMap<String, Object>();
         purgedProperties.put("useStrictParser", useStrictParser);

@@ -37,13 +37,13 @@ public class TextViewer extends AttachmentViewer {
     }
 
     @Override
-    public void viewAttachments(String channelId, Long messageId, String attachmentId) {
+    public void viewAttachments(String channelId, String attachmentId, Long messageId) {
         // do viewing code
         Frame frame = new Frame("Text Viewer");
         frame.setLayout(new BorderLayout());
 
         try {
-            Attachment attachment = parent.mirthClient.getAttachment(channelId, messageId, attachmentId);
+            Attachment attachment = parent.mirthClient.getAttachment(channelId, attachmentId, messageId);
             byte[] content = Base64.decodeBase64(attachment.getContent());
 
             boolean isRTF = attachment.getType().toLowerCase().contains("rtf");

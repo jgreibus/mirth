@@ -39,7 +39,7 @@ import com.mirth.connect.donkey.server.Donkey;
 import com.mirth.connect.donkey.server.StartException;
 import com.mirth.connect.donkey.server.channel.Channel;
 import com.mirth.connect.donkey.server.channel.ChannelException;
-import com.mirth.connect.donkey.server.channel.DestinationChainProvider;
+import com.mirth.connect.donkey.server.channel.DestinationChain;
 import com.mirth.connect.donkey.server.channel.DestinationConnector;
 import com.mirth.connect.donkey.server.channel.DispatchResult;
 import com.mirth.connect.donkey.server.channel.SourceConnector;
@@ -74,11 +74,15 @@ public class ChannelTests {
     }
 
     /*
-     * Deploys a channel, asserts that: - The channel was successfully deployed - The channel is not
-     * running - The source connector was successfully deployed - The source connector is not
-     * running - Each destination connector was successfully deployed - Each destination connector
-     * is not running Then sends messages and asserts that: - Each message is not received by the
-     * source connector
+     * Deploys a channel, asserts that:
+     * - The channel was successfully deployed
+     * - The channel is not running
+     * - The source connector was successfully deployed
+     * - The source connector is not running
+     * - Each destination connector was successfully deployed
+     * - Each destination connector is not running
+     * Then sends messages and asserts that:
+     * - Each message is not received by the source connector
      */
     @Test
     public final void testDeployChannel() throws Exception {
@@ -92,7 +96,7 @@ public class ChannelTests {
         assertTrue(sourceConnector.isDeployed());
         assertFalse(sourceConnector.getCurrentState() != DeployedState.STOPPED);
 
-        for (DestinationChainProvider chain : channel.getDestinationChainProviders()) {
+        for (DestinationChain chain : channel.getDestinationChains()) {
             for (DestinationConnector destinationConnector : chain.getDestinationConnectors().values()) {
                 if (destinationConnector.isEnabled()) {
                     assertTrue(((TestDestinationConnector) destinationConnector).isDeployed());
@@ -105,11 +109,15 @@ public class ChannelTests {
     }
 
     /*
-     * Deploys and undeploys a channel, asserts that: - The channel was successfully undeployed -
-     * The channel is not running - The source connector was successfully undeployed - The source
-     * connector is not running - Each destination connector was successfully undeployed - Each
-     * destination connector is not running Then sends messages and asserts that: - Each message is
-     * not received by the source connector
+     * Deploys and undeploys a channel, asserts that:
+     * - The channel was successfully undeployed
+     * - The channel is not running
+     * - The source connector was successfully undeployed
+     * - The source connector is not running
+     * - Each destination connector was successfully undeployed
+     * - Each destination connector is not running
+     * Then sends messages and asserts that:
+     * - Each message is not received by the source connector
      */
     @Test
     public final void testUndeployChannel() throws Exception {
@@ -124,7 +132,7 @@ public class ChannelTests {
         assertFalse(sourceConnector.isDeployed());
         assertFalse(sourceConnector.getCurrentState() != DeployedState.STOPPED);
 
-        for (DestinationChainProvider chain : channel.getDestinationChainProviders()) {
+        for (DestinationChain chain : channel.getDestinationChains()) {
             for (DestinationConnector destinationConnector : chain.getDestinationConnectors().values()) {
                 if (destinationConnector.isEnabled()) {
                     assertFalse(((TestDestinationConnector) destinationConnector).isDeployed());
@@ -135,9 +143,13 @@ public class ChannelTests {
     }
 
     /*
-     * Deploys and starts a channel, asserts that: - The channel is running - The source queue is
-     * created - The source connector is running - Each destination connector is running Then sends
-     * messages and asserts that: - Each message is received by the destination connectors
+     * Deploys and starts a channel, asserts that:
+     * - The channel is running
+     * - The source queue is created
+     * - The source connector is running
+     * - Each destination connector is running
+     * Then sends messages and asserts that:
+     * - Each message is received by the destination connectors
      */
     @Test
     public final void testStartChannel() throws Exception {
@@ -151,7 +163,7 @@ public class ChannelTests {
         assertNotNull(channel.getSourceQueue());
         assertTrue(sourceConnector.getCurrentState() != DeployedState.STOPPED);
 
-        for (DestinationChainProvider chain : channel.getDestinationChainProviders()) {
+        for (DestinationChain chain : channel.getDestinationChains()) {
             for (DestinationConnector destinationConnector : chain.getDestinationConnectors().values()) {
                 if (destinationConnector.isEnabled()) {
                     assertTrue(destinationConnector.getCurrentState() != DeployedState.STOPPED);
@@ -165,7 +177,7 @@ public class ChannelTests {
 
         Thread.sleep(1000);
 
-        for (DestinationChainProvider chain : channel.getDestinationChainProviders()) {
+        for (DestinationChain chain : channel.getDestinationChains()) {
             for (DestinationConnector destinationConnector : chain.getDestinationConnectors().values()) {
                 if (destinationConnector.isEnabled()) {
                     assertEquals(((TestDestinationConnector) destinationConnector).getMessageIds().size(), TEST_SIZE);
@@ -178,9 +190,10 @@ public class ChannelTests {
     }
 
     /*
-     * Deploys, starts and pauses a channel, asserts that: - The source connector is not running
-     * Then sends messages and asserts that: - Each message is not received by the destination
-     * connectors
+     * Deploys, starts and pauses a channel, asserts that:
+     * - The source connector is not running
+     * Then sends messages and asserts that:
+     * - Each message is not received by the destination connectors
      */
     @Test
     public final void testPauseChannel() throws Exception {
@@ -204,7 +217,7 @@ public class ChannelTests {
         assertNotNull(exception);
         Thread.sleep(1000);
 
-        for (DestinationChainProvider chain : channel.getDestinationChainProviders()) {
+        for (DestinationChain chain : channel.getDestinationChains()) {
             for (DestinationConnector destinationConnector : chain.getDestinationConnectors().values()) {
                 if (destinationConnector.isEnabled()) {
                     assertEquals(((TestDestinationConnector) destinationConnector).getMessageIds().size(), 0);
@@ -217,10 +230,14 @@ public class ChannelTests {
     }
 
     /*
-     * Deploys and starts a channel, sends messages, stops the channel and asserts that: - The
-     * channel is not running - The source connector is not running - Each destination connector is
-     * not running - Each message is received by each destination connector Then sends messages and
-     * asserts that: - Each dispatch returns a null MessageResponse
+     * Deploys and starts a channel, sends messages, stops the channel and
+     * asserts that:
+     * - The channel is not running
+     * - The source connector is not running
+     * - Each destination connector is not running
+     * - Each message is received by each destination connector
+     * Then sends messages and asserts that:
+     * - Each dispatch returns a null MessageResponse
      */
     @Test
     public final void testStopChannel() throws Exception {
@@ -238,7 +255,7 @@ public class ChannelTests {
         assertFalse(channel.getCurrentState() == DeployedState.STARTED);
         assertFalse(sourceConnector.getCurrentState() != DeployedState.STOPPED);
 
-        for (DestinationChainProvider chain : channel.getDestinationChainProviders()) {
+        for (DestinationChain chain : channel.getDestinationChains()) {
             for (DestinationConnector destinationConnector : chain.getDestinationConnectors().values()) {
                 if (destinationConnector.isEnabled()) {
                     assertFalse(destinationConnector.getCurrentState() != DeployedState.STOPPED);
@@ -260,10 +277,14 @@ public class ChannelTests {
     }
 
     /*
-     * Deploys and starts a channel, sends messages, stops the channel and asserts that: - The
-     * channel is not running - The source connector is not running - Each destination connector is
-     * not running - Each message is received by the source connector Then sends messages and
-     * asserts that: - Each dispatch returns a null MessageResponse
+     * Deploys and starts a channel, sends messages, stops the channel and
+     * asserts that:
+     * - The channel is not running
+     * - The source connector is not running
+     * - Each destination connector is not running
+     * - Each message is received by the source connector
+     * Then sends messages and asserts that:
+     * - Each dispatch returns a null MessageResponse
      */
     @Test
     public final void testHardStop() throws Exception {
@@ -281,7 +302,7 @@ public class ChannelTests {
         assertFalse(channel.getCurrentState() == DeployedState.STARTED);
         assertFalse(sourceConnector.getCurrentState() != DeployedState.STOPPED);
 
-        for (DestinationChainProvider chain : channel.getDestinationChainProviders()) {
+        for (DestinationChain chain : channel.getDestinationChains()) {
             for (DestinationConnector destinationConnector : chain.getDestinationConnectors().values()) {
                 if (destinationConnector.isEnabled()) {
                     assertFalse(destinationConnector.getCurrentState() != DeployedState.STOPPED);
@@ -304,8 +325,10 @@ public class ChannelTests {
     }
 
     /*
-     * Creates a channel and asserts that: - The channel exists Then removes the channel and asserts
-     * that: - The channel does not exist
+     * Creates a channel and asserts that:
+     * - The channel exists
+     * Then removes the channel and asserts that:
+     * - The channel does not exist
      */
     @Test
     public final void testControllerRemoveChannel() throws Exception {
@@ -321,23 +344,29 @@ public class ChannelTests {
     }
 
     /*
-     * Creates and deploys a channel, and asserts that: - No extra columns exist on the custom
-     * metadata table
+     * Creates and deploys a channel, and asserts that:
+     * - No extra columns exist on the custom metadata table
      * 
-     * Adds metadata columns (one of each type), redeploys the channel, and asserts that: - All the
-     * added columns are in the database with the correct name and type
+     * Adds metadata columns (one of each type), redeploys the channel, and
+     * asserts that:
+     * - All the added columns are in the database with the correct name and
+     * type
      * 
-     * Removes one of the columns, redeploys, and asserts that: - The column is no longer in the
-     * database
+     * Removes one of the columns, redeploys, and asserts that:
+     * - The column is no longer in the database
      * 
-     * Alters the name of one of the columns, redeploys, and asserts that: - The old column is
-     * dropped correctly - The new column is added correctly
+     * Alters the name of one of the columns, redeploys, and asserts that:
+     * - The old column is dropped correctly
+     * - The new column is added correctly
      * 
-     * Alters the type one of the columns, redeploys, and asserts that: - The old column is dropped
-     * correctly - The new column is added correctly
+     * Alters the type one of the columns, redeploys, and asserts that:
+     * - The old column is dropped correctly
+     * - The new column is added correctly
      * 
-     * Alters the name and type of one of the columns, redeploys, and asserts that: - The old column
-     * is dropped correctly - The new column is added correctly
+     * Alters the name and type of one of the columns, redeploys, and asserts
+     * that:
+     * - The old column is dropped correctly
+     * - The new column is added correctly
      */
     @Test
     public final void testUpdateMetaDataColumns() throws Exception {
@@ -435,16 +464,22 @@ public class ChannelTests {
     }
 
     /*
-     * Create a new test channel Process a source message with a metadata ID of 1, assert that: - An
-     * InvalidConnectorMessageState exception is thrown
+     * Create a new test channel
+     * Process a source message with a metadata ID of 1, assert that:
+     * - An InvalidConnectorMessageState exception is thrown
      * 
-     * Process a source message with a status other than RECEIVED, assert that: - An
-     * InvalidConnectorMessageState exception is thrown
+     * Process a source message with a status other than RECEIVED, assert that:
+     * - An InvalidConnectorMessageState exception is thrown
      * 
-     * Process a valid source message, and assert that: - The pre-processor was run - The processed
-     * raw content was stored - The filter/transformer was run - The transformed/encoded content was
-     * stored - Initial messages were created for each destination chain - The message processed
-     * through at least the first destination connector for each chain - The post-processor was run
+     * Process a valid source message, and assert that:
+     * - The pre-processor was run
+     * - The processed raw content was stored
+     * - The filter/transformer was run
+     * - The transformed/encoded content was stored
+     * - Initial messages were created for each destination chain
+     * - The message processed through at least the first destination connector
+     * for each chain
+     * - The post-processor was run
      * - The final transaction was created
      */
     @Test
@@ -473,7 +508,7 @@ public class ChannelTests {
         TestUtils.assertMessageContentExists(sourceMessage.getTransformed());
         TestUtils.assertMessageContentExists(sourceMessage.getEncoded());
 
-        for (DestinationChainProvider chain : channel.getDestinationChainProviders()) {
+        for (DestinationChain chain : channel.getDestinationChains()) {
             Integer firstId = null;
             for (Integer metaDataId : chain.getDestinationConnectors().keySet()) {
                 if (firstId == null || metaDataId < firstId) {

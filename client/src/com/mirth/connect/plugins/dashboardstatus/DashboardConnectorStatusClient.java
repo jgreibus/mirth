@@ -18,12 +18,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.swing.JComponent;
 
 import com.mirth.connect.client.core.ClientException;
+import com.mirth.connect.client.core.UnauthorizedException;
 import com.mirth.connect.client.ui.PlatformUI;
 import com.mirth.connect.model.DashboardStatus;
 import com.mirth.connect.plugins.DashboardTabPlugin;
 
 public class DashboardConnectorStatusClient extends DashboardTabPlugin {
+    private static final String DASHBOARD_SERVICE_PLUGINPOINT = "Dashboard Connector Service";
     private DashboardConnectorStatusPanel dcsp;
+    private static final String REMOVE_SESSIONID = "removeSessionId";
+    private static final String GET_CONNECTION_INFO_LOGS = "getConnectionInfoLogs";
+    private static final String CHANNELS_DEPLOYED = "channelsDeployed";
     private static final String NO_CHANNEL_SELECTED = "No Channel Selected";
     private ConcurrentHashMap<String, LinkedList<String[]>> connectorInfoLogs;
     private int currentDashboardLogSize;
@@ -93,7 +98,7 @@ public class DashboardConnectorStatusClient extends DashboardTabPlugin {
             status = statuses.get(0);
         }
 
-        boolean channelsDeployed = PlatformUI.MIRTH_FRAME.mirthClient.getServlet(DashboardConnectorStatusServletInterface.class).startSession();
+        boolean channelsDeployed = (Boolean) PlatformUI.MIRTH_FRAME.mirthClient.invokePluginMethodAsync(DASHBOARD_SERVICE_PLUGINPOINT, CHANNELS_DEPLOYED, null);
 
         if (channelsDeployed) {
             // clear out all the Dashboard Logs, and reset all the channel states to RESUMED.
@@ -115,12 +120,16 @@ public class DashboardConnectorStatusClient extends DashboardTabPlugin {
             LinkedList<String[]> connectionInfoLogsReceived = new LinkedList<String[]>();
             try {
                 if (status == null) {
-                    connectionInfoLogsReceived = PlatformUI.MIRTH_FRAME.mirthClient.getServlet(DashboardConnectorStatusServletInterface.class).getAllChannelLogs();
+                    connectionInfoLogsReceived = (LinkedList<String[]>) PlatformUI.MIRTH_FRAME.mirthClient.invokePluginMethodAsync(DASHBOARD_SERVICE_PLUGINPOINT, GET_CONNECTION_INFO_LOGS, null);
                 } else {
-                    connectionInfoLogsReceived = PlatformUI.MIRTH_FRAME.mirthClient.getServlet(DashboardConnectorStatusServletInterface.class).getChannelLog(selectedChannelId);
+                    connectionInfoLogsReceived = (LinkedList<String[]>) PlatformUI.MIRTH_FRAME.mirthClient.invokePluginMethodAsync(DASHBOARD_SERVICE_PLUGINPOINT, GET_CONNECTION_INFO_LOGS, selectedChannelId);
                 }
             } catch (ClientException e) {
-                parent.alertThrowable(parent, e, false);
+                if (e.getCause() instanceof UnauthorizedException) {
+                    // Don't error. Let an empty list be processed
+                } else {
+                    parent.alertThrowable(parent, e);
+                }
             }
 
             // grab the channel's log from the HashMap, if not exist, create one.
@@ -197,7 +206,7 @@ public class DashboardConnectorStatusClient extends DashboardTabPlugin {
 
         // invoke method to remove everything involving this client's sessionId.
         try {
-            PlatformUI.MIRTH_FRAME.mirthClient.getServlet(DashboardConnectorStatusServletInterface.class).stopSession();
+            PlatformUI.MIRTH_FRAME.mirthClient.invokePluginMethod(DASHBOARD_SERVICE_PLUGINPOINT, REMOVE_SESSIONID, null);
         } catch (ClientException e) {
             parent.alertThrowable(parent, e);
         }

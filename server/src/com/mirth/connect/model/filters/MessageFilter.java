@@ -213,7 +213,6 @@ public class MessageFilter implements Serializable {
         this.error = error;
     }
 
-    @Override
     public String toString() {
         return ToStringBuilder.reflectionToString(this, CalendarToStringStyle.instance());
     }

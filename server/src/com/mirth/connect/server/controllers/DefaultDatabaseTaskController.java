@@ -90,23 +90,27 @@ public class DefaultDatabaseTaskController implements DatabaseTaskController {
 
             // Only add the task to remove OLD_CHANNEL if OLD_MESSAGE has already been dropped
             if (DatabaseUtil.tableExists(connection, "OLD_MESSAGE")) {
-                DatabaseTask task = populateTask(new DatabaseTask(TASK_REMOVE_OLD_MESSAGE));
+                String confirmationMessage = "<html>This will remove all messages that existed prior to upgrading to 3.x.<br/>Are you sure you wish to continue?</html>";
+                DatabaseTask task = new DatabaseTask(TASK_REMOVE_OLD_MESSAGE, "Remove Old 2.x Message Table", "Remove the OLD_MESSAGE table which was renamed as part of the upgrade from 2.x to 3.x.", confirmationMessage);
                 logger.debug("Adding database task: " + task.getName());
                 tasks.put(task.getId(), task);
             } else if (DatabaseUtil.tableExists(connection, "OLD_CHANNEL")) {
-                DatabaseTask task = populateTask(new DatabaseTask(TASK_REMOVE_OLD_CHANNEL));
+                String confirmationMessage = "<html>This will remove the channel backups that were saved as part of migration to 3.x.<br/>Are you sure you wish to continue?</html>";
+                DatabaseTask task = new DatabaseTask(TASK_REMOVE_OLD_CHANNEL, "Remove Old 2.x Channel Table", "Remove the OLD_CHANNEL table which was renamed as part of the upgrade from 2.x to 3.x.", confirmationMessage);
                 logger.debug("Adding database task: " + task.getName());
                 tasks.put(task.getId(), task);
             }
 
             if (DatabaseUtil.tableExists(connection, "OLD_ATTACHMENT")) {
-                DatabaseTask task = populateTask(new DatabaseTask(TASK_REMOVE_OLD_ATTACHMENT));
+                String confirmationMessage = "<html>This will remove all attachments that existed prior to upgrading to 3.x.<br/>Are you sure you wish to continue?</html>";
+                DatabaseTask task = new DatabaseTask(TASK_REMOVE_OLD_ATTACHMENT, "Remove Old 2.x Attachment Table", "Remove the OLD_ATTACHMENT table which was renamed as part of the upgrade from 2.x to 3.x.", confirmationMessage);
                 logger.debug("Adding database task: " + task.getName());
                 tasks.put(task.getId(), task);
             }
 
             if (DatabaseUtil.tableExists(connection, "OLD_CODE_TEMPLATE")) {
-                DatabaseTask task = populateTask(new DatabaseTask(TASK_REMOVE_OLD_CODE_TEMPLATE));
+                String confirmationMessage = "<html>This will remove all code templates that existed prior to upgrading to 3.3.<br/>Are you sure you wish to continue?</html>";
+                DatabaseTask task = new DatabaseTask(TASK_REMOVE_OLD_CODE_TEMPLATE, "Remove Old Pre-3.3 Code Template Table", "Remove the OLD_CODE_TEMPLATE table which was renamed as part of the upgrade to 3.3.", confirmationMessage);
                 logger.debug("Adding database task: " + task.getName());
                 tasks.put(task.getId(), task);
             }
@@ -126,7 +130,9 @@ public class DefaultDatabaseTaskController implements DatabaseTaskController {
                 }
 
                 if (MapUtils.isNotEmpty(affectedChannels)) {
-                    DatabaseTask task = populateTask(new DatabaseTask(TASK_ADD_D_MM_INDEX3));
+                    String confirmationMessage = "<html>This index will only be created on channels that are stopped. Make<br/>sure there is enough disk space on the server running the database.<br/>Are you sure you wish to continue?</html>";
+
+                    DatabaseTask task = new DatabaseTask(TASK_ADD_D_MM_INDEX3, "Add Metadata Index", "Add index (ID, STATUS, SERVER_ID) on the message metadata table to improve queue performance.", confirmationMessage);
                     task.setAffectedChannels(affectedChannels);
                     logger.debug("Adding migration task: " + task.getName());
                     tasks.put(task.getId(), task);
@@ -148,31 +154,6 @@ public class DefaultDatabaseTaskController implements DatabaseTaskController {
         return tasks;
     }
 
-    private DatabaseTask populateTask(DatabaseTask task) {
-        if (task.getId().equals(TASK_REMOVE_OLD_MESSAGE)) {
-            task.setName("Remove Old 2.x Message Table");
-            task.setDescription("Remove the OLD_MESSAGE table which was renamed as part of the upgrade from 2.x to 3.x.");
-            task.setConfirmationMessage("<html>This will remove all messages that existed prior to upgrading to 3.x.<br/>Are you sure you wish to continue?</html>");
-        } else if (task.getId().equals(TASK_REMOVE_OLD_CHANNEL)) {
-            task.setName("Remove Old 2.x Channel Table");
-            task.setDescription("Remove the OLD_CHANNEL table which was renamed as part of the upgrade from 2.x to 3.x.");
-            task.setConfirmationMessage("<html>This will remove the channel backups that were saved as part of migration to 3.x.<br/>Are you sure you wish to continue?</html>");
-        } else if (task.getId().equals(TASK_REMOVE_OLD_ATTACHMENT)) {
-            task.setName("Remove Old 2.x Attachment Table");
-            task.setDescription("Remove the OLD_ATTACHMENT table which was renamed as part of the upgrade from 2.x to 3.x.");
-            task.setConfirmationMessage("<html>This will remove all attachments that existed prior to upgrading to 3.x.<br/>Are you sure you wish to continue?</html>");
-        } else if (task.getId().equals(TASK_REMOVE_OLD_CODE_TEMPLATE)) {
-            task.setName("Remove Old Pre-3.3 Code Template Table");
-            task.setDescription("Remove the OLD_CODE_TEMPLATE table which was renamed as part of the upgrade to 3.3.");
-            task.setConfirmationMessage("<html>This will remove all code templates that existed prior to upgrading to 3.3.<br/>Are you sure you wish to continue?</html>");
-        } else if (task.getId().equals(TASK_ADD_D_MM_INDEX3)) {
-            task.setName("Add Metadata Index");
-            task.setDescription("Add index (ID, STATUS, SERVER_ID) on the message metadata table to improve queue performance.");
-            task.setConfirmationMessage("<html>This index will only be created on channels that are stopped. Make<br/>sure there is enough disk space on the server running the database.<br/>Are you sure you wish to continue?</html>");
-        }
-        return task;
-    }
-
     private DatabaseTask getCurrentTask() throws Exception {
         taskReadWriteLock.readLock().lock();
         try {
@@ -183,26 +164,26 @@ public class DefaultDatabaseTaskController implements DatabaseTaskController {
     }
 
     @Override
-    public String runDatabaseTask(String taskId) throws Exception {
+    public String runDatabaseTask(DatabaseTask task) throws Exception {
         DatabaseTask databaseTask = getCurrentTask();
 
         if (databaseTask == null && taskRunLock.tryLock()) {
             try {
-                startTask(populateTask(new DatabaseTask(taskId)));
+                startTask(task);
 
-                if (taskId.equals(TASK_REMOVE_OLD_CHANNEL)) {
+                if (task.getId().equals(TASK_REMOVE_OLD_CHANNEL)) {
                     executeUpdate("DROP TABLE OLD_CHANNEL");
                     return "Table OLD_CHANNEL successfully dropped.";
-                } else if (taskId.equals(TASK_REMOVE_OLD_MESSAGE)) {
+                } else if (task.getId().equals(TASK_REMOVE_OLD_MESSAGE)) {
                     executeUpdate("DROP TABLE OLD_MESSAGE");
                     return "Table OLD_MESSAGE successfully dropped.";
-                } else if (taskId.equals(TASK_REMOVE_OLD_ATTACHMENT)) {
+                } else if (task.getId().equals(TASK_REMOVE_OLD_ATTACHMENT)) {
                     executeUpdate("DROP TABLE OLD_ATTACHMENT");
                     return "Table OLD_ATTACHMENT successfully dropped.";
-                } else if (taskId.equals(TASK_REMOVE_OLD_CODE_TEMPLATE)) {
+                } else if (task.getId().equals(TASK_REMOVE_OLD_CODE_TEMPLATE)) {
                     executeUpdate("DROP TABLE OLD_CODE_TEMPLATE");
                     return "Table OLD_CODE_TEMPLATE successfully dropped.";
-                } else if (taskId.equals(TASK_ADD_D_MM_INDEX3)) {
+                } else if (task.getId().equals(TASK_ADD_D_MM_INDEX3)) {
                     DonkeyDaoFactory daoFactory = Donkey.getInstance().getDaoFactory();
 
                     if (daoFactory instanceof JdbcDaoFactory) {
@@ -311,7 +292,7 @@ public class DefaultDatabaseTaskController implements DatabaseTaskController {
                                         logger.debug("Adding index " + indexName + " on table " + tableName + ".");
                                         executeUpdate(query);
                                     } else {
-                                        throw new Exception("Error adding index: Update statement not found for database type: " + Donkey.getInstance().getConfiguration().getDonkeyProperties().getProperty("database"));
+                                        throw new Exception("Error adding index: Update statement not found for database type: " + Donkey.getInstance().getConfiguration().getDatabaseProperties().getProperty("database"));
                                     }
 
                                     return null;
@@ -332,7 +313,7 @@ public class DefaultDatabaseTaskController implements DatabaseTaskController {
                         throw new Exception("Unable to perform task: DAO type is not JDBC.");
                     }
                 } else {
-                    throw new Exception("Unknown task ID: " + taskId);
+                    throw new Exception("Unknown task ID: " + task.getId());
                 }
             } finally {
                 stopTask();
@@ -343,10 +324,10 @@ public class DefaultDatabaseTaskController implements DatabaseTaskController {
     }
 
     @Override
-    public void cancelDatabaseTask(String taskId) throws Exception {
+    public void cancelDatabaseTask(DatabaseTask task) throws Exception {
         DatabaseTask databaseTask = getCurrentTask();
-        if (databaseTask == null || !databaseTask.getId().equals(taskId)) {
-            throw new Exception("Task \"" + populateTask(new DatabaseTask(taskId)).getName() + "\" is not currently running.");
+        if (databaseTask == null || !databaseTask.getId().equals(task.getId())) {
+            throw new Exception("Task \"" + task.getName() + "\" is not currently running.");
         }
 
         taskReadWriteLock.writeLock().lock();

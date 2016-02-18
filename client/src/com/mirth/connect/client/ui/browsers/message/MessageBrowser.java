@@ -74,10 +74,9 @@ import org.syntax.jedit.tokenmarker.XMLTokenMarker;
 
 import com.mirth.connect.client.core.ClientException;
 import com.mirth.connect.client.core.Operation;
+import com.mirth.connect.client.core.Operations;
 import com.mirth.connect.client.core.PaginatedMessageList;
 import com.mirth.connect.client.core.RequestAbortedException;
-import com.mirth.connect.client.core.api.servlets.MessageServletInterface;
-import com.mirth.connect.client.core.api.util.OperationUtil;
 import com.mirth.connect.client.ui.Frame;
 import com.mirth.connect.client.ui.LoadedExtensions;
 import com.mirth.connect.client.ui.Mirth;
@@ -163,8 +162,6 @@ public class MessageBrowser extends javax.swing.JPanel {
     private ExecutorService executor;
     private List<Future<Void>> prettyPrintWorkers = new ArrayList<Future<Void>>();
 
-    private List<Integer> selectedMetaDataIds;
-
     /**
      * Constructs the new message browser and sets up its default information/layout
      */
@@ -197,7 +194,7 @@ public class MessageBrowser extends javax.swing.JPanel {
         makeMessageTable();
         //Initialize the mappings table
         makeMappingsTable();
-
+        
         executor = Executors.newFixedThreadPool(5);
     }
 
@@ -295,7 +292,6 @@ public class MessageBrowser extends javax.swing.JPanel {
 
     public void loadChannel(String channelId, Map<Integer, String> connectors, List<MetaDataColumn> metaDataColumns, List<Integer> selectedMetaDataIds, boolean isChannelDeployed) {
         this.isChannelDeployed = isChannelDeployed;
-        this.selectedMetaDataIds = selectedMetaDataIds;
         parent.setVisibleTasks(parent.messageTasks, parent.messagePopupMenu, 1, 1, isChannelDeployed);
         parent.setVisibleTasks(parent.messageTasks, parent.messagePopupMenu, 7, 8, isChannelDeployed);
 
@@ -358,8 +354,14 @@ public class MessageBrowser extends javax.swing.JPanel {
         runSearch();
     }
 
-    public Set<Operation> getAbortOperations() {
-        return OperationUtil.getAbortableOperations(MessageServletInterface.class);
+    public List<Operation> getAbortOperations() {
+        List<Operation> operations = new ArrayList<Operation>();
+
+        operations.add(Operations.MESSAGE_GET);
+        operations.add(Operations.MESSAGE_GET_COUNT);
+        operations.add(Operations.MESSAGE_REMOVE);
+
+        return operations;
     }
 
     public void resetSearchCriteria() {
@@ -532,7 +534,6 @@ public class MessageBrowser extends javax.swing.JPanel {
         }
 
         advancedSearchPopup.applySelectionsToFilter(messageFilter);
-        selectedMetaDataIds = messageFilter.getIncludedMetaDataIds();
 
         if (messageFilter.getMaxMessageId() == null) {
             try {
@@ -776,7 +777,7 @@ public class MessageBrowser extends javax.swing.JPanel {
 
                     if (t.getMessage().contains("Java heap space")) {
                         parent.alertError(parent, "There was an out of memory error when trying to retrieve messages.\nIncrease your heap size or decrease your page size and search again.");
-                    } else if (t instanceof RequestAbortedException) {
+                    } else if (t.getCause() instanceof RequestAbortedException) {
                         // The client is no longer waiting for the search request
                     } else {
                         parent.alertThrowable(parent, t);
@@ -1077,6 +1078,7 @@ public class MessageBrowser extends javax.swing.JPanel {
         messageTreeTable.setHorizontalScrollEnabled(true);
         messageTreeTable.setPreferredScrollableViewportSize(messageTreeTable.getPreferredSize());
         messageTreeTable.setMirthTransferHandlerEnabled(true);
+
 
         tableModel = new MessageBrowserTableModel(columnMap.size());
         // Add a blank column to the column initially, otherwise it return an exception on load
@@ -1600,7 +1602,7 @@ public class MessageBrowser extends javax.swing.JPanel {
                 SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
 
                     public Void doInBackground() {
-                        attachmentViewer.viewAttachments(channelId, messageId, attachmentId);
+                        attachmentViewer.viewAttachments(channelId, attachmentId, messageId);
                         return null;
                     }
 
@@ -1641,7 +1643,7 @@ public class MessageBrowser extends javax.swing.JPanel {
                     worker.cancel(true);
                 }
                 prettyPrintWorkers.clear();
-
+                
                 parent.setVisibleTasks(parent.messageTasks, parent.messagePopupMenu, 6, 6, true);
                 parent.setVisibleTasks(parent.messageTasks, parent.messagePopupMenu, 7, -1, isChannelDeployed);
 
@@ -1663,7 +1665,7 @@ public class MessageBrowser extends javax.swing.JPanel {
                     // If the message is not in the cache, retrieve it from the server
                     if (message == null) {
                         try {
-                            message = parent.mirthClient.getMessageContent(channelId, messageId, selectedMetaDataIds);
+                            message = parent.mirthClient.getMessageContent(channelId, messageId);
                             // If the message was not found (ie. it may have been deleted during the request), do nothing
                             if (message == null || message.getConnectorMessages().size() == 0) {
                                 clearDescription("Could not retrieve message content. The message may have been deleted.");
@@ -1671,11 +1673,11 @@ public class MessageBrowser extends javax.swing.JPanel {
                                 return;
                             }
 
-                            attachments = parent.mirthClient.getAttachmentsByMessageId(channelId, messageId, false);
+                            attachments = parent.mirthClient.getAttachmentIdsByMessageId(channelId, messageId);
                         } catch (Throwable t) {
                             if (t.getMessage().contains("Java heap space")) {
                                 parent.alertError(parent, "There was an out of memory error when trying to retrieve message content.\nIncrease your heap size and try again.");
-                            } else if (t instanceof RequestAbortedException) {
+                            } else if (t.getCause() instanceof RequestAbortedException) {
                                 // The client is no longer waiting for the message content request
                             } else {
                                 parent.alertThrowable(parent, t);
@@ -2855,7 +2857,7 @@ public class MessageBrowser extends javax.swing.JPanel {
                 try {
                     messages.setItemCount(parent.mirthClient.getMessageCount(channelId, messageFilter));
                 } catch (ClientException e) {
-                    if (e instanceof RequestAbortedException) {
+                    if (e.getCause() instanceof RequestAbortedException) {
                         // The client is no longer waiting for the count request
                     } else {
                         parent.alertThrowable(parent, e);

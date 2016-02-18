@@ -29,26 +29,6 @@ public class AlertChannels implements Migratable, Purgable {
     private Set<String> disabledChannels = new HashSet<String>();
     private Map<String, AlertConnectors> partialChannels = new HashMap<String, AlertConnectors>();
 
-    public boolean isNewChannelSource() {
-        return newChannelSource;
-    }
-
-    public boolean isNewChannelDestination() {
-        return newChannelDestination;
-    }
-
-    public Set<String> getEnabledChannels() {
-        return enabledChannels;
-    }
-
-    public Set<String> getDisabledChannels() {
-        return disabledChannels;
-    }
-
-    public Map<String, AlertConnectors> getPartialChannels() {
-        return partialChannels;
-    }
-
     public void setNewChannel(boolean source, boolean destinations) {
         newChannelSource = source;
         newChannelDestination = destinations;
@@ -142,9 +122,6 @@ public class AlertChannels implements Migratable, Purgable {
 
     @Override
     public void migrate3_3_0(DonkeyElement element) {}
-
-    @Override
-    public void migrate3_4_0(DonkeyElement element) {}
 
     @Override
     public Map<String, Object> getPurgedProperties() {

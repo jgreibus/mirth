@@ -30,7 +30,6 @@ public class EventFilter {
      * in the SQL mapping.
      */
     private Integer maxEventId;
-    private Integer minEventId;
     private Integer id;
     private Set<Level> levels;
     private Calendar startDate;
@@ -47,14 +46,6 @@ public class EventFilter {
 
     public void setMaxEventId(Integer maxEventId) {
         this.maxEventId = maxEventId;
-    }
-    
-    public Integer getMinEventId() {
-        return minEventId;
-    }
-
-    public void setMinEventId(Integer minEventId) {
-        this.minEventId = minEventId;
     }
 
     public Integer getId() {

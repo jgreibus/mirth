@@ -25,7 +25,6 @@ import com.mirth.connect.donkey.model.message.attachment.Attachment;
 import com.mirth.connect.donkey.server.channel.Statistics;
 import com.mirth.connect.donkey.server.controllers.ChannelController;
 import com.mirth.connect.donkey.server.data.DonkeyDao;
-import com.mirth.connect.donkey.server.data.StatisticsUpdater;
 
 public class PassthruDao implements DonkeyDao {
     private boolean closed = false;
@@ -90,7 +89,7 @@ public class PassthruDao implements DonkeyDao {
 
         // remove the in-memory stats for any channels that were removed
         for (String channelId : removedChannelIds) {
-            currentStats.remove(channelId);
+            currentStats.getStats().remove(channelId);
         }
 
         // update the in-memory total stats with the stats we just saved in storage
@@ -98,19 +97,19 @@ public class PassthruDao implements DonkeyDao {
 
         // remove the in-memory total stats for any channels that were removed
         for (String channelId : removedChannelIds) {
-            totalStats.remove(channelId);
+            totalStats.getStats().remove(channelId);
         }
 
         if (statisticsUpdater != null) {
             statisticsUpdater.update(transactionStats);
         }
 
-        transactionStats.clear();
+        transactionStats.getStats().clear();
     }
 
     @Override
     public void rollback() {
-        transactionStats.clear();
+        transactionStats.getStats().clear();
     }
 
     @Override
@@ -147,7 +146,11 @@ public class PassthruDao implements DonkeyDao {
 
     @Override
     public void resetStatistics(String channelId, Integer metaDataId, Set<Status> statuses) {
-        transactionStats.resetStats(channelId, metaDataId, statuses);
+        for (Status status : statuses) {
+            if (transactionStats.getChannelStats(channelId).containsKey(metaDataId)) {
+                transactionStats.getChannelStats(channelId).get(metaDataId).remove(status);
+            }
+        }
 
         if (!resetStats.containsKey(channelId)) {
             resetStats.put(channelId, new HashMap<Integer, Set<Status>>());
@@ -269,7 +272,7 @@ public class PassthruDao implements DonkeyDao {
     }
 
     @Override
-    public Map<Integer, ConnectorMessage> getConnectorMessages(String channelId, long messageId, List<Integer> metaDataIds) {
+    public Map<Integer, ConnectorMessage> getConnectorMessages(String channelId, long messageId) {
         return new HashMap<Integer, ConnectorMessage>();
     }
 

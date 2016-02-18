@@ -24,7 +24,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.log4j.Logger;
 
-import com.mirth.connect.client.core.ControllerException;
 import com.mirth.connect.model.Cacheable;
 import com.mirth.connect.server.util.SqlConfig;
 

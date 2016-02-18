@@ -152,7 +152,7 @@ public class FileDispatcher extends DestinationConnector {
             String path = fileConnector.getPathPart(uri);
             String template = fileDispatcherProperties.getTemplate();
 
-            byte[] bytes = getAttachmentHandlerProvider().reAttachMessage(template, connectorMessage, charsetEncoding, fileDispatcherProperties.isBinary());
+            byte[] bytes = getAttachmentHandler().reAttachMessage(template, connectorMessage, charsetEncoding, fileDispatcherProperties.isBinary());
 
             is = new ByteArrayInputStream(bytes);
 

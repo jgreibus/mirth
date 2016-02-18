@@ -13,7 +13,6 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Font;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -345,26 +344,21 @@ public class ConnectorPanel extends JPanel {
             }
         }
     }
-    
-    ResponseHandler getResponseHandler(final ResponseHandler delegate, final Method method) {
-        return new ResponseHandler() {
-            @Override
-            public void handle(Object response) {
-                boolean handleResponse = true;
 
-                for (ConnectorPropertiesPlugin connectorPropertiesPlugin : LoadedExtensions.getInstance().getConnectorPropertiesPlugins().values()) {
-                    if (connectorPropertiesPlugin.isSupported(currentPanel.getConnectorName())) {
-                        if (!connectorPropertiesPanels.get(connectorPropertiesPlugin.getPluginPointName()).handleConnectorServiceResponse(currentPanel, method, response)) {
-                            handleResponse = false;
-                        }
-                    }
-                }
+    void handlePluginConnectorServiceResponse(String method, Object response) {
+        boolean handleResponse = true;
 
-                if (handleResponse && delegate != null) {
-                    delegate.handle(response);
+        for (ConnectorPropertiesPlugin connectorPropertiesPlugin : LoadedExtensions.getInstance().getConnectorPropertiesPlugins().values()) {
+            if (connectorPropertiesPlugin.isSupported(currentPanel.getConnectorName())) {
+                if (!connectorPropertiesPanels.get(connectorPropertiesPlugin.getPluginPointName()).handleConnectorServiceResponse(currentPanel, method, response)) {
+                    handleResponse = false;
                 }
             }
-        };
+        }
+
+        if (handleResponse) {
+            currentPanel.handleConnectorServiceResponse(method, response);
+        }
     }
 
     private void initComponents() {

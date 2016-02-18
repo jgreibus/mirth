@@ -12,15 +12,11 @@ package com.mirth.connect.connectors.http;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.http.config.RegistryBuilder;
-import org.apache.http.conn.socket.ConnectionSocketFactory;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.ssl.SSLContexts;
+import org.apache.http.conn.ssl.SSLContexts;
 import org.eclipse.jetty.server.Request;
-import org.eclipse.jetty.server.ServerConnector;
+import org.eclipse.jetty.server.bio.SocketConnector;
 
-import com.mirth.connect.donkey.model.channel.ConnectorPluginProperties;
 import com.mirth.connect.donkey.server.channel.Connector;
 import com.mirth.connect.server.controllers.ConfigurationController;
 import com.mirth.connect.server.controllers.ControllerFactory;
@@ -33,7 +29,10 @@ public class DefaultHttpConfiguration implements HttpConfiguration {
     @Override
     public void configureConnectorDeploy(Connector connector) throws Exception {
         if (connector instanceof HttpDispatcher) {
-            configureSocketFactoryRegistry(null, ((HttpDispatcher) connector).getSocketFactoryRegistry());
+            String[] enabledProtocols = MirthSSLUtil.getEnabledHttpsProtocols(configurationController.getHttpsClientProtocols());
+            String[] enabledCipherSuites = MirthSSLUtil.getEnabledHttpsCipherSuites(configurationController.getHttpsCipherSuites());
+            SSLConnectionSocketFactory sslConnectionSocketFactory = new SSLConnectionSocketFactory(SSLContexts.createSystemDefault(), enabledProtocols, enabledCipherSuites, SSLConnectionSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
+            ((HttpDispatcher) connector).getSocketFactoryRegistry().register("https", sslConnectionSocketFactory);
         }
     }
 
@@ -42,23 +41,15 @@ public class DefaultHttpConfiguration implements HttpConfiguration {
 
     @Override
     public void configureReceiver(HttpReceiver connector) throws Exception {
-        ServerConnector listener = new ServerConnector(connector.getServer());
+        SocketConnector listener = new SocketConnector();
         listener.setHost(connector.getHost());
         listener.setPort(connector.getPort());
-        listener.setIdleTimeout(connector.getTimeout());
+        listener.setMaxIdleTime(connector.getTimeout());
         connector.getServer().addConnector(listener);
     }
 
     @Override
     public void configureDispatcher(HttpDispatcher connector, HttpDispatcherProperties connectorProperties) throws Exception {}
-
-    @Override
-    public void configureSocketFactoryRegistry(ConnectorPluginProperties properties, RegistryBuilder<ConnectionSocketFactory> registry) throws Exception {
-        String[] enabledProtocols = MirthSSLUtil.getEnabledHttpsProtocols(configurationController.getHttpsClientProtocols());
-        String[] enabledCipherSuites = MirthSSLUtil.getEnabledHttpsCipherSuites(configurationController.getHttpsCipherSuites());
-        SSLConnectionSocketFactory sslConnectionSocketFactory = new SSLConnectionSocketFactory(SSLContexts.createSystemDefault(), enabledProtocols, enabledCipherSuites, NoopHostnameVerifier.INSTANCE);
-        registry.register("https", sslConnectionSocketFactory);
-    }
 
     @Override
     public Map<String, Object> getRequestInformation(Request request) {

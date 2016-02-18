@@ -415,9 +415,8 @@ public class LoginPanel extends javax.swing.JFrame {
                     // Attempt to login
                     LoginStatus loginStatus = null;
                     try {
-                        loginStatus = client.login(username.getText(), String.valueOf(password.getPassword()));
+                        loginStatus = client.login(username.getText(), String.valueOf(password.getPassword()), PlatformUI.CLIENT_VERSION);
                     } catch (ClientException ex) {
-                        ex.printStackTrace();
                         // Leave loginStatus null, the error message will be set to the default
                     }
 
@@ -447,7 +446,7 @@ public class LoginPanel extends javax.swing.JFrame {
                         preferenceNames.add("showNotificationPopup");
                         preferenceNames.add("archivedNotifications");
                         try {
-                            userPreferences = client.getUserPreferences(currentUser.getId(), preferenceNames);
+                            userPreferences = client.getUserPreferences(currentUser, preferenceNames);
 
                             // Display registration dialog if it's the user's first time logging in
                             String firstlogin = userPreferences.getProperty("firstlogin");

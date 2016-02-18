@@ -34,7 +34,6 @@ import com.mirth.connect.client.core.TaskConstants;
 import com.mirth.connect.client.ui.alert.DefaultAlertPanel;
 import com.mirth.connect.client.ui.components.MirthFieldConstraints;
 import com.mirth.connect.donkey.model.channel.MetaDataColumn;
-import com.mirth.connect.model.Channel;
 import com.mirth.connect.model.ServerConfiguration;
 import com.mirth.connect.model.ServerSettings;
 import com.mirth.connect.model.UpdateSettings;
@@ -67,10 +66,6 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
     }
 
     public void doRefresh() {
-        if (PlatformUI.MIRTH_FRAME.alertRefresh()) {
-            return;
-        }
-
         final String workingId = getFrame().startWorking("Loading " + getTabName() + " settings...");
 
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
@@ -80,12 +75,13 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
 
             public Void doInBackground() {
                 try {
-                    serverSettings = getFrame().mirthClient.getServerSettings();
-                    updateSettings = getFrame().mirthClient.getUpdateSettings();
+                    if (getFrame().confirmLeave()) {
+                        serverSettings = getFrame().mirthClient.getServerSettings();
+                        updateSettings = getFrame().mirthClient.getUpdateSettings();
+                    }
                 } catch (ClientException e) {
                     getFrame().alertThrowable(getFrame(), e);
                 }
-
                 return null;
             }
 
@@ -152,7 +148,7 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
                     getFrame().statusBar.setServerText(statusBarText.toString());
 
                     getFrame().mirthClient.setUpdateSettings(updateSettings);
-                } catch (Exception e) {
+                } catch (ClientException e) {
                     getFrame().alertThrowable(getFrame(), e);
                 }
 
@@ -178,7 +174,7 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
         } else {
             serverNameField.setText("");
         }
-
+        
         if (serverSettings.getSmtpHost() != null) {
             smtpHostField.setText(serverSettings.getSmtpHost());
         } else {
@@ -268,7 +264,7 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
     /** Saves the current settings from the settings form */
     public ServerSettings getServerSettings() {
         ServerSettings serverSettings = new ServerSettings();
-
+        
         serverSettings.setServerName(serverNameField.getText());
 
         serverSettings.setClearGlobalMap(clearGlobalMapYesRadio.isSelected());
@@ -372,11 +368,6 @@ public class SettingsPanelServer extends AbstractSettingsPanel {
                     } catch (ClientException e) {
                         getFrame().alertThrowable(SettingsPanelServer.this, e);
                         return null;
-                    }
-
-                    // Update resource names
-                    for (Channel channel : configuration.getChannels()) {
-                        getFrame().updateResourceNames(channel, configuration.getResourceProperties().getList());
                     }
 
                     configuration.setDate(backupDate);

@@ -435,7 +435,7 @@ public class DatabaseWriter extends ConnectorSettingsPanel {
             }
 
             Connector destinationConnector = PlatformUI.MIRTH_FRAME.channelEditPanel.currentChannel.getDestinationConnectors().get(PlatformUI.MIRTH_FRAME.channelEditPanel.lastModelIndex);
-            Set<String> resourceIds = PlatformUI.MIRTH_FRAME.channelEditPanel.resourceIds.get(destinationConnector.getMetaDataId()).keySet();
+            Set<String> resourceIds = PlatformUI.MIRTH_FRAME.channelEditPanel.resourceIds.get(destinationConnector.getMetaDataId());
             new DatabaseMetadataDialog(this, type, new DatabaseConnectionInfo(properties.getDriver(), properties.getUrl(), properties.getUsername(), properties.getPassword(), "", selectLimit, resourceIds));
         }
     }

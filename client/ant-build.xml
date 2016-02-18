@@ -46,7 +46,6 @@
 		<property name="plugins.dashboardstatus" value="${extensions}/dashboardstatus" />
 		<property name="plugins.dicomviewer" value="${extensions}/dicomviewer" />
 		<property name="plugins.extensionmanager" value="${extensions}/extensionmanager" />
-		<property name="plugins.httpauth" value="${extensions}/httpauth" />
 		<property name="plugins.imageviewer" value="${extensions}/imageviewer" />
 		<property name="plugins.javascriptrule" value="${extensions}/javascriptrule" />
 		<property name="plugins.javascriptstep" value="${extensions}/javascriptstep" />
@@ -227,11 +226,6 @@
 		<mkdir dir="${plugins.globalmapviewer}" />
 		<jar destfile="${plugins.globalmapviewer}/globalmapviewer-client.jar" basedir="${classes}">
 			<include name="com/mirth/connect/plugins/globalmapviewer/**" />
-		</jar>
-		
-		<mkdir dir="${plugins.httpauth}" />
-		<jar destfile="${plugins.httpauth}/httpauth-client.jar" basedir="${classes}">
-			<include name="com/mirth/connect/plugins/httpauth/**" />
 		</jar>
 
 		<mkdir dir="${plugins.imageviewer}" />

@@ -80,7 +80,7 @@ public class TcpDispatcher extends DestinationConnector {
         if (pluginPointName.equals("Basic")) {
             transmissionModeProvider = new BasicModeProvider();
         } else {
-            transmissionModeProvider = (TransmissionModeProvider) ControllerFactory.getFactory().createExtensionController().getTransmissionModeProviders().get(pluginPointName);
+            transmissionModeProvider = (TransmissionModeProvider) ControllerFactory.getFactory().createExtensionController().getServicePlugins().get(pluginPointName);
         }
 
         if (transmissionModeProvider == null) {
@@ -363,7 +363,7 @@ public class TcpDispatcher extends DestinationConnector {
     private void startThread(final String socketKey) {
         disposeThreadQuietly(socketKey);
 
-        Thread thread = new Thread("TCP Dispatcher Send Timeout Thread for key " + socketKey) {
+        Thread thread = new Thread() {
             @Override
             public void run() {
                 try {
@@ -418,7 +418,7 @@ public class TcpDispatcher extends DestinationConnector {
         byte[] bytes = new byte[0];
 
         if (tcpSenderProperties.getTemplate() != null) {
-            bytes = getAttachmentHandlerProvider().reAttachMessage(tcpSenderProperties.getTemplate(), connectorMessage, CharsetUtils.getEncoding(tcpSenderProperties.getCharsetEncoding()), tcpSenderProperties.isDataTypeBinary());
+            bytes = getAttachmentHandler().reAttachMessage(tcpSenderProperties.getTemplate(), connectorMessage, CharsetUtils.getEncoding(tcpSenderProperties.getCharsetEncoding()), tcpSenderProperties.isDataTypeBinary());
         }
 
         return bytes;

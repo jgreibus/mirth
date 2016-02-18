@@ -27,7 +27,7 @@ import com.mirth.connect.donkey.model.message.Response;
 import com.mirth.connect.donkey.model.message.Status;
 import com.mirth.connect.donkey.server.Donkey;
 import com.mirth.connect.donkey.server.StartException;
-import com.mirth.connect.donkey.server.channel.DestinationChainProvider;
+import com.mirth.connect.donkey.server.channel.DestinationChain;
 import com.mirth.connect.donkey.server.channel.DestinationConnector;
 import com.mirth.connect.donkey.server.channel.FilterTransformerExecutor;
 import com.mirth.connect.donkey.server.channel.FilterTransformerResult;
@@ -67,15 +67,18 @@ public class StatisticsTests {
     }
 
     /*
-     * Create a "normal" channel with four destination connectors where all messages process through
-     * the source connector with a final status of RECEIVED, and process through each destination
-     * connector with a status of SENT
+     * Create a "normal" channel with four destination connectors where all
+     * messages process through the source connector with a final status of
+     * RECEIVED, and process through each destination connector with a status of
+     * SENT
      * 
-     * Send messages, assert that: - The source connector stats have TEST_SIZE for RECEIVED and
-     * TRANSFORMED - The destination connector stats have TEST_SIZE for RECEIVED and SENT - The
-     * aggregate stats are correct (RECEIVED/TRANSFORMED is the same as the source connector,
-     * PENDING/SENT/QUEUED is the same as the destination connectors combined, FILTERED/ERROR is the
-     * same as all connectors combined)
+     * Send messages, assert that:
+     * - The source connector stats have TEST_SIZE for RECEIVED and TRANSFORMED
+     * - The destination connector stats have TEST_SIZE for RECEIVED and SENT
+     * - The aggregate stats are correct (RECEIVED/TRANSFORMED is the same as
+     * the source connector, PENDING/SENT/QUEUED is the same as the destination
+     * connectors combined, FILTERED/ERROR is the same as all connectors
+     * combined)
      */
     @Test
     public final void testStatistics1() throws Exception {
@@ -112,10 +115,13 @@ public class StatisticsTests {
     /*
      * Create a channel where all messages are filtered on the source connector
      * 
-     * Send messages, assert that: - The source connector stats have TEST_SIZE for RECEIVED and
-     * FILTERED - The destination connector stats are all zeroes - The aggregate stats are correct
-     * (RECEIVED/TRANSFORMED is the same as the source connector, PENDING/SENT/QUEUED is the same as
-     * the destination connectors combined, FILTERED/ERROR is the same as all connectors combined)
+     * Send messages, assert that:
+     * - The source connector stats have TEST_SIZE for RECEIVED and FILTERED
+     * - The destination connector stats are all zeroes
+     * - The aggregate stats are correct (RECEIVED/TRANSFORMED is the same as
+     * the source connector, PENDING/SENT/QUEUED is the same as the destination
+     * connectors combined, FILTERED/ERROR is the same as all connectors
+     * combined)
      */
     @Test
     public final void testStatistics2() throws Exception {
@@ -158,21 +164,24 @@ public class StatisticsTests {
     }
 
     /*
-     * Create a channel where each destination results in a different status (FILTERED, SENT,
-     * QUEUED, ERROR)
+     * Create a channel where each destination results in a different status
+     * (FILTERED, SENT, QUEUED, ERROR)
      * 
-     * Send messages, assert that: - The source connector stats have TEST_SIZE for RECEIVED and
-     * TRANSFORMED - The first destination connector stats have TEST_SIZE for FILTERED - The second
-     * destination connector stats have TEST_SIZE for SENT - The third destination connector stats
-     * have TEST_SIZE for QUEUED - The fourth destination connector stats have TEST_SIZE for ERROR -
-     * The aggregate stats are correct (RECEIVED/TRANSFORMED is the same as the source connector,
-     * PENDING/SENT/QUEUED is the same as the destination connectors combined, FILTERED/ERROR is the
-     * same as all connectors combined)
+     * Send messages, assert that:
+     * - The source connector stats have TEST_SIZE for RECEIVED and TRANSFORMED
+     * - The first destination connector stats have TEST_SIZE for FILTERED
+     * - The second destination connector stats have TEST_SIZE for SENT
+     * - The third destination connector stats have TEST_SIZE for QUEUED
+     * - The fourth destination connector stats have TEST_SIZE for ERROR
+     * - The aggregate stats are correct (RECEIVED/TRANSFORMED is the same as
+     * the source connector, PENDING/SENT/QUEUED is the same as the destination
+     * connectors combined, FILTERED/ERROR is the same as all connectors
+     * combined)
      */
     @Test
     public final void testStatistics3() throws Exception {
         TestUtils.initChannel(channelId);
-
+        
         TestChannel channel = new TestChannel();
 
         channel.setChannelId(channelId);
@@ -188,7 +197,7 @@ public class StatisticsTests {
         channel.setSourceConnector(sourceConnector);
         channel.getSourceConnector().setFilterTransformerExecutor(TestUtils.createDefaultFilterTransformerExecutor());
 
-        DestinationChainProvider chain = new DestinationChainProvider();
+        DestinationChain chain = new DestinationChain();
         chain.setChannelId(channel.getChannelId());
 
         for (int i = 1; i <= 4; i++) {
@@ -215,7 +224,7 @@ public class StatisticsTests {
             destinationConnector.setQueue(destinationConnectorQueue);
 
             FilterTransformerExecutor filterTransformerExecutor = TestUtils.createDefaultFilterTransformerExecutor();
-
+            
             switch (i) {
                 case 1:
                     ((TestFilterTransformer) filterTransformerExecutor.getFilterTransformer()).setFiltered(true);
@@ -230,7 +239,7 @@ public class StatisticsTests {
                     ((TestDispatcher) destinationConnector).setReturnStatus(Status.ERROR);
                     break;
             }
-
+            
             destinationConnector.setMetaDataReplacer(sourceConnector.getMetaDataReplacer());
             destinationConnector.setMetaDataColumns(channel.getMetaDataColumns());
             destinationConnector.setFilterTransformerExecutor(filterTransformerExecutor);
@@ -238,7 +247,7 @@ public class StatisticsTests {
             chain.addDestination(i, destinationConnector);
         }
 
-        channel.addDestinationChainProvider(chain);
+        channel.addDestinationChain(chain);
 
         ChannelController.getInstance().deleteAllMessages(channel.getChannelId());
         TestUtils.deleteChannelStatistics(channel.getChannelId());
@@ -270,37 +279,44 @@ public class StatisticsTests {
     }
 
     /*
-     * Create a channel where the destination connector sends messages as usual, but both the
-     * dispatcher's send method and the response transformer's doTransform method stall the
-     * processing thread for a specified amount of time. This way, we can check at specific
-     * intervals whether the message statistics in the database have been updated to QUEUED,
-     * PENDING, and the final return status.
+     * Create a channel where the destination connector sends messages as usual,
+     * but both the dispatcher's send method and the response transformer's
+     * doTransform method stall the processing thread for a specified amount of
+     * time. This way, we can check at specific intervals whether the message
+     * statistics in the database have been updated to QUEUED, PENDING, and the
+     * final return status.
      * 
-     * Send messages, and for each message: Wait a specified amount of time, then assert: - The
-     * destination connector stats have 1 for QUEUED, the total number of messages for RECEIVED, and
-     * the remainder for the final return status.
+     * Send messages, and for each message:
+     * Wait a specified amount of time, then assert:
+     * - The destination connector stats have 1 for QUEUED, the total number of
+     * messages for RECEIVED, and the remainder for the final return status.
      * 
-     * Wait a specified amount of time, then assert: - The destination connector stats have 1 for
-     * PENDING, the total number of messages for RECEIVED, and the remainder for the final return
-     * status.
+     * Wait a specified amount of time, then assert:
+     * - The destination connector stats have 1 for PENDING, the total number of
+     * messages for RECEIVED, and the remainder for the final return status.
      * 
-     * Wait a specified amount of time, then assert: - The source connector stats have the total
-     * number of messages for RECEIVED and TRANSFORMED - The destination connector stats have the
-     * total number of messages for RECEIVED and the final return status. - The aggregate stats are
-     * correct
+     * Wait a specified amount of time, then assert:
+     * - The source connector stats have the total number of messages for
+     * RECEIVED and TRANSFORMED
+     * - The destination connector stats have the total number of messages for
+     * RECEIVED and the final return status.
+     * - The aggregate stats are correct
      * 
-     * After all messages finish processing, assert: - The source connector stats have testSize for
-     * RECEIVED and TRANSFORMED - The destination connector stats have testSize for RECEIVED and the
-     * final return status - The aggregate stats are correct (RECEIVED/TRANSFORMED is the same as
-     * the source connector, PENDING/SENT/QUEUED is the same as the destination connectors combined,
-     * FILTERED/ERROR is the same as all connectors combined)
+     * After all messages finish processing, assert:
+     * - The source connector stats have testSize for RECEIVED and TRANSFORMED
+     * - The destination connector stats have testSize for RECEIVED and the
+     * final return status
+     * - The aggregate stats are correct (RECEIVED/TRANSFORMED is the same as
+     * the source connector, PENDING/SENT/QUEUED is the same as the destination
+     * connectors combined, FILTERED/ERROR is the same as all connectors
+     * combined)
      */
     @Test
     public final void testStatistics4() throws Exception {
         final int waitTime = 1000;
         long testSize = 5;
         Status returnStatus = Status.SENT;
-
+        
         TestUtils.initChannel(channelId);
 
         TestChannel channel = new TestChannel();
@@ -318,7 +334,7 @@ public class StatisticsTests {
         channel.setSourceConnector(sourceConnector);
         channel.getSourceConnector().setFilterTransformerExecutor(TestUtils.createDefaultFilterTransformerExecutor());
 
-        DestinationChainProvider chain = new DestinationChainProvider();
+        DestinationChain chain = new DestinationChain();
         chain.setChannelId(channel.getChannelId());
 
         class BlockingTestDispatcher extends TestDispatcher {
@@ -340,7 +356,7 @@ public class StatisticsTests {
         // Create a destination connector that stalls the processing thread a specified amount of time during the send method
         BlockingTestDispatcher destinationConnector = new BlockingTestDispatcher();
         destinationConnector.setChannelId(channel.getChannelId());
-
+        
         destinationConnector.setMetaDataReplacer(sourceConnector.getMetaDataReplacer());
         destinationConnector.setMetaDataColumns(channel.getMetaDataColumns());
         destinationConnector.setFilterTransformerExecutor(TestUtils.createDefaultFilterTransformerExecutor());
@@ -389,7 +405,7 @@ public class StatisticsTests {
 
         chain.addDestination(1, destinationConnector);
 
-        channel.addDestinationChainProvider(chain);
+        channel.addDestinationChain(chain);
 
         ChannelController.getInstance().deleteAllMessages(channel.getChannelId());
         TestUtils.deleteChannelStatistics(channel.getChannelId());
@@ -473,12 +489,14 @@ public class StatisticsTests {
     }
 
     /*
-     * Gets the aggregate channel statistics from storage and checks whether they are correct with
-     * respect to each individual connector. Although the TRANSFORMED status is updated in the
-     * channel stats along with both source and destination connectors (in ChannelStatistics), the
-     * destination connector message status is never updated in the database as TRANSFORMED after it
-     * passes through the filter/transformer. So here, we only check the aggregate TRANSFORMED
-     * statistics with respect to the source connector.
+     * Gets the aggregate channel statistics from storage and checks whether
+     * they are correct with respect to each individual connector. Although the
+     * TRANSFORMED status is updated in the channel stats along with both source
+     * and destination connectors (in ChannelStatistics), the destination
+     * connector message status is never updated in the database as TRANSFORMED
+     * after it passes through the filter/transformer. So here, we only check
+     * the aggregate TRANSFORMED statistics with respect to the source
+     * connector.
      */
     private boolean channelStatsCorrect() {
         Map<Integer, Map<Status, Long>> stats = ChannelController.getInstance().getStatistics().getChannelStats(channelId);

@@ -4,9 +4,7 @@
 	<property name="server.setup" value="../server/setup" />
 	<property name="donkey.setup" value="../donkey/setup" />
 	
-	<property name="javax.home" value="${server}/lib/javax" />
-	<property name="jetty.home" value="${server}/lib/jetty" />
-	<property name="jsp.home" value="${jetty.home}/jsp" />
+	<property name="jetty.home" value="${server}/lib/jetty/" />
 	<property name="build" value="build" />
 	<property name="dist" value="dist" />
 	<property name="web" value="WebContent" />
@@ -16,9 +14,10 @@
 	<property name="webadmin" value="../webadmin" />
 
 	<path id="compile.jspc">
-		<fileset dir="${javax.home}" includes="javax.servlet-api-*.jar" />
-		<fileset dir="${jetty.home}" includes="jetty-schemas-*.jar" />
-		<fileset dir="${jsp.home}" includes="*.jar" />
+		<fileset dir="${jetty.home}">
+			<include name="servlet-api-*.jar" />
+			<include name="jsp/*.jar" />
+		</fileset>
 	</path>
 
 	<path id="compile.classpath">

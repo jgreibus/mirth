@@ -103,7 +103,4 @@ public class UpdateSettings extends AbstractSettings implements Serializable, Au
 
     @Override
     public void migrate3_3_0(DonkeyElement element) {}
-
-    @Override
-    public void migrate3_4_0(DonkeyElement element) {}
 }

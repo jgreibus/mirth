@@ -20,12 +20,10 @@ import org.apache.log4j.Logger;
 public class LoggingTaskHandler extends ChannelTaskHandler {
     private Logger logger = Logger.getLogger(this.getClass());
 
-    @Override
     public void taskErrored(String channelId, Integer metaDataId, Exception e) {
         logger.error(ExceptionUtils.getStackTrace(e));
     }
 
-    @Override
     public void taskCancelled(String channelId, Integer metaDataId, CancellationException e) {
         logger.error("Task cancelled because the channel " + channelId + " was halted or removed.", e);
     }

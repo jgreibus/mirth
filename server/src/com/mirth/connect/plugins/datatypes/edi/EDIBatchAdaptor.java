@@ -96,27 +96,18 @@ public class EDIBatchAdaptor extends BatchAdaptor {
         SplitType splitType = batchProperties.getSplitType();
 
         if (splitType == SplitType.JavaScript) {
-            if (StringUtils.isEmpty(batchProperties.getBatchScript())) {
-                throw new BatchMessageException("No batch script was set.");
-            }
-
             try {
                 final String batchScriptId = ScriptController.getScriptId(ScriptController.BATCH_SCRIPT_KEY, sourceConnector.getChannelId());
 
                 MirthContextFactory contextFactory = contextFactoryController.getContextFactory(sourceConnector.getChannel().getResourceIds());
                 if (!factory.getContextFactoryId().equals(contextFactory.getId())) {
-                    synchronized (factory) {
-                        contextFactory = contextFactoryController.getContextFactory(sourceConnector.getChannel().getResourceIds());
-                        if (!factory.getContextFactoryId().equals(contextFactory.getId())) {
-                            JavaScriptUtil.recompileGeneratedScript(contextFactory, batchScriptId);
-                            factory.setContextFactoryId(contextFactory.getId());
-                        }
-                    }
+                    JavaScriptUtil.recompileGeneratedScript(contextFactory, batchScriptId);
+                    factory.setContextFactoryId(contextFactory.getId());
                 }
 
-                String result = JavaScriptUtil.execute(new JavaScriptTask<String>(contextFactory, "EDI/X12 Batch Adaptor", sourceConnector) {
+                String result = JavaScriptUtil.execute(new JavaScriptTask<String>(contextFactory) {
                     @Override
-                    public String doCall() throws Exception {
+                    public String call() throws Exception {
                         Script compiledScript = CompiledScriptCache.getInstance().getCompiledScript(batchScriptId);
 
                         if (compiledScript == null) {

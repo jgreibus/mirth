@@ -30,14 +30,12 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
-import java.util.Set;
 import java.util.SortedMap;
 import java.util.TimeZone;
 import java.util.TreeMap;
@@ -47,7 +45,6 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.xml.parsers.DocumentBuilderFactory;
 
-import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.configuration.ConfigurationConverter;
 import org.apache.commons.configuration.ConfigurationException;
@@ -57,7 +54,6 @@ import org.apache.commons.dbutils.DbUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.mail.Email;
 import org.apache.commons.mail.EmailException;
@@ -80,10 +76,8 @@ import com.mirth.commons.encryption.Digester;
 import com.mirth.commons.encryption.Encryptor;
 import com.mirth.commons.encryption.KeyEncryptor;
 import com.mirth.commons.encryption.Output;
-import com.mirth.connect.client.core.ControllerException;
 import com.mirth.connect.donkey.server.StartException;
 import com.mirth.connect.donkey.server.StopException;
-import com.mirth.connect.donkey.server.data.DonkeyStatisticsUpdater;
 import com.mirth.connect.donkey.util.DonkeyElement;
 import com.mirth.connect.model.Channel;
 import com.mirth.connect.model.CodeTemplate;
@@ -144,8 +138,6 @@ public class DefaultConfigurationController extends ConfigurationController {
     private static PropertiesConfiguration mirthConfig = new PropertiesConfiguration();
     private static EncryptionSettings encryptionConfig;
     private static DatabaseSettings databaseConfig;
-    private static String apiBypassword;
-    private static int statsUpdateInterval;
 
     private static KeyEncryptor encryptor = null;
     private static Digester digester = null;
@@ -158,8 +150,6 @@ public class DefaultConfigurationController extends ConfigurationController {
     private static final String HTTPS_SERVER_PROTOCOLS = "https.server.protocols";
     private static final String HTTPS_CIPHER_SUITES = "https.ciphersuites";
     private static final String STARTUP_DEPLOY = "server.startupdeploy";
-    private static final String API_BYPASSWORD = "server.api.bypassword";
-    private static final String STATS_UPDATE_INTERVAL = "donkey.statsupdateinterval";
 
     // singleton pattern
     private static ConfigurationController instance = null;
@@ -279,13 +269,6 @@ public class DefaultConfigurationController extends ConfigurationController {
             }
 
             passwordRequirements = PasswordRequirementsChecker.getInstance().loadPasswordRequirements(mirthConfig);
-            
-            apiBypassword = mirthConfig.getString(API_BYPASSWORD);
-            if (StringUtils.isNotBlank(apiBypassword)) {
-                apiBypassword = new String(Base64.decodeBase64(apiBypassword), "US-ASCII");
-            }
-            
-            statsUpdateInterval = NumberUtils.toInt(mirthConfig.getString(STATS_UPDATE_INTERVAL), DonkeyStatisticsUpdater.DEFAULT_UPDATE_INTERVAL);
 
             // Check for configuration map properties
             if (mirthConfig.getString(CONFIGURATION_MAP_PATH) != null) {
@@ -364,7 +347,7 @@ public class DefaultConfigurationController extends ConfigurationController {
 
     // ast: Get the list of all available encodings for this JVM
     @Override
-    public List<String> getAvailableCharsetEncodings() throws ControllerException {
+    public List<String> getAvaiableCharsetEncodings() throws ControllerException {
         logger.debug("Retrieving avaiable character encodings");
 
         try {
@@ -511,11 +494,6 @@ public class DefaultConfigurationController extends ConfigurationController {
     public boolean isStartupDeploy() {
         return startupDeploy;
     }
-    
-    @Override
-    public int getStatsUpdateInterval() {
-        return statsUpdateInterval;
-    }
 
     @Override
     public int getStatus() {
@@ -611,7 +589,7 @@ public class DefaultConfigurationController extends ConfigurationController {
             }
 
             if (serverConfiguration.getCodeTemplateLibraries() != null) {
-                Set<CodeTemplateLibrary> clonedLibraries = new HashSet<CodeTemplateLibrary>();
+                List<CodeTemplateLibrary> clonedLibraries = new ArrayList<CodeTemplateLibrary>();
                 for (CodeTemplateLibrary library : serverConfiguration.getCodeTemplateLibraries()) {
                     clonedLibraries.add(new CodeTemplateLibrary(library));
                 }
@@ -639,7 +617,7 @@ public class DefaultConfigurationController extends ConfigurationController {
                     }
 
                     if (!found) {
-                        codeTemplateController.removeCodeTemplate(codeTemplate.getId(), ServerEventContext.SYSTEM_USER_EVENT_CONTEXT);
+                        codeTemplateController.removeCodeTemplate(codeTemplate, ServerEventContext.SYSTEM_USER_EVENT_CONTEXT);
                     }
                 }
 
@@ -764,16 +742,6 @@ public class DefaultConfigurationController extends ConfigurationController {
     @Override
     public PasswordRequirements getPasswordRequirements() {
         return passwordRequirements;
-    }
-    
-    @Override
-    public boolean isBypasswordEnabled() {
-        return StringUtils.isNotBlank(apiBypassword);
-    }
-    
-    @Override
-    public boolean checkBypassword(String password) {
-        return isBypasswordEnabled() && StringUtils.equals(password, apiBypassword);
     }
 
     @Override
@@ -1199,7 +1167,7 @@ public class DefaultConfigurationController extends ConfigurationController {
     }
 
     @Override
-    public ConnectionTestResponse sendTestEmail(Properties properties) throws Exception {
+    public Object sendTestEmail(Properties properties) throws Exception {
         String portString = properties.getProperty("port");
         String encryption = properties.getProperty("encryption");
         String host = properties.getProperty("host");

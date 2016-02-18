@@ -116,20 +116,19 @@ public class SettingsPanelDatabaseTasks extends AbstractSettingsPanel implements
     }
 
     public void doRunDatabaseTask() {
-        DatabaseTask databaseTask = (DatabaseTask) taskTable.getValueAt(taskTable.getSelectedRow(), 1);
+        final DatabaseTask databaseTask = (DatabaseTask) taskTable.getValueAt(taskTable.getSelectedRow(), 1);
 
         if (databaseTask.getConfirmationMessage() != null && !getFrame().alertOption(getFrame(), databaseTask.getConfirmationMessage())) {
             return;
         }
 
         final String workingId = getFrame().startWorking("Running database task...");
-        final String taskId = databaseTask.getId();
 
         SwingWorker<String, Void> worker = new SwingWorker<String, Void>() {
 
             @Override
             public String doInBackground() throws ClientException {
-                return getFrame().mirthClient.runDatabaseTask(taskId);
+                return getFrame().mirthClient.runDatabaseTask(databaseTask);
             }
 
             @Override
@@ -156,7 +155,7 @@ public class SettingsPanelDatabaseTasks extends AbstractSettingsPanel implements
     }
 
     public void doCancelDatabaseTask() {
-        DatabaseTask databaseTask = (DatabaseTask) taskTable.getValueAt(taskTable.getSelectedRow(), 1);
+        final DatabaseTask databaseTask = (DatabaseTask) taskTable.getValueAt(taskTable.getSelectedRow(), 1);
 
         if (databaseTask.getStatus() != Status.RUNNING) {
             getFrame().alertError(getFrame(), "Task \"" + databaseTask.getName() + "\" is not currently running.");
@@ -168,13 +167,12 @@ public class SettingsPanelDatabaseTasks extends AbstractSettingsPanel implements
         }
 
         final String workingId = getFrame().startWorking("Cancelling database task...");
-        final String taskId = databaseTask.getId();
 
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
 
             @Override
             public Void doInBackground() throws ClientException {
-                getFrame().mirthClient.cancelDatabaseTask(taskId);
+                getFrame().mirthClient.cancelDatabaseTask(databaseTask);
                 return null;
             }
 

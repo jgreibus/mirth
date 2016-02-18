@@ -27,7 +27,6 @@ import net.miginfocom.swing.MigLayout;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 
-import com.mirth.connect.client.core.ClientException;
 import com.mirth.connect.client.ui.ConnectorTypeDecoration;
 import com.mirth.connect.client.ui.Frame;
 import com.mirth.connect.client.ui.PlatformUI;
@@ -38,7 +37,6 @@ import com.mirth.connect.client.ui.components.MirthRadioButton;
 import com.mirth.connect.client.ui.components.MirthSyntaxTextArea;
 import com.mirth.connect.client.ui.components.MirthTextField;
 import com.mirth.connect.client.ui.panels.connectors.ConnectorSettingsPanel;
-import com.mirth.connect.client.ui.panels.connectors.ResponseHandler;
 import com.mirth.connect.donkey.model.channel.ConnectorProperties;
 import com.mirth.connect.model.Connector.Mode;
 import com.mirth.connect.util.ConnectionTestResponse;
@@ -356,6 +354,21 @@ public class FileWriter extends ConnectorSettingsPanel {
     public void doLocalDecoration(ConnectorTypeDecoration connectorTypeDecoration) {
         if (FileScheme.FTP.getDisplayName().equalsIgnoreCase((String) schemeComboBox.getSelectedItem())) {
             hostLabel.setText("ftp" + (connectorTypeDecoration != null && connectorTypeDecoration.getHighlightColor() != null ? "s" : "") + "://");
+        }
+    }
+
+    @Override
+    public void handleConnectorServiceResponse(String method, Object response) {
+        if (method.equals(FileServiceMethods.METHOD_TEST_WRITE)) {
+            ConnectionTestResponse connectionTestResponse = (ConnectionTestResponse) response;
+
+            if (connectionTestResponse == null) {
+                parent.alertError(parent, "Failed to invoke service.");
+            } else if (connectionTestResponse.getType().equals(ConnectionTestResponse.Type.SUCCESS)) {
+                parent.alertInformation(parent, connectionTestResponse.getMessage());
+            } else {
+                parent.alertWarning(parent, connectionTestResponse.getMessage());
+            }
         }
     }
 
@@ -882,26 +895,7 @@ public class FileWriter extends ConnectorSettingsPanel {
     }
 
     private void testConnectionActionPerformed(ActionEvent evt) {
-        ResponseHandler handler = new ResponseHandler() {
-            @Override
-            public void handle(Object response) {
-                ConnectionTestResponse connectionTestResponse = (ConnectionTestResponse) response;
-
-                if (connectionTestResponse == null) {
-                    parent.alertError(parent, "Failed to invoke service.");
-                } else if (connectionTestResponse.getType().equals(ConnectionTestResponse.Type.SUCCESS)) {
-                    parent.alertInformation(parent, connectionTestResponse.getMessage());
-                } else {
-                    parent.alertWarning(parent, connectionTestResponse.getMessage());
-                }
-            }
-        };
-
-        try {
-            getServlet(FileConnectorServletInterface.class, "Testing connection...", "Failed to invoke service: ", handler).testWrite(getChannelId(), getChannelName(), (FileDispatcherProperties) getFilledProperties());
-        } catch (ClientException e) {
-            // Should not happen
-        }
+        invokeConnectorService(FileServiceMethods.METHOD_TEST_WRITE, "Testing connection...", "Failed to invoke service: ");
     }
 
     private void secureModeYesActionPerformed(ActionEvent evt) {

@@ -9,42 +9,23 @@
 
 package com.mirth.connect.donkey.server.channel;
 
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class DefaultChannelProcessLock implements ChannelProcessLock {
-    private int permits;
-    private Semaphore lock;
-
-    public DefaultChannelProcessLock(int permits) {
-        if (permits < 1) {
-            permits = 1;
-        }
-        this.permits = permits;
-        reset();
-    }
+    private ReentrantLock lock = new ReentrantLock(true);
 
     @Override
     public void acquire() throws InterruptedException {
-        lock.acquire();
-    }
-
-    @Override
-    public void acquireAll() throws InterruptedException {
-        lock.acquire(permits);
+        lock.lockInterruptibly();
     }
 
     @Override
     public void release() {
-        lock.release();
-    }
-
-    @Override
-    public void releaseAll() {
-        lock.release(permits);
+        lock.unlock();
     }
 
     @Override
     public void reset() {
-        lock = new Semaphore(permits, true);
+        lock = new ReentrantLock(true);
     }
 }

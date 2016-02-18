@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 
-import com.mirth.connect.client.core.ControllerException;
 import com.mirth.connect.donkey.model.message.Message;
 import com.mirth.connect.donkey.model.message.attachment.Attachment;
 import com.mirth.connect.donkey.server.channel.Channel;
@@ -37,7 +36,7 @@ public abstract class MessageController {
 
     public abstract Long getMessageCount(MessageFilter filter, Channel channel);
 
-    public abstract Message getMessageContent(String channelId, Long messageId, List<Integer> metaDataIds);
+    public abstract Message getMessageContent(String channelId, Long messageId);
 
     public abstract List<Attachment> getMessageAttachmentIds(String channelId, Long messageId);
 
@@ -53,7 +52,7 @@ public abstract class MessageController {
 
     public abstract MessageImportResult importMessagesServer(String channelId, String path, boolean includeSubfolders) throws MessageImportException, InterruptedException, MessageImportInvalidPathException;
 
-    public abstract int exportMessages(final String channelId, final MessageFilter messageFilter, int pageSize, MessageWriterOptions options) throws MessageExportException, InterruptedException;
+    public abstract int exportMessages(final String channelId, final MessageFilter messageFilter, int pageSize, boolean includeAttachments, MessageWriterOptions options) throws MessageExportException, InterruptedException;
 
     public abstract void exportAttachment(String channelId, String attachmentId, Long messageId, String filePath, boolean binary) throws IOException;
 }

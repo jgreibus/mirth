@@ -18,7 +18,6 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mirth.connect.client.core.ConnectServiceUtil;
-import com.mirth.connect.client.core.ControllerException;
 import com.mirth.connect.donkey.util.purge.Purgable;
 import com.mirth.connect.donkey.util.purge.PurgeUtil;
 import com.mirth.connect.model.Channel;
@@ -181,7 +180,7 @@ public class DefaultUsageController extends UsageController {
 
     private void getUserData(PurgedDocument purgedDocument) throws ControllerException {
         UserController userController = ControllerFactory.getFactory().createUserController();
-        List<User> users = userController.getAllUsers();
+        List<User> users = userController.getUser(null);
         purgedDocument.setUsers(users.size());
     }
 

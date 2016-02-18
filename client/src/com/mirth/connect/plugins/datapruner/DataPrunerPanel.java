@@ -9,9 +9,6 @@
 
 package com.mirth.connect.plugins.datapruner;
 
-import static com.mirth.connect.plugins.datapruner.DataPrunerServletInterface.TASK_START;
-import static com.mirth.connect.plugins.datapruner.DataPrunerServletInterface.TASK_STOP;
-
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.event.ActionEvent;
@@ -70,8 +67,8 @@ public class DataPrunerPanel extends AbstractSettingsPanel {
         this.parent = PlatformUI.MIRTH_FRAME;
 
         addTask("doViewEvents", "View Events", "View the Data Pruner events.", "", new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/table.png")));
-        startIndex = addTask(TASK_START, "Prune Now", "Start the Data Pruner now.", "", new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/control_play_blue.png")));
-        stopIndex = addTask(TASK_STOP, "Stop Pruner", "Stop the current Data Pruner process.", "", new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/stop.png")));
+        startIndex = addTask("doStart", "Prune Now", "Start the Data Pruner now.", "", new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/control_play_blue.png")));
+        stopIndex = addTask("doStop", "Stop Pruner", "Stop the current Data Pruner process.", "", new ImageIcon(com.mirth.connect.client.ui.Frame.class.getResource("images/stop.png")));
 
         setStartTaskVisible(false);
         setStopTaskVisible(false);
@@ -85,7 +82,7 @@ public class DataPrunerPanel extends AbstractSettingsPanel {
 
     @Override
     public void doRefresh() {
-        if (PlatformUI.MIRTH_FRAME.alertRefresh()) {
+        if (!refreshing.compareAndSet(false, true)) {
             return;
         }
 
@@ -97,6 +94,10 @@ public class DataPrunerPanel extends AbstractSettingsPanel {
 
             public Void doInBackground() {
                 try {
+                    if (!getFrame().confirmLeave()) {
+                        return null;
+                    }
+
                     Properties propertiesFromServer = plugin.getPropertiesFromServer();
 
                     if (propertiesFromServer != null) {
@@ -239,7 +240,7 @@ public class DataPrunerPanel extends AbstractSettingsPanel {
                 }
 
                 try {
-                    parent.mirthClient.getServlet(DataPrunerServletInterface.class).start();
+                    parent.mirthClient.invokePluginMethod(plugin.getPluginName(), "start", null);
                 } catch (Exception e) {
                     parent.alertThrowable(parent, e, "An error occurred while attempting to start the data pruner.");
                     return null;
@@ -270,7 +271,7 @@ public class DataPrunerPanel extends AbstractSettingsPanel {
             @Override
             protected Void doInBackground() {
                 try {
-                    parent.mirthClient.getServlet(DataPrunerServletInterface.class).stop();
+                    parent.mirthClient.invokePluginMethod(plugin.getPluginName(), "stop", null);
                 } catch (Exception e) {
                     parent.alertThrowable(parent, e, "An error occurred while attempting to stop the data pruner.");
                     return null;
@@ -390,7 +391,7 @@ public class DataPrunerPanel extends AbstractSettingsPanel {
             @Override
             protected Void doInBackground() {
                 try {
-                    Map<String, String> status = parent.mirthClient.getServlet(DataPrunerServletInterface.class).getStatusMap();
+                    Map<String, String> status = (Map<String, String>) parent.mirthClient.invokePluginMethod(plugin.getPluginName(), "getStatus", null);
                     currentStateTextLabel.setText(status.get("currentState"));
                     currentProcessTextLabel.setText(status.get("currentProcess"));
                     lastProcessTextLabel.setText(status.get("lastProcess"));

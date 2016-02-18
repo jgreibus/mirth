@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,7 +28,6 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.Properties;
 import java.util.Scanner;
-import java.util.Set;
 import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -39,6 +37,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.configuration.reloading.FileChangedReloadingStrategy;
+import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
@@ -52,8 +51,8 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
-import com.mirth.connect.client.core.ControllerException;
 import com.mirth.connect.client.core.VersionMismatchException;
+import com.mirth.connect.connectors.ConnectorService;
 import com.mirth.connect.model.ConnectorMetaData;
 import com.mirth.connect.model.ExtensionPermission;
 import com.mirth.connect.model.MetaData;
@@ -63,11 +62,11 @@ import com.mirth.connect.model.converters.ObjectXMLSerializer;
 import com.mirth.connect.plugins.AuthorizationPlugin;
 import com.mirth.connect.plugins.ChannelPlugin;
 import com.mirth.connect.plugins.CodeTemplateServerPlugin;
+import com.mirth.connect.plugins.ConnectorServicePlugin;
 import com.mirth.connect.plugins.DataTypeServerPlugin;
 import com.mirth.connect.plugins.ResourcePlugin;
 import com.mirth.connect.plugins.ServerPlugin;
 import com.mirth.connect.plugins.ServicePlugin;
-import com.mirth.connect.plugins.TransmissionModeProvider;
 import com.mirth.connect.server.ExtensionLoader;
 import com.mirth.connect.server.migration.Migrator;
 import com.mirth.connect.server.util.DatabaseUtil;
@@ -85,8 +84,8 @@ public class DefaultExtensionController extends ExtensionController {
     private Map<String, ChannelPlugin> channelPlugins = new LinkedHashMap<String, ChannelPlugin>();
     private Map<String, CodeTemplateServerPlugin> codeTemplateServerPlugins = new LinkedHashMap<String, CodeTemplateServerPlugin>();
     private Map<String, DataTypeServerPlugin> dataTypePlugins = new LinkedHashMap<String, DataTypeServerPlugin>();
+    private Map<String, ConnectorServicePlugin> connectorServicePlugins = new LinkedHashMap<String, ConnectorServicePlugin>();
     private Map<String, ResourcePlugin> resourcePlugins = new LinkedHashMap<String, ResourcePlugin>();
-    private Map<String, TransmissionModeProvider> transmissionModeProviders = new LinkedHashMap<String, TransmissionModeProvider>();
     private AuthorizationPlugin authorizationPlugin = null;
     private ExtensionLoader extensionLoader = ExtensionLoader.getInstance();
 
@@ -279,18 +278,18 @@ public class DefaultExtensionController extends ExtensionController {
                         logger.debug("sucessfully loaded server data type plugin: " + serverPlugin.getPluginPointName());
                     }
 
+                    if (serverPlugin instanceof ConnectorServicePlugin) {
+                        ConnectorServicePlugin connectorService = (ConnectorServicePlugin) serverPlugin;
+                        connectorServicePlugins.put(connectorService.getTransportName(), connectorService);
+                        serverPlugins.add(connectorService);
+                        logger.debug("sucessfully loaded connector service plugin: " + serverPlugin.getPluginPointName());
+                    }
+
                     if (serverPlugin instanceof ResourcePlugin) {
                         ResourcePlugin resourcePlugin = (ResourcePlugin) serverPlugin;
                         resourcePlugins.put(resourcePlugin.getPluginPointName(), resourcePlugin);
                         serverPlugins.add(resourcePlugin);
                         logger.debug("Successfully loaded resource plugin: " + resourcePlugin.getPluginPointName());
-                    }
-
-                    if (serverPlugin instanceof TransmissionModeProvider) {
-                        TransmissionModeProvider transmissionModeProvider = (TransmissionModeProvider) serverPlugin;
-                        transmissionModeProviders.put(transmissionModeProvider.getPluginPointName(), transmissionModeProvider);
-                        serverPlugins.add(transmissionModeProvider);
-                        logger.debug("Successfully loaded transmission mode provider plugin: " + transmissionModeProvider.getPluginPointName());
                     }
 
                     if (serverPlugin instanceof AuthorizationPlugin) {
@@ -335,13 +334,13 @@ public class DefaultExtensionController extends ExtensionController {
     }
 
     @Override
-    public Map<String, ResourcePlugin> getResourcePlugins() {
-        return resourcePlugins;
+    public Map<String, ConnectorServicePlugin> getConnectorServicePlugins() {
+        return connectorServicePlugins;
     }
 
     @Override
-    public Map<String, TransmissionModeProvider> getTransmissionModeProviders() {
-        return transmissionModeProviders;
+    public Map<String, ResourcePlugin> getResourcePlugins() {
+        return resourcePlugins;
     }
 
     @Override
@@ -404,10 +403,36 @@ public class DefaultExtensionController extends ExtensionController {
     }
 
     @Override
-    public InstallationResult extractExtension(InputStream inputStream) {
-        Throwable cause = null;
-        Set<MetaData> metaDataSet = new HashSet<MetaData>();
+    public Object invokePluginService(String name, String method, Object object, String sessionId) throws Exception {
+        ServicePlugin servicePlugin = servicePlugins.get(name);
 
+        if (servicePlugin != null) {
+            return servicePlugins.get(name).invoke(method, object, sessionId);
+        } else {
+            logger.error("Error invoking service plugin that has not been loaded: name=" + name + ", method=" + method);
+            return null;
+        }
+    }
+
+    @Override
+    public Object invokeConnectorService(String channelId, String channelName, String name, String method, Object object, String sessionId) throws Exception {
+        ConnectorMetaData connectorMetaData = getConnectorMetaData().get(name);
+
+        if (StringUtils.isNotBlank(connectorMetaData.getServiceClassName())) {
+            ConnectorService connectorService = (ConnectorService) Class.forName(connectorMetaData.getServiceClassName()).newInstance();
+
+            if (connectorServicePlugins.containsKey(name)) {
+                return connectorServicePlugins.get(name).invoke(connectorService, channelId, channelName, method, object, sessionId);
+            } else {
+                return connectorService.invoke(channelId, channelName, method, object, sessionId);
+            }
+        }
+
+        return null;
+    }
+
+    @Override
+    public void extractExtension(FileItem fileItem) throws ControllerException {
         File installTempDir = new File(ExtensionController.getExtensionsPath(), "install_temp");
 
         if (!installTempDir.exists()) {
@@ -415,7 +440,6 @@ public class DefaultExtensionController extends ExtensionController {
         }
 
         File tempFile = null;
-        FileOutputStream tempFileOutputStream = null;
         ZipFile zipFile = null;
 
         try {
@@ -424,13 +448,7 @@ public class DefaultExtensionController extends ExtensionController {
              */
             tempFile = File.createTempFile(ServerUUIDGenerator.getUUID(), ".zip", installTempDir);
             // write the contents of the multipart fileitem to the temp file
-            try {
-                tempFileOutputStream = new FileOutputStream(tempFile);
-                IOUtils.copy(inputStream, tempFileOutputStream);
-            } finally {
-                IOUtils.closeQuietly(tempFileOutputStream);
-            }
-
+            fileItem.write(tempFile);
             // create a new zip file from the temp file
             zipFile = new ZipFile(tempFile);
             // get a list of all of the entries in the zip file
@@ -443,57 +461,50 @@ public class DefaultExtensionController extends ExtensionController {
                 if (entryName.endsWith("plugin.xml") || entryName.endsWith("destination.xml") || entryName.endsWith("source.xml")) {
                     // parse the extension metadata xml file
                     MetaData extensionMetaData = serializer.deserialize(IOUtils.toString(zipFile.getInputStream(entry)), MetaData.class);
-                    metaDataSet.add(extensionMetaData);
 
                     if (!extensionLoader.isExtensionCompatible(extensionMetaData)) {
-                        if (cause == null) {
-                            cause = new VersionMismatchException("Extension \"" + entry.getName() + "\" is not compatible with this version of Mirth Connect.");
-                        }
+                        throw new VersionMismatchException("Extension \"" + entry.getName() + "\" is not compatible with this version of Mirth Connect.");
                     }
                 }
             }
 
-            if (cause == null) {
-                // reset the entries and extract
-                entries = zipFile.entries();
+            // reset the entries and extract
+            entries = zipFile.entries();
 
-                while (entries.hasMoreElements()) {
-                    ZipEntry entry = entries.nextElement();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
 
-                    if (entry.isDirectory()) {
-                        /*
-                         * assume directories are stored parents first then children.
-                         * 
-                         * TODO: this is not robust, just for demonstration purposes.
-                         */
-                        File directory = new File(installTempDir, entry.getName());
-                        directory.mkdir();
-                    } else {
-                        // otherwise, write the file out to the install temp dir
-                        InputStream zipInputStream = zipFile.getInputStream(entry);
-                        OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(new File(installTempDir, entry.getName())));
-                        IOUtils.copy(zipInputStream, outputStream);
-                        IOUtils.closeQuietly(zipInputStream);
-                        IOUtils.closeQuietly(outputStream);
-                    }
+                if (entry.isDirectory()) {
+                    /*
+                     * assume directories are stored parents first then children.
+                     * 
+                     * TODO: this is not robust, just for demonstration purposes.
+                     */
+                    File directory = new File(installTempDir, entry.getName());
+                    directory.mkdir();
+                } else {
+                    // otherwise, write the file out to the install temp dir
+                    InputStream inputStream = zipFile.getInputStream(entry);
+                    OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(new File(installTempDir, entry.getName())));
+                    IOUtils.copy(inputStream, outputStream);
+                    IOUtils.closeQuietly(inputStream);
+                    IOUtils.closeQuietly(outputStream);
                 }
             }
-        } catch (Throwable t) {
-            cause = new ControllerException("Error extracting extension. " + t.toString(), t);
+        } catch (Exception e) {
+            throw new ControllerException("Error extracting extension. " + e.toString(), e);
         } finally {
             if (zipFile != null) {
                 try {
                     zipFile.close();
                 } catch (Exception e) {
-                    cause = new ControllerException(e);
+                    throw new ControllerException(e);
                 }
             }
 
             // delete the temp file since it is no longer needed
             FileUtils.deleteQuietly(tempFile);
         }
-
-        return new InstallationResult(cause, metaDataSet);
     }
 
     /**
@@ -639,11 +650,6 @@ public class DefaultExtensionController extends ExtensionController {
     @Override
     public ConnectorMetaData getConnectorMetaDataByTransportName(String transportName) {
         return extensionLoader.getConnectorMetaData().get(transportName);
-    }
-
-    @Override
-    public Map<String, MetaData> getInvalidMetaData() {
-        return extensionLoader.getInvalidMetaData();
     }
 
     /**

@@ -9,26 +9,19 @@ APACHE-LICENSE-2.0.txt):
 	Apache Geronimo (only components needed for the JMS API) [Mirth Connect only]
 	Apache Log4j 1.2.16
 	Apache PDFBox 1.8.4 [Mirth Connect only]
-	Apache Standard Taglib 1.2.1 [Mirth Connect only]
-	Apache Tomcat Jasper JSP Engine 8.0.9 M3 [Mirth Connect only]
-	Apache Tomcat Jasper Expression Language Impl 8.0.9 M3 [Mirth Connect only]
 	Apache Velocity Engine 1.7
 	Apache Velocity Tools 2.0
 	Apache XMLBeans [Mirth Connect only]
-	Bean Validation API 1.1.0 (http://beanvalidation.org/)
-	Guava 18.0 (https://code.google.com/p/guava-libraries)
 	HikariCP 2.3.2 [Mirth Connect only]
-	Jackson Project (https://github.com/FasterXML/jackson)
 	Jasypt 1.7.1 [Mirth Connect only]
-	Jetty 9.2.14 [Mirth Connect only]
+	Jetty 7.6.7 [Mirth Connect only]
 	Joda-Time 2.2 [Mirth Connect only]
 	MyBatis 3.1.1 [Mirth Connect only]
 	Not-Yet-Commons-SSL 0.3.11
 	Quartz Scheduler 2.1.7 [Mirth Connect only]
 	SQLite JDBC Driver 3.7.2 [Mirth Connect only] (https://bitbucket.org/xerial/sqlite-jdbc)
-	Swagger Core 1.5.4 (https://github.com/swagger-api/swagger-core)
-	Swagger UI 2.1.3 (http://swagger.io/swagger-ui/)
 	webdavclient4j 0.92 [Mirth Connect only] (http://sourceforge.net/projects/webdavclient4j/)
+	Guava 18.0 [Mirth Connect only] (https://code.google.com/p/guava-libraries)
 
 
 --------------------------------------------------------------------------------
@@ -68,24 +61,12 @@ the same license terms.
 Mirth Connect includes the following, which is distributed under the terms of
 the Common Development and Distribution License version 1.1 (see CDDL-1.1.txt):
 
-	HK2 2.4.0 (source code can be downloaded from:
-	https://hk2.java.net/2.4.0-b34/)
-
 	JavaMail API 1.5.0 (source code can be downloaded from:
 	http://search.maven.org/remotecontent?filepath=com/sun/mail/javax.mail/1.5.0
 	/javax.mail-1.5.0-sources.jar)
-	
-	Java Persistence API 1.0 (source code can be downloaded from:
-	https://glassfish.java.net/downloads/persistence/JavaPersistence.html)
-	
-	Jersey RESTful Web Services framework 2.22.1 (source code can be downloaded
-	from: https://jersey.java.net/)
 
 	JSON Processing API (source code can be downloaded from: 
 	https://jsonp.java.net/)
-	
-	Mimepull 1.9.6 (source code can be downloaded from:
-	https://mimepull.java.net/)
 
 
 --------------------------------------------------------------------------------
@@ -94,11 +75,10 @@ the Common Development and Distribution License version 1.1 (see CDDL-1.1.txt):
 Mirth Connect includes the following, which is distributed under the terms of
 the Common Development and Distribution License version 1.0 (see CDDL-1.0.txt):
 
-	Java Servlet API 3.1.0 (source code can be downloaded from: https://java.net
-	/projects/glassfish/sources/svn/show/tags/javax.servlet-api-3.1.0)
-	
-	Jetty Apache JSP Implementation 9.2.14 (source code can be downloaded from:
-	http://download.eclipse.org/jetty/)
+	Glassfish JSP implementation version 2.1.3-b10 (source code can be
+	downloaded from:
+	http://search.maven.org/remotecontent?filepath=org/glassfish/web/jsp-impl/2.
+	1.3-b10/jsp-impl-2.1.3-b10-sources.jar or https://jsp.java.net/)
 
 	Swinglabs Wizard (source code can be downloaded from:
 	https://java.net/projects/wizard)
@@ -121,28 +101,35 @@ Mirth Connect includes the following, which is distributed under the terms of
 the Artistic License version 1.0 (see ARTISTIC-LICENSE-1.0.txt):
 
 	Display tag library (displaytag.org)
-	
-	
---------------------------------------------------------------------------------
 
-
-Mirth Connect includes the following, which is distributed under the terms of
-the OSGi Specification License, Version 1.0 (see OSGi-1.0.txt):
-
-	OSGi Core Release 4.2.0 (source code can be downloaded from:
-	https://www.osgi.org/release-4-version-4-2/)
-	
-	
 --------------------------------------------------------------------------------
 
 
 Mirth Connect includes the following software:
 
-	Eclipse Java Development Tools 3.8.2
+	Java Server Pages Expression Language Reference Implementation Source Bundle
 
 Licensing information for this software can be found in the about.html file
-contained within the 
-org.eclipse.jetty.orbit.org.eclipse.jdt.core-3.8.2.v20130121.jar file. This file
+contained within the com.sun.el_1.0.0.v201004190952.jar file. This file can be
+found within the Mirth Connect installation folder at:
+
+	[Mirth Connect Install Folder]/server-lib/jetty/jsp/
+
+Or in the Mirth Connect source code distribution, it can be found at:
+
+	[Mirth Connect Server Source Folder]/lib/jetty/jsp/
+
+
+--------------------------------------------------------------------------------
+
+
+Mirth Connect includes the following software:
+
+	Glassfish Taglibs 1.2.0.v201004190952
+
+Licensing information for this software can be found in the about.html file
+contained within the
+org.apache.taglibs.standard.glassfish_1.2.0.v201004190952.jar file. This file
 can be found within the Mirth Connect installation folder at:
 
 	[Mirth Connect Install Folder]/server-lib/jetty/jsp/
@@ -151,6 +138,96 @@ Or in the Mirth Connect source code distribution, it can be found at:
 
 	[Mirth Connect Server Source Folder]/lib/jetty/jsp/
 
+
+--------------------------------------------------------------------------------
+
+
+Mirth Connect includes the following software:
+
+	Servlet API Bundle
+
+Licensing information for this software can be found in the about.html file
+contained within the servlet-api-2.5.jar file. This file can be found within the
+Mirth Connect installation folder at:
+
+	[Mirth Connect Install Folder]/server-lib/jetty/
+
+Or in the Mirth Connect source code distribution, it can be found at:
+
+	[Mirth Connect Server Source Folder]/lib/jetty/
+
+
+--------------------------------------------------------------------------------
+
+
+Mirth Connect includes the following software:
+
+	Eclipse Compiler for Java(TM)
+
+Licensing information for this software can be found in the about.html file
+contained within the ecj-3.6.jar file. This file can be found within the Mirth
+Connect installation folder at:
+
+	[Mirth Connect Install Folder]/server-lib/jetty/jsp/
+
+Or in the Mirth Connect source code distribution, it can be found at:
+
+	[Mirth Connect Server Source Folder]/lib/jetty/jsp/
+
+
+--------------------------------------------------------------------------------
+
+
+Mirth Connect includes the following software:
+
+	Java Server Pages Expression Language Bundle
+
+Licensing information for this software can be found in the about.html file
+contained within the javax.el_2.1.0.v201004190952.jar file. This file can be
+found within the Mirth Connect installation folder at:
+
+	[Mirth Connect Install Folder]/server-lib/jetty/jsp/
+
+Or in the Mirth Connect source code distribution, it can be found at:
+
+	[Mirth Connect Server Source Folder]/lib/jetty/jsp/
+
+
+--------------------------------------------------------------------------------
+
+
+Mirth Connect includes the following software:
+
+	Java Server Pages API Bundle
+
+Licensing information for this software can be found in the about.html file
+contained within the javax.servlet.jsp-2.1.0.v201105211820.jar file. This file
+can be found within the Mirth Connect installation folder at:
+
+	[Mirth Connect Install Folder]/server-lib/jetty/jsp/
+
+Or in the Mirth Connect source code distribution, it can be found at:
+
+	[Mirth Connect Server Source Folder]/lib/jetty/jsp/
+
+
+--------------------------------------------------------------------------------
+
+
+Mirth Connect includes the following software:
+
+	Java Server Pages Standard Tag Library API Bundle
+
+Licensing information for this software can be found in the about.html file
+contained within the javax.servlet.jsp.jstl_1.2.0.v201004190952.jar file. This
+file can be found within the Mirth Connect installation folder at:
+
+	[Mirth Connect Install Folder]/server-lib/jetty/jsp/
+
+Or in the Mirth Connect source code distribution, it can be found at:
+
+	[Mirth Connect Server Source Folder]/lib/jetty/jsp/
+	
 
 --------------------------------------------------------------------------------
 
@@ -1106,47 +1183,6 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
 ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-=================== End of License =========================
-
-
---------------------------------------------------------------------------------
-
-
-The license below pertains to a portion of the software included with ASM, which
-is included with Mirth Connect.
-
-=================== Beginning of License ===================
-
-Copyright (c) 2000-2011 INRIA, France Telecom
-All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions
-are met:
-
-1. Redistributions of source code must retain the above copyright
-   notice, this list of conditions and the following disclaimer.
-
-2. Redistributions in binary form must reproduce the above copyright
-   notice, this list of conditions and the following disclaimer in the
-   documentation and/or other materials provided with the distribution.
-
-3. Neither the name of the copyright holders nor the names of its
-   contributors may be used to endorse or promote products derived from
-   this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
-THE POSSIBILITY OF SUCH DAMAGE.
 
 =================== End of License =========================
 

@@ -36,7 +36,7 @@ import com.mirth.connect.donkey.model.message.MessageContent;
 import com.mirth.connect.donkey.model.message.MessageSerializerException;
 import com.mirth.connect.donkey.model.message.Response;
 import com.mirth.connect.donkey.model.message.Status;
-import com.mirth.connect.donkey.model.message.attachment.AttachmentHandlerProvider;
+import com.mirth.connect.donkey.model.message.attachment.AttachmentHandler;
 import com.mirth.connect.donkey.server.ConnectorTaskException;
 import com.mirth.connect.donkey.server.Constants;
 import com.mirth.connect.donkey.server.Donkey;
@@ -68,6 +68,7 @@ public abstract class DestinationConnector extends Connector implements Runnable
     private StorageSettings storageSettings = new StorageSettings();
     private DonkeyDaoFactory daoFactory;
     private Logger logger = Logger.getLogger(getClass());
+    private AtomicBoolean attemptedFirst = new AtomicBoolean(false);
 
     public abstract void replaceConnectorProperties(ConnectorProperties connectorProperties, ConnectorMessage message);
 
@@ -198,8 +199,8 @@ public abstract class DestinationConnector extends Connector implements Runnable
         return isQueueEnabled() && destinationConnectorProperties.isRegenerateTemplate() && destinationConnectorProperties.isIncludeFilterTransformer();
     }
 
-    protected AttachmentHandlerProvider getAttachmentHandlerProvider() {
-        return channel.getAttachmentHandlerProvider();
+    protected AttachmentHandler getAttachmentHandler() {
+        return channel.getAttachmentHandler();
     }
 
     public void updateCurrentState(DeployedState currentState) {
@@ -227,9 +228,8 @@ public abstract class DestinationConnector extends Connector implements Runnable
             // Remove any items in the queue's buffer because they may be outdated and refresh the queue size
             queue.invalidate(true, true);
 
-            for (int i = 1; i <= destinationConnectorProperties.getThreadCount(); i++) {
+            for (int i = 0; i < destinationConnectorProperties.getThreadCount(); i++) {
                 Thread thread = new Thread(this);
-                thread.setName("Destination Queue Thread " + i + " on " + channel.getName() + " (" + getChannelId() + "), " + destinationName + " (" + getMetaDataId() + ")");
                 thread.start();
                 queueThreads.put(thread.getId(), thread);
             }
@@ -444,7 +444,7 @@ public abstract class DestinationConnector extends Connector implements Runnable
             afterSend(dao, message, response, previousStatus);
 
             if (message.getStatus() == Status.QUEUED) {
-                message.setAttemptedFirst(true);
+                attemptedFirst.set(true);
             }
         } else {
             updateQueuedStatus(dao, message, previousStatus);
@@ -542,16 +542,15 @@ public abstract class DestinationConnector extends Connector implements Runnable
                     try {
                         /*
                          * If the last message id is equal to the current message id, then the
-                         * message was not successfully sent and is being retried, so wait the retry
+                         * message was not successfully send and is being retried, so wait the retry
                          * interval.
                          * 
                          * If the last message id is greater than the current message id, then some
                          * message was not successful, message rotation is on, and the queue is back
                          * to the oldest message, so wait the retry interval.
                          */
-                        if (connectorMessage.isAttemptedFirst() || (lastMessageId != null && lastMessageId >= connectorMessage.getMessageId())) {
+                        if (attemptedFirst.getAndSet(false) || (lastMessageId != null && lastMessageId >= connectorMessage.getMessageId())) {
                             Thread.sleep(retryIntervalMillis);
-                            connectorMessage.setAttemptedFirst(false);
                         }
 
                         lastMessageId = connectorMessage.getMessageId();

@@ -9,6 +9,7 @@
 
 package com.mirth.connect.connectors.ws;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +28,8 @@ public class WebServiceReceiverProperties extends ConnectorProperties implements
 
     private String className;
     private String serviceName;
+    private List<String> usernames;
+    private List<String> passwords;
     private Binding soapBinding;
 
     public WebServiceReceiverProperties() {
@@ -35,6 +38,8 @@ public class WebServiceReceiverProperties extends ConnectorProperties implements
 
         this.className = "com.mirth.connect.connectors.ws.DefaultAcceptMessage";
         this.serviceName = "Mirth";
+        this.usernames = new ArrayList<String>();
+        this.passwords = new ArrayList<String>();
         this.soapBinding = Binding.DEFAULT;
     }
 
@@ -52,6 +57,22 @@ public class WebServiceReceiverProperties extends ConnectorProperties implements
 
     public void setServiceName(String serviceName) {
         this.serviceName = serviceName;
+    }
+
+    public List<String> getUsernames() {
+        return usernames;
+    }
+
+    public void setUsernames(List<String> usernames) {
+        this.usernames = usernames;
+    }
+
+    public List<String> getPasswords() {
+        return passwords;
+    }
+
+    public void setPasswords(List<String> passwords) {
+        this.passwords = passwords;
     }
 
     public Binding getSoapBinding() {
@@ -114,32 +135,6 @@ public class WebServiceReceiverProperties extends ConnectorProperties implements
     @Override
     public void migrate3_3_0(DonkeyElement element) {
         element.addChildElementIfNotExists("soapBinding", "DEFAULT");
-    }
-
-    @Override
-    public void migrate3_4_0(DonkeyElement element) {
-        DonkeyElement usernamesElement = element.removeChild("usernames");
-        DonkeyElement passwordsElement = element.removeChild("passwords");
-
-        if (usernamesElement != null && passwordsElement != null) {
-            DonkeyElement authPropertiesElement = element.getChildElement("pluginProperties").addChildElement("com.mirth.connect.plugins.httpauth.basic.BasicHttpAuthProperties");
-            authPropertiesElement.setAttribute("version", "3.4.0");
-            authPropertiesElement.addChildElement("authType", "BASIC");
-            authPropertiesElement.addChildElement("realm", "/services/" + element.getChildElement("serviceName").getTextContent());
-
-            DonkeyElement credentialsElement = authPropertiesElement.addChildElement("credentials");
-            credentialsElement.setAttribute("class", "linked-hash-map");
-            List<DonkeyElement> usernameElements = usernamesElement.getChildElements();
-            List<DonkeyElement> passwordElements = passwordsElement.getChildElements();
-
-            for (int i = 0; i < usernameElements.size(); i++) {
-                if (i < passwordElements.size()) {
-                    DonkeyElement entry = credentialsElement.addChildElement("entry");
-                    entry.addChildElement("string", usernameElements.get(i).getTextContent());
-                    entry.addChildElement("string", passwordElements.get(i).getTextContent());
-                }
-            }
-        }
     }
 
     @Override

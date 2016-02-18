@@ -34,7 +34,6 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 
@@ -43,7 +42,6 @@ import com.mirth.connect.donkey.model.channel.DeployedState;
 import com.mirth.connect.donkey.model.channel.MetaDataColumn;
 import com.mirth.connect.donkey.model.channel.MetaDataColumnType;
 import com.mirth.connect.donkey.model.channel.SourceConnectorProperties;
-import com.mirth.connect.donkey.model.channel.SourceConnectorPropertiesInterface;
 import com.mirth.connect.donkey.model.event.DeployedStateEventType;
 import com.mirth.connect.donkey.model.event.ErrorEventType;
 import com.mirth.connect.donkey.model.message.ConnectorMessage;
@@ -57,7 +55,6 @@ import com.mirth.connect.donkey.model.message.Status;
 import com.mirth.connect.donkey.model.message.attachment.Attachment;
 import com.mirth.connect.donkey.model.message.attachment.AttachmentException;
 import com.mirth.connect.donkey.model.message.attachment.AttachmentHandler;
-import com.mirth.connect.donkey.model.message.attachment.AttachmentHandlerProvider;
 import com.mirth.connect.donkey.server.ConnectorTaskException;
 import com.mirth.connect.donkey.server.Constants;
 import com.mirth.connect.donkey.server.DeployException;
@@ -105,16 +102,13 @@ public class Channel implements Runnable {
     private Serializer serializer = Donkey.getInstance().getSerializer();
     private MessageMaps messageMaps;
 
-    private AttachmentHandlerProvider attachmentHandlerProvider;
+    private AttachmentHandler attachmentHandler;
     private List<MetaDataColumn> metaDataColumns = new ArrayList<MetaDataColumn>();
     private SourceConnector sourceConnector;
-
     private SourceQueue sourceQueue;
-    private Map<Long, Thread> queueThreads = new HashMap<Long, Thread>();
-
     private PreProcessor preProcessor;
     private PostProcessor postProcessor;
-    private List<DestinationChainProvider> destinationChainProviders = new ArrayList<DestinationChainProvider>();
+    private List<DestinationChain> destinationChains = new ArrayList<DestinationChain>();
     private ResponseSelector responseSelector;
 
     /*
@@ -124,11 +118,12 @@ public class Channel implements Runnable {
     public static Semaphore DELETE_PERMIT = new Semaphore(2, true);
     // A cached thread pool executor that executes recovery tasks and destination chain tasks
     private ExecutorService channelExecutor;
+    private Thread queueThread;
     private Set<Thread> dispatchThreads = new HashSet<Thread>();
     private boolean shuttingDown = false;
 
     private boolean stopSourceQueue = false;
-    private ChannelProcessLock processLock;
+    private ChannelProcessLock processLock = new DefaultChannelProcessLock();
     private Lock removeContentLock = new ReentrantLock(true);
 
     private MessageController messageController = MessageController.getInstance();
@@ -256,12 +251,12 @@ public class Channel implements Runnable {
         this.messageMaps = messageMaps;
     }
 
-    public AttachmentHandlerProvider getAttachmentHandlerProvider() {
-        return attachmentHandlerProvider;
+    public AttachmentHandler getAttachmentHandler() {
+        return attachmentHandler;
     }
 
-    public void setAttachmentHandlerProvider(AttachmentHandlerProvider attachmentHandlerProvider) {
-        this.attachmentHandlerProvider = attachmentHandlerProvider;
+    public void setAttachmentHandler(AttachmentHandler attachmentHandler) {
+        this.attachmentHandler = attachmentHandler;
     }
 
     public List<MetaDataColumn> getMetaDataColumns() {
@@ -307,13 +302,13 @@ public class Channel implements Runnable {
         this.postProcessor = postProcessor;
     }
 
-    public void addDestinationChainProvider(DestinationChainProvider chainProvider) {
-        destinationChainProviders.add(chainProvider);
-        chainProvider.setChainId(destinationChainProviders.size());
+    public void addDestinationChain(DestinationChain chain) {
+        destinationChains.add(chain);
+        chain.setChainId(destinationChains.size());
     }
 
-    public List<DestinationChainProvider> getDestinationChainProviders() {
-        return destinationChainProviders;
+    public List<DestinationChain> getDestinationChains() {
+        return destinationChains;
     }
 
     public ResponseSelector getResponseSelector() {
@@ -356,9 +351,9 @@ public class Channel implements Runnable {
             return false;
         }
 
-        for (DestinationChainProvider chainProvider : destinationChainProviders) {
-            for (Integer metaDataId : chainProvider.getMetaDataIds()) {
-                if (chainProvider.getDestinationConnectors().get(metaDataId).getFilterTransformerExecutor() == null) {
+        for (DestinationChain chain : destinationChains) {
+            for (Integer metaDataId : chain.getMetaDataIds()) {
+                if (chain.getDestinationConnectors().get(metaDataId).getFilterTransformerExecutor() == null) {
                     return false;
                 }
             }
@@ -370,8 +365,8 @@ public class Channel implements Runnable {
     public int getDestinationCount() {
         int numDestinations = 0;
 
-        for (DestinationChainProvider chainProvider : destinationChainProviders) {
-            numDestinations += chainProvider.getDestinationConnectors().size();
+        for (DestinationChain chain : destinationChains) {
+            numDestinations += chain.getDestinationConnectors().size();
         }
 
         return numDestinations;
@@ -382,8 +377,8 @@ public class Channel implements Runnable {
      * destination chains for the destination connector with the given metadata id.
      */
     public DestinationConnector getDestinationConnector(int metaDataId) {
-        for (DestinationChainProvider chainProvider : destinationChainProviders) {
-            DestinationConnector destinationConnector = chainProvider.getDestinationConnectors().get(metaDataId);
+        for (DestinationChain chain : destinationChains) {
+            DestinationConnector destinationConnector = chain.getDestinationConnectors().get(metaDataId);
 
             if (destinationConnector != null) {
                 return destinationConnector;
@@ -397,8 +392,8 @@ public class Channel implements Runnable {
         List<Integer> metaDataIds = new ArrayList<Integer>();
         metaDataIds.add(getSourceConnector().getMetaDataId());
 
-        for (DestinationChainProvider chainProvider : destinationChainProviders) {
-            metaDataIds.addAll(chainProvider.getMetaDataIds());
+        for (DestinationChain chain : destinationChains) {
+            metaDataIds.addAll(chain.getMetaDataIds());
         }
 
         return metaDataIds;
@@ -408,8 +403,8 @@ public class Channel implements Runnable {
      * Returns true if any destinations have queuing enabled.
      */
     public boolean isUsingDestinationQueues() {
-        for (DestinationChainProvider chainProvider : destinationChainProviders) {
-            for (DestinationConnector destinationConnector : chainProvider.getDestinationConnectors().values()) {
+        for (DestinationChain chain : destinationChains) {
+            for (DestinationConnector destinationConnector : chain.getDestinationConnectors().values()) {
                 if (destinationConnector.isQueueEnabled()) {
                     return true;
                 }
@@ -422,9 +417,9 @@ public class Channel implements Runnable {
     public void invalidateQueues() {
         sourceQueue.invalidate(true, false);
 
-        for (DestinationChainProvider chainProvider : destinationChainProviders) {
-            for (Integer metaDataId : chainProvider.getMetaDataIds()) {
-                chainProvider.getDestinationConnectors().get(metaDataId).getQueue().invalidate(true, false);
+        for (DestinationChain chain : destinationChains) {
+            for (Integer metaDataId : chain.getMetaDataIds()) {
+                chain.getDestinationConnectors().get(metaDataId).getQueue().invalidate(true, false);
             }
         }
     }
@@ -444,9 +439,9 @@ public class Channel implements Runnable {
             throw new DeployException("Failed to deploy channel " + name + " (" + channelId + "): the source connector has queueing enabled, but the current storage settings do not support queueing on the source connector.");
         }
 
-        for (DestinationChainProvider chainProvider : destinationChainProviders) {
-            for (Integer metaDataId : chainProvider.getMetaDataIds()) {
-                DestinationConnector destinationConnector = chainProvider.getDestinationConnectors().get(metaDataId);
+        for (DestinationChain chain : destinationChains) {
+            for (Integer metaDataId : chain.getMetaDataIds()) {
+                DestinationConnector destinationConnector = chain.getDestinationConnectors().get(metaDataId);
 
                 if (destinationConnector.isQueueEnabled() && (!storageSettings.isEnabled() || !storageSettings.isStoreSourceEncoded() || !storageSettings.isStoreSent() || !storageSettings.isStoreMaps())) {
                     throw new DeployException("Failed to deploy channel " + name + " (" + channelId + "): one or more destination connectors have queueing enabled, but the current storage settings do not support queueing on destination connectors.");
@@ -480,12 +475,12 @@ public class Channel implements Runnable {
                 sourceConnector.getBatchAdaptorFactory().onDeploy();
             }
 
-            for (DestinationChainProvider chainProvider : destinationChainProviders) {
-                chainProvider.setDaoFactory(daoFactory);
-                chainProvider.setStorageSettings(storageSettings);
+            for (DestinationChain chain : destinationChains) {
+                chain.setDaoFactory(daoFactory);
+                chain.setStorageSettings(storageSettings);
 
-                for (Integer metaDataId : chainProvider.getMetaDataIds()) {
-                    DestinationConnector destinationConnector = chainProvider.getDestinationConnectors().get(metaDataId);
+                for (Integer metaDataId : chain.getMetaDataIds()) {
+                    DestinationConnector destinationConnector = chain.getDestinationConnectors().get(metaDataId);
                     destinationConnector.setDaoFactory(daoFactory);
                     destinationConnector.setStorageSettings(storageSettings);
 
@@ -520,10 +515,10 @@ public class Channel implements Runnable {
         statisticMap.put(Status.QUEUED, (long) sourceQueue.size());
 
         connectorStatistics.put(0, statisticMap);
-        for (DestinationChainProvider chainProvider : destinationChainProviders) {
-            for (Integer metaDataId : chainProvider.getMetaDataIds()) {
+        for (DestinationChain chain : destinationChains) {
+            for (Integer metaDataId : chain.getMetaDataIds()) {
                 statisticMap = new HashMap<Status, Long>(channelStatistics.getConnectorStats(channelId, metaDataId));
-                statisticMap.put(Status.QUEUED, (long) chainProvider.getDestinationConnectors().get(metaDataId).getQueue().size());
+                statisticMap.put(Status.QUEUED, (long) chain.getDestinationConnectors().get(metaDataId).getQueue().size());
 
                 connectorStatistics.put(metaDataId, statisticMap);
             }
@@ -540,8 +535,8 @@ public class Channel implements Runnable {
         List<Integer> deployedMetaDataIds = new ArrayList<Integer>();
         deployedMetaDataIds.add(0);
 
-        for (DestinationChainProvider chainProvider : destinationChainProviders) {
-            for (Integer metaDataId : chainProvider.getMetaDataIds()) {
+        for (DestinationChain chain : destinationChains) {
+            for (Integer metaDataId : chain.getMetaDataIds()) {
                 deployedMetaDataIds.add(metaDataId);
             }
         }
@@ -616,12 +611,18 @@ public class Channel implements Runnable {
                 // Remove any items in the queue's buffer because they may be outdated and refresh the queue size.
                 sourceQueue.invalidate(true, true);
 
+                // enable all destination connectors in each chain
+                for (DestinationChain chain : destinationChains) {
+                    chain.getEnabledMetaDataIds().clear();
+                    chain.getEnabledMetaDataIds().addAll(chain.getMetaDataIds());
+                }
+
                 channelExecutor = Executors.newCachedThreadPool();
 
                 // start the destination connectors but not the destination queues
-                for (DestinationChainProvider chainProvider : destinationChainProviders) {
-                    for (Integer metaDataId : chainProvider.getMetaDataIds()) {
-                        DestinationConnector destinationConnector = chainProvider.getDestinationConnectors().get(metaDataId);
+                for (DestinationChain chain : destinationChains) {
+                    for (Integer metaDataId : chain.getMetaDataIds()) {
+                        DestinationConnector destinationConnector = chain.getDestinationConnectors().get(metaDataId);
 
                         if (destinationConnector.getCurrentState() == DeployedState.STOPPED && (connectorsToStart == null || connectorsToStart.contains(metaDataId))) {
                             startedMetaDataIds.add(metaDataId);
@@ -659,14 +660,8 @@ public class Channel implements Runnable {
 
                 // start up the worker thread that will process queued messages
                 if (!sourceConnector.isRespondAfterProcessing()) {
-                    int processingThreads = ((SourceConnectorPropertiesInterface) sourceConnector.getConnectorProperties()).getSourceConnectorProperties().getProcessingThreads();
-                    queueThreads.clear();
-                    for (int i = 1; i <= processingThreads; i++) {
-                        Thread queueThread = new Thread(Channel.this);
-                        queueThread.setName("Source Queue Thread " + i + " on " + name + " (" + channelId + ")");
-                        queueThread.start();
-                        queueThreads.put(queueThread.getId(), queueThread);
-                    }
+                    queueThread = new Thread(Channel.this);
+                    queueThread.start();
                 }
 
                 if (connectorsToStart == null || connectorsToStart.contains(0)) {
@@ -712,8 +707,8 @@ public class Channel implements Runnable {
                 List<Integer> deployedMetaDataIds = new ArrayList<Integer>();
                 deployedMetaDataIds.add(0);
 
-                for (DestinationChainProvider chainProvider : destinationChainProviders) {
-                    for (Integer metaDataId : chainProvider.getMetaDataIds()) {
+                for (DestinationChain chain : destinationChains) {
+                    for (Integer metaDataId : chain.getMetaDataIds()) {
                         deployedMetaDataIds.add(metaDataId);
                     }
                 }
@@ -747,10 +742,8 @@ public class Channel implements Runnable {
             }
         }
 
-        if (MapUtils.isNotEmpty(queueThreads)) {
-            for (Thread queueThread : queueThreads.values()) {
-                queueThread.interrupt();
-            }
+        if (queueThread != null) {
+            queueThread.interrupt();
         }
 
         // Interrupt any dispatch threads that are currently processing
@@ -764,8 +757,8 @@ public class Channel implements Runnable {
         List<Integer> deployedMetaDataIds = new ArrayList<Integer>();
         deployedMetaDataIds.add(0);
 
-        for (DestinationChainProvider chainProvider : destinationChainProviders) {
-            for (Integer metaDataId : chainProvider.getMetaDataIds()) {
+        for (DestinationChain chain : destinationChains) {
+            for (Integer metaDataId : chain.getMetaDataIds()) {
                 deployedMetaDataIds.add(metaDataId);
             }
         }
@@ -857,8 +850,8 @@ public class Channel implements Runnable {
                 startMetaDataIds.add(0);
             }
 
-            for (DestinationChainProvider chainProvider : destinationChainProviders) {
-                for (DestinationConnector destinationConnector : chainProvider.getDestinationConnectors().values()) {
+            for (DestinationChain chain : getDestinationChains()) {
+                for (DestinationConnector destinationConnector : chain.getDestinationConnectors().values()) {
                     if (destinationConnector.getCurrentState() != DeployedState.STOPPED) {
                         startMetaDataIds.add(destinationConnector.getMetaDataId());
                     }
@@ -944,8 +937,8 @@ public class Channel implements Runnable {
                      * finishDispatch complete (which should release the channel's process lock and
                      * allow us to acquire it here).
                      */
-                    obtainAllProcessLockPermits();
-                    releaseAllProcessLockPermits();
+                    obtainProcessLock();
+                    releaseProcessLock();
                     break;
                 }
             }
@@ -970,11 +963,8 @@ public class Channel implements Runnable {
             ThreadUtils.checkInterruptedStatus();
         }
 
-        if (MapUtils.isNotEmpty(queueThreads)) {
-            for (Thread queueThread : queueThreads.values()) {
-                queueThread.join();
-            }
-            queueThreads.clear();
+        if (queueThread != null) {
+            queueThread.join();
         }
 
         channelExecutor.shutdown();
@@ -996,10 +986,8 @@ public class Channel implements Runnable {
             }
         }
 
-        if (MapUtils.isNotEmpty(queueThreads)) {
-            for (Thread queueThread : queueThreads.values()) {
-                queueThread.interrupt();
-            }
+        if (queueThread != null) {
+            queueThread.interrupt();
         }
 
         // Interrupt any dispatch threads that are currently processing
@@ -1040,8 +1028,8 @@ public class Channel implements Runnable {
                      * finishDispatch complete (which should release the channel's process lock and
                      * allow us to acquire it here).
                      */
-                    obtainAllProcessLockPermits();
-                    releaseAllProcessLockPermits();
+                    obtainProcessLock();
+                    releaseProcessLock();
                     break;
                 }
             }
@@ -1129,7 +1117,6 @@ public class Channel implements Runnable {
         }
 
         Thread currentThread = Thread.currentThread();
-        String originalThreadName = currentThread.getName();
         boolean lockAcquired = false;
         Long persistedMessageId = null;
 
@@ -1140,12 +1127,6 @@ public class Channel implements Runnable {
                 } else {
                     throw new ChannelException(true);
                 }
-            }
-
-            if (StringUtils.contains(originalThreadName, channelId)) {
-                currentThread.setName("Channel Dispatch Thread < " + originalThreadName);
-            } else {
-                currentThread.setName("Channel Dispatch Thread on " + name + " (" + channelId + ") < " + originalThreadName);
             }
 
             DonkeyDao dao = null;
@@ -1244,7 +1225,6 @@ public class Channel implements Runnable {
             synchronized (dispatchThreads) {
                 dispatchThreads.remove(currentThread);
             }
-            currentThread.setName(originalThreadName);
         }
     }
 
@@ -1343,8 +1323,8 @@ public class Channel implements Runnable {
              * If no destination metadata ids were passed into the raw message, then add all
              * destination metadata ids in the channel.
              */
-            for (DestinationChainProvider chainProvider : destinationChainProviders) {
-                destinationSet.addAll(chainProvider.getMetaDataIds());
+            for (DestinationChain chain : destinationChains) {
+                destinationSet.addAll(chain.getMetaDataIds());
             }
         }
 
@@ -1354,9 +1334,8 @@ public class Channel implements Runnable {
         // The source map is read-only so we wrap it in an unmodifiable map
         sourceMessage.setSourceMap(Collections.unmodifiableMap(sourceMap));
 
-        if (attachmentHandlerProvider != null && attachmentHandlerProvider.canExtractAttachments()) {
+        if (attachmentHandler != null && attachmentHandler.canExtractAttachments()) {
             ThreadUtils.checkInterruptedStatus();
-            AttachmentHandler attachmentHandler = attachmentHandlerProvider.getHandler();
 
             try {
                 attachmentHandler.initialize(rawMessage, this);
@@ -1423,14 +1402,6 @@ public class Channel implements Runnable {
 
     public void releaseProcessLock() {
         processLock.release();
-    }
-
-    public void obtainAllProcessLockPermits() throws InterruptedException {
-        processLock.acquireAll();
-    }
-
-    public void releaseAllProcessLockPermits() {
-        processLock.releaseAll();
     }
 
     public void obtainRemoveContentLock() throws InterruptedException {
@@ -1604,16 +1575,12 @@ public class Channel implements Runnable {
                 metaDataIds = (Collection<Integer>) sourceMessage.getSourceMap().get(Constants.DESTINATION_SET_KEY);
             }
 
-            List<DestinationChain> destinationChains = new ArrayList<DestinationChain>();
-
-            for (DestinationChainProvider chainProvider : destinationChainProviders) {
-                DestinationChain chain = chainProvider.getChain();
-
+            for (DestinationChain chain : destinationChains) {
                 // The order of the enabledMetaDataId list needs to be based on the chain order.
                 // We do not use ListUtils here because there is no official guarantee of order.
                 if (metaDataIds != null) {
                     List<Integer> enabledMetaDataIds = new ArrayList<Integer>();
-                    for (Integer id : chainProvider.getMetaDataIds()) {
+                    for (Integer id : chain.getMetaDataIds()) {
                         if (metaDataIds.contains(id)) {
                             enabledMetaDataIds.add(id);
                         }
@@ -1626,7 +1593,7 @@ public class Channel implements Runnable {
                     ThreadUtils.checkInterruptedStatus();
                     Integer metaDataId = chain.getEnabledMetaDataIds().get(0);
 
-                    DestinationConnector destinationConnector = chainProvider.getDestinationConnectors().get(metaDataId);
+                    DestinationConnector destinationConnector = chain.getDestinationConnectors().get(metaDataId);
 
                     // create the raw content from the source's encoded content
                     MessageContent raw = new MessageContent(channelId, messageId, metaDataId, ContentType.RAW, sourceEncoded.getContent(), destinationConnector.getInboundDataType().getType(), sourceEncoded.isEncrypted());
@@ -1634,7 +1601,7 @@ public class Channel implements Runnable {
                     // create the message and set the raw content
                     ConnectorMessage message = new ConnectorMessage(channelId, name, messageId, metaDataId, sourceMessage.getServerId(), Calendar.getInstance(), Status.RECEIVED);
                     message.setConnectorName(destinationConnector.getDestinationName());
-                    message.setChainId(chainProvider.getChainId());
+                    message.setChainId(chain.getChainId());
                     message.setOrderId(destinationConnector.getOrderId());
 
                     // We don't create a new map here because the source map is read-only and thus won't ever be changed
@@ -1648,8 +1615,6 @@ public class Channel implements Runnable {
 
                     destinationMessages.put(metaDataId, message);
                 }
-
-                destinationChains.add(chain);
             }
 
             ThreadUtils.checkInterruptedStatus();
@@ -1674,9 +1639,7 @@ public class Channel implements Runnable {
 
                 for (int i = 0; i <= enabledChains.size() - 2; i++) {
                     try {
-                        DestinationChain chain = enabledChains.get(i);
-                        chain.setName("Destination Chain Thread " + (i + 1) + " on " + name + " (" + channelId + ")");
-                        destinationChainTasks.add(channelExecutor.submit(chain));
+                        destinationChainTasks.add(channelExecutor.submit(enabledChains.get(i)));
                     } catch (RejectedExecutionException e) {
                         Thread.currentThread().interrupt();
                         throw new InterruptedException();
@@ -1687,9 +1650,7 @@ public class Channel implements Runnable {
 
                 // Always call the last chain directly rather than submitting it as a Future
                 try {
-                    DestinationChain chain = enabledChains.get(enabledChains.size() - 1);
-                    chain.setName("Destination Chain Thread " + enabledChains.size() + " on " + name + " (" + channelId + ")");
-                    connectorMessages = chain.call();
+                    connectorMessages = enabledChains.get(enabledChains.size() - 1).call();
                 } catch (Throwable t) {
                     handleDestinationChainThrowable(t);
                 }
@@ -1707,6 +1668,14 @@ public class Channel implements Runnable {
                     }
 
                     addConnectorMessages(finalMessage, sourceMessage, connectorMessages);
+                }
+            }
+
+            // re-enable all destination connectors in each chain
+            if (metaDataIds != null) {
+                for (DestinationChain chain : destinationChains) {
+                    chain.getEnabledMetaDataIds().clear();
+                    chain.getEnabledMetaDataIds().addAll(chain.getMetaDataIds());
                 }
             }
 
@@ -1781,25 +1750,17 @@ public class Channel implements Runnable {
         ThreadUtils.checkInterruptedStatus();
         ConnectorMessage sourceMessage = sourceQueue.poll(timeout, TimeUnit.MILLISECONDS);
 
-        try {
-            while (sourceMessage != null && !stopSourceQueue) {
-                try {
-                    process(sourceMessage, true);
-                    sourceQueue.finish(sourceMessage);
-                } catch (RuntimeException e) {
-                    logger.error("An error occurred in channel " + name + " (" + channelId + ") while processing message ID " + sourceMessage.getMessageId() + " from the source queue", e);
-                    eventDispatcher.dispatchEvent(new ErrorEvent(channelId, 0, sourceMessage.getMessageId(), ErrorEventType.SOURCE_CONNECTOR, sourceConnector.getSourceName(), null, e.getMessage(), e));
-                    sourceQueue.finish(sourceMessage);
-                    sourceQueue.invalidate(false, false);
-                    Thread.sleep(Constants.SOURCE_QUEUE_ERROR_SLEEP_TIME);
-                }
+        while (sourceMessage != null && !stopSourceQueue) {
+            try {
+                process(sourceMessage, true);
+            } catch (RuntimeException e) {
+                logger.error("An error occurred in channel " + name + " (" + channelId + ") while processing message ID " + sourceMessage.getMessageId() + " from the source queue", e);
+                eventDispatcher.dispatchEvent(new ErrorEvent(channelId, 0, sourceMessage.getMessageId(), ErrorEventType.SOURCE_CONNECTOR, sourceConnector.getSourceName(), null, e.getMessage(), e));
+                sourceQueue.invalidate(false, false);
+                Thread.sleep(Constants.SOURCE_QUEUE_ERROR_SLEEP_TIME);
+            }
 
-                sourceMessage = sourceQueue.poll();
-            }
-        } finally {
-            if (sourceMessage != null) {
-                sourceQueue.finish(sourceMessage);
-            }
+            sourceMessage = sourceQueue.poll();
         }
     }
 

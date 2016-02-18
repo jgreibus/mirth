@@ -12,11 +12,10 @@ package com.mirth.connect.server.userutil;
 import org.apache.commons.lang3.text.WordUtils;
 
 /**
- * States of UNDEPLOYED, DEPLOYING, UNDEPLOYING, STARTING, STARTED, PAUSING, PAUSED, STOPPING,
- * STOPPED
+ * States of DEPLOYING, UNDEPLOYING, STARTING, STARTED, PAUSING, PAUSED, STOPPING, STOPPED
  */
 public enum DeployedState {
-    UNDEPLOYED, DEPLOYING, UNDEPLOYING, STARTING, STARTED, PAUSING, PAUSED, STOPPING, STOPPED, SYNCING, UNKNOWN;
+    DEPLOYING, UNDEPLOYING, STARTING, STARTED, PAUSING, PAUSED, STOPPING, STOPPED, SYNCING, UNKNOWN;
 
     private DeployedState() {}
 
@@ -27,8 +26,6 @@ public enum DeployedState {
 
     static DeployedState fromDonkeyDeployedState(com.mirth.connect.donkey.model.channel.DeployedState deployedState) {
         switch (deployedState) {
-            case UNDEPLOYED:
-                return UNDEPLOYED;
             case DEPLOYING:
                 return DEPLOYING;
             case UNDEPLOYING:

@@ -11,9 +11,9 @@ package com.mirth.connect.donkey.model.channel;
 
 import java.io.Serializable;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 
@@ -32,7 +32,7 @@ public class DestinationConnectorProperties implements Serializable, Migratable,
     private int threadCount;
     private String threadAssignmentVariable;
     private boolean validateResponse;
-    private Map<String, String> resourceIds;
+    private Set<String> resourceIds;
 
     public DestinationConnectorProperties() {
         this(false);
@@ -49,8 +49,8 @@ public class DestinationConnectorProperties implements Serializable, Migratable,
         threadCount = 1;
         threadAssignmentVariable = "";
         this.validateResponse = validateResponse;
-        this.resourceIds = new LinkedHashMap<String, String>();
-        resourceIds.put("Default Resource", "[Default Resource]");
+        resourceIds = new LinkedHashSet<String>();
+        this.resourceIds.add("Default Resource");
     }
 
     public DestinationConnectorProperties(DestinationConnectorProperties props) {
@@ -64,7 +64,7 @@ public class DestinationConnectorProperties implements Serializable, Migratable,
         threadCount = props.getThreadCount();
         threadAssignmentVariable = props.getThreadAssignmentVariable();
         validateResponse = props.isValidateResponse();
-        resourceIds = new LinkedHashMap<String, String>(props.getResourceIds());
+        resourceIds = new LinkedHashSet<String>(props.getResourceIds());
     }
 
     public boolean isQueueEnabled() {
@@ -147,11 +147,11 @@ public class DestinationConnectorProperties implements Serializable, Migratable,
         this.validateResponse = validateResponse;
     }
 
-    public Map<String, String> getResourceIds() {
+    public Set<String> getResourceIds() {
         return resourceIds;
     }
 
-    public void setResourceIds(Map<String, String> resourceIds) {
+    public void setResourceIds(Set<String> resourceIds) {
         this.resourceIds = resourceIds;
     }
 
@@ -180,25 +180,6 @@ public class DestinationConnectorProperties implements Serializable, Migratable,
 
     @Override
     public void migrate3_3_0(DonkeyElement element) {}
-
-    @Override
-    public void migrate3_4_0(DonkeyElement element) {
-        DonkeyElement resourceIdsElement = element.getChildElement("resourceIds");
-        List<DonkeyElement> resourceIdsList = resourceIdsElement.getChildElements();
-        resourceIdsElement.removeChildren();
-        resourceIdsElement.setAttribute("class", "linked-hash-map");
-
-        for (DonkeyElement resourceId : resourceIdsList) {
-            DonkeyElement entry = resourceIdsElement.addChildElement("entry");
-            String resourceIdText = resourceId.getTextContent();
-            entry.addChildElement("string", resourceIdText);
-            if (resourceIdText.equals("Default Resource")) {
-                entry.addChildElement("string", "[Default Resource]");
-            } else {
-                entry.addChildElement("string");
-            }
-        }
-    }
 
     @Override
     public Map<String, Object> getPurgedProperties() {

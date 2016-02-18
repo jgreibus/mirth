@@ -32,8 +32,6 @@ public abstract class ConnectorPropertiesPlugin extends ClientPlugin {
      */
     public abstract boolean isSupported(String transportName);
 
-    public abstract boolean isConnectorPropertiesPluginSupported(String pluginPointName);
-
     @Override
     public void start() {}
 

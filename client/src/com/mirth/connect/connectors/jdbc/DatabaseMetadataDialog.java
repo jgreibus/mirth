@@ -13,9 +13,7 @@ import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
@@ -23,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-import java.util.UUID;
 import java.util.prefs.Preferences;
 
 import javax.swing.SwingWorker;
@@ -43,7 +40,6 @@ import com.mirth.connect.client.ui.RefreshTableModel;
 import com.mirth.connect.client.ui.UIConstants;
 import com.mirth.connect.client.ui.components.MirthTable;
 import com.mirth.connect.client.ui.panels.connectors.ConnectorSettingsPanel;
-import com.mirth.connect.client.ui.panels.connectors.ResponseHandler;
 
 public class DatabaseMetadataDialog extends MirthDialog {
     /**
@@ -63,7 +59,7 @@ public class DatabaseMetadataDialog extends MirthDialog {
     private final String TABLE_TYPE_COLUMN = "table";
     private final String COLUMN_TYPE_COLUMN = "column";
 
-    private String metaDataWorkerId = null;
+    private SwingWorker<Void, Void> metaDataWorker = null;
 
     public enum STATEMENT_TYPE {
 
@@ -502,11 +498,8 @@ public class DatabaseMetadataDialog extends MirthDialog {
     }// </editor-fold>//GEN-END:initComponents
 
     private void cancelButtonActionPerformed(java.awt.event.ActionEvent evt) {// GEN-FIRST:event_cancelButtonActionPerformed
-        if (metaDataWorkerId != null) {
-            SwingWorker<Object, Void> worker = parentConnector.getWorker(metaDataWorkerId);
-            if (worker != null) {
-                worker.cancel(true);
-            }
+        if (metaDataWorker != null) {
+            metaDataWorker.cancel(true);
         }
         this.dispose();
     }// GEN-LAST:event_cancelButtonActionPerformed
@@ -536,36 +529,42 @@ public class DatabaseMetadataDialog extends MirthDialog {
         // retrieve the table pattern filter
         databaseConnectionInfo.setTableNamePatternExpression(filterTableTextField.getText());
 
+        final String workingId = parent.startWorking("Retrieving tables...");
+
         // Cancel any previous workers that had been called.
-        if (metaDataWorkerId != null) {
-            SwingWorker<Object, Void> worker = parentConnector.getWorker(metaDataWorkerId);
-            if (worker != null) {
-                worker.cancel(true);
-            }
-            metaDataWorkerId = null;
+        if (metaDataWorker != null) {
+            metaDataWorker.cancel(true);
         }
 
-        ResponseHandler handler = new ResponseHandler() {
-            @Override
-            public void handle(Object response) {
-                Set<Table> metaData = (Set<Table>) response;
-                if (metaData == null) {
-                    parent.alertError(parent, "Could not retrieve database metadata.  Please ensure that your driver, URL, username, and password are correct.");
-                } else {
-                    // format table information into presentation
-                    makeIncludedMetaDataTable(metaData);
+        metaDataWorker = new SwingWorker<Void, Void>() {
+            Set<Table> metaData;
+
+            public Void doInBackground() {
+                try {
+                    // method "getInformationSchema" will return Set<Table>
+                    metaData = (Set<Table>) parent.mirthClient.invokeConnectorServiceAsync(parent.channelEditPanel.currentChannel.getId(), parent.channelEditPanel.currentChannel.getName(), "Database Reader", "getInformationSchema", databaseConnectionInfo);
+                } catch (ClientException e) {
+                    // Handle in the done method
                 }
-                metaDataWorkerId = null;
+                return null;
+            }
+
+            public void done() {
+                // If the worker was canceled, don't display an error
+                if (!isCancelled()) {
+                    if (metaData == null) {
+                        parent.alertError(parent, "Could not retrieve database metadata.  Please ensure that your driver, URL, username, and password are correct.");
+                    } else {
+                        // format table information into presentation
+                        makeIncludedMetaDataTable(metaData);
+                    }
+                }
+
+                parent.stopWorking(workingId);
             }
         };
 
-        Set<String> tableNamePatterns = new HashSet<String>(Arrays.asList(databaseConnectionInfo.getTableNamePatternExpression().trim().split("[, ]+")));
-        try {
-            metaDataWorkerId = UUID.randomUUID().toString();
-            parentConnector.getServlet(DatabaseConnectorServletInterface.class, "Retrieving tables...", "Could not retrieve database metadata.  Please ensure that your driver, URL, username, and password are correct.\n\n", handler, metaDataWorkerId).getTables(parent.channelEditPanel.currentChannel.getId(), parent.channelEditPanel.currentChannel.getName(), databaseConnectionInfo.getDriver(), databaseConnectionInfo.getUrl(), databaseConnectionInfo.getUsername(), databaseConnectionInfo.getPassword(), tableNamePatterns, databaseConnectionInfo.getSelectLimit(), databaseConnectionInfo.getResourceIds());
-        } catch (ClientException e) {
-            // Should not happen
-        }
+        metaDataWorker.execute();
     }//GEN-LAST:event_filterButtonActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables

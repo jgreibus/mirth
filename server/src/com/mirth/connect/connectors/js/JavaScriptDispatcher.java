@@ -123,12 +123,12 @@ public class JavaScriptDispatcher extends DestinationConnector {
         private ConnectorMessage message;
 
         public JavaScriptDispatcherTask(MirthContextFactory contextFactory, ConnectorMessage message) {
-            super(contextFactory, JavaScriptDispatcher.this);
+            super(contextFactory);
             this.message = message;
         }
 
         @Override
-        public Response doCall() throws Exception {
+        public Response call() throws Exception {
             String responseData = null;
             String responseError = null;
             String responseStatusMessage = "JavaScript evaluation successful.";

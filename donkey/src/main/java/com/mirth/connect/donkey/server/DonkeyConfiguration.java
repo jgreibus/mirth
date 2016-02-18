@@ -15,14 +15,14 @@ import com.mirth.connect.donkey.server.event.EventDispatcher;
 
 public class DonkeyConfiguration {
     private String appData;
-    private Properties donkeyProperties;
+    private Properties databaseProperties;
     private Encryptor encryptor;
     private EventDispatcher eventDispatcher;
     private String serverId;
 
-    public DonkeyConfiguration(String appData, Properties donkeyProperties, Encryptor encryptor, EventDispatcher eventDispatcher, String serverId) {
+    public DonkeyConfiguration(String appData, Properties databaseProperties, Encryptor encryptor, EventDispatcher eventDispatcher, String serverId) {
         this.appData = appData;
-        this.donkeyProperties = donkeyProperties;
+        this.databaseProperties = databaseProperties;
         this.encryptor = encryptor;
         this.eventDispatcher = eventDispatcher;
         this.serverId = serverId;
@@ -36,12 +36,12 @@ public class DonkeyConfiguration {
         this.appData = appData;
     }
 
-    public Properties getDonkeyProperties() {
-        return donkeyProperties;
+    public Properties getDatabaseProperties() {
+        return databaseProperties;
     }
 
-    public void setDonkeyProperties(Properties donkeyProperties) {
-        this.donkeyProperties = donkeyProperties;
+    public void setDatabaseProperties(Properties databaseProperties) {
+        this.databaseProperties = databaseProperties;
     }
 
     public Encryptor getEncryptor() {

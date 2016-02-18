@@ -328,10 +328,7 @@ public class FileReceiver extends PollConnector {
                             in = new InputStreamReader(con.readFile(file.getName(), file.getParent()), charsetEncoding);
                             BatchRawMessage batchRawMessage = new BatchRawMessage(new BatchMessageReader(in), sourceMap);
 
-                            Boolean messagesExist = dispatchBatchMessage(batchRawMessage, null);
-                            if (messagesExist != null && !messagesExist) {
-                                logger.warn("File " + originalFilename + " was successfully processed, but no messages were dispatched to the channel.");
-                            }
+                            dispatchBatchMessage(batchRawMessage, null);
                         } finally {
                             if (in != null) {
                                 in.close();

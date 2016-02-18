@@ -44,7 +44,6 @@
 		<property name="plugins.directoryresource" value="${extensions}/directoryresource" />
 		<property name="plugins.dashboardstatus" value="${extensions}/dashboardstatus" />
 		<property name="plugins.dicomviewer" value="${extensions}/dicomviewer" />
-		<property name="plugins.httpauth" value="${extensions}/httpauth" />
 		<property name="plugins.imageviewer" value="${extensions}/imageviewer" />
 		<property name="plugins.javascriptrule" value="${extensions}/javascriptrule" />
 		<property name="plugins.javascriptstep" value="${extensions}/javascriptstep" />
@@ -101,7 +100,6 @@
 			<include name="com/mirth/connect/userutil/**" />
 			<include name="com/mirth/connect/util/**" />
 			<include name="org/mozilla/**" />
-			<include name="org/glassfish/jersey/**" />
 
 			<include name="version.properties" />
 		</jar>
@@ -147,17 +145,11 @@
 		</copy>
 		<jar destfile="${connectors.doc}/doc-shared.jar" basedir="${classes}">
 			<include name="com/mirth/connect/connectors/doc/DocumentDispatcherProperties.class" />
-			<include name="com/mirth/connect/connectors/doc/DocumentConnectorServletInterface.class" />
-			<include name="com/mirth/connect/connectors/doc/PageSize.class" />
-			<include name="com/mirth/connect/connectors/doc/Unit.class" />
 		</jar>
 		<jar destfile="${connectors.doc}/doc-server.jar">
 			<fileset dir="${classes}">
 				<include name="com/mirth/connect/connectors/doc/**" />
 				<exclude name="com/mirth/connect/connectors/doc/DocumentDispatcherProperties.class" />
-				<exclude name="com/mirth/connect/connectors/doc/DocumentConnectorServletInterface.class" />
-				<exclude name="com/mirth/connect/connectors/doc/PageSize.class" />
-				<exclude name="com/mirth/connect/connectors/doc/Unit.class" />
 			</fileset>
 		</jar>
 
@@ -178,7 +170,7 @@
 			<include name="com/mirth/connect/connectors/file/FileDispatcherProperties.class" />
 			<include name="com/mirth/connect/connectors/file/FileScheme.class" />
 			<include name="com/mirth/connect/connectors/file/FileAction.class" />
-			<include name="com/mirth/connect/connectors/file/FileConnectorServletInterface.class" />
+			<include name="com/mirth/connect/connectors/file/FileServiceMethods.class" />
 		</jar>
 		<jar destfile="${connectors.file}/file-server.jar">
 			<fileset dir="${classes}">
@@ -189,7 +181,7 @@
 				<exclude name="com/mirth/connect/connectors/file/FileDispatcherProperties.class" />
 				<exclude name="com/mirth/connect/connectors/file/FileScheme.class" />
 				<exclude name="com/mirth/connect/connectors/file/FileAction.class" />
-				<exclude name="com/mirth/connect/connectors/file/FileConnectorServletInterface.class" />
+				<exclude name="com/mirth/connect/connectors/file/FileServiceMethods.class" />
 			</fileset>
 		</jar>
 
@@ -208,7 +200,6 @@
 			<include name="com/mirth/connect/connectors/http/HttpDispatcherProperties.class" />
 			<include name="com/mirth/connect/connectors/http/HttpStaticResource.class" />
 			<include name="com/mirth/connect/connectors/http/HttpStaticResource$ResourceType.class" />
-			<include name="com/mirth/connect/connectors/http/HttpConnectorServletInterface.class" />
 		</jar>
 		<jar destfile="${connectors.http}/http-server.jar">
 			<fileset dir="${classes}">
@@ -217,7 +208,6 @@
 				<exclude name="com/mirth/connect/connectors/http/HttpDispatcherProperties.class" />
 				<exclude name="com/mirth/connect/connectors/http/HttpStaticResource.class" />
 				<exclude name="com/mirth/connect/connectors/http/HttpStaticResource$ResourceType.class" />
-				<exclude name="com/mirth/connect/connectors/http/HttpConnectorServletInterface.class" />
 			</fileset>
 		</jar>
 
@@ -237,7 +227,6 @@
 			<include name="com/mirth/connect/connectors/jdbc/DatabaseConnectionInfo.class" />
 			<include name="com/mirth/connect/connectors/jdbc/Table.class" />
 			<include name="com/mirth/connect/connectors/jdbc/Column.class" />
-			<include name="com/mirth/connect/connectors/jdbc/DatabaseConnectorServletInterface.class" />
 		</jar>
 		<jar destfile="${connectors.jdbc}/jdbc-server.jar">
 			<fileset dir="${classes}">
@@ -247,7 +236,6 @@
 				<exclude name="com/mirth/connect/connectors/jdbc/DatabaseConnectionInfo.class" />
 				<exclude name="com/mirth/connect/connectors/jdbc/Table.class" />
 				<exclude name="com/mirth/connect/connectors/jdbc/Column.class" />
-				<exclude name="com/mirth/connect/connectors/jdbc/DatabaseConnectorServletInterface.class" />
 			</fileset>
 		</jar>
 
@@ -265,7 +253,6 @@
 			<include name="com/mirth/connect/connectors/jms/JmsConnectorProperties.class" />
 			<include name="com/mirth/connect/connectors/jms/JmsReceiverProperties.class" />
 			<include name="com/mirth/connect/connectors/jms/JmsDispatcherProperties.class" />
-			<include name="com/mirth/connect/connectors/jms/JmsConnectorServletInterface.class" />
 		</jar>
 		<jar destfile="${connectors.jms}/jms-server.jar">
 			<fileset dir="${classes}">
@@ -273,7 +260,6 @@
 				<exclude name="com/mirth/connect/connectors/jms/JmsConnectorProperties.class" />
 				<exclude name="com/mirth/connect/connectors/jms/JmsReceiverProperties.class" />
 				<exclude name="com/mirth/connect/connectors/jms/JmsDispatcherProperties.class" />
-				<exclude name="com/mirth/connect/connectors/jms/JmsConnectorServletInterface.class" />
 			</fileset>
 		</jar>
 
@@ -311,14 +297,12 @@
 		</copy>
 		<jar destfile="${connectors.smtp}/smtp-shared.jar" basedir="${classes}">
 			<include name="com/mirth/connect/connectors/smtp/SmtpDispatcherProperties.class" />
-			<include name="com/mirth/connect/connectors/smtp/SmtpConnectorServletInterface.class" />
 			<include name="com/mirth/connect/connectors/smtp/Attachment.class" />
 		</jar>
 		<jar destfile="${connectors.smtp}/smtp-server.jar">
 			<fileset dir="${classes}">
 				<include name="com/mirth/connect/connectors/smtp/**" />
 				<exclude name="com/mirth/connect/connectors/smtp/SmtpDispatcherProperties.class" />
-				<exclude name="com/mirth/connect/connectors/smtp/SmtpConnectorServletInterface.class" />
 				<exclude name="com/mirth/connect/connectors/smtp/Attachment.class" />
 			</fileset>
 		</jar>
@@ -336,14 +320,12 @@
 		<jar destfile="${connectors.tcp}/tcp-shared.jar" basedir="${classes}">
 			<include name="com/mirth/connect/connectors/tcp/TcpReceiverProperties.class" />
 			<include name="com/mirth/connect/connectors/tcp/TcpDispatcherProperties.class" />
-			<include name="com/mirth/connect/connectors/tcp/TcpConnectorServletInterface.class" />
 		</jar>
 		<jar destfile="${connectors.tcp}/tcp-server.jar">
 			<fileset dir="${classes}">
 				<include name="com/mirth/connect/connectors/tcp/**" />
 				<exclude name="com/mirth/connect/connectors/tcp/TcpReceiverProperties.class" />
 				<exclude name="com/mirth/connect/connectors/tcp/TcpDispatcherProperties.class" />
-				<exclude name="com/mirth/connect/connectors/tcp/TcpConnectorServletInterface.class" />
 			</fileset>
 		</jar>
 
@@ -383,10 +365,10 @@
 			<include name="com/mirth/connect/connectors/ws/Binding.class" />
 			<include name="com/mirth/connect/connectors/ws/WebServiceReceiverProperties.class" />
 			<include name="com/mirth/connect/connectors/ws/WebServiceDispatcherProperties.class" />
+			<include name="com/mirth/connect/connectors/ws/WebServiceConnectorServiceMethods.class" />
 			<include name="com/mirth/connect/connectors/ws/DefinitionServiceMap.class" />
 			<include name="com/mirth/connect/connectors/ws/DefinitionServiceMap$DefinitionPortMap.class" />
 			<include name="com/mirth/connect/connectors/ws/DefinitionServiceMap$PortInformation.class" />
-			<include name="com/mirth/connect/connectors/ws/WebServiceConnectorServletInterface.class" />
 		</jar>
 		<jar destfile="${connectors.ws}/ws-server.jar">
 			<fileset dir="${classes}">
@@ -394,10 +376,10 @@
 				<exclude name="com/mirth/connect/connectors/ws/Binding.class" />
 				<exclude name="com/mirth/connect/connectors/ws/WebServiceReceiverProperties.class" />
 				<exclude name="com/mirth/connect/connectors/ws/WebServiceDispatcherProperties.class" />
+				<exclude name="com/mirth/connect/connectors/ws/WebServiceConnectorServiceMethods.class" />
 				<exclude name="com/mirth/connect/connectors/ws/DefinitionServiceMap.class" />
 				<exclude name="com/mirth/connect/connectors/ws/DefinitionServiceMap$DefinitionPortMap.class" />
 				<exclude name="com/mirth/connect/connectors/ws/DefinitionServiceMap$PortInformation.class" />
-				<exclude name="com/mirth/connect/connectors/ws/WebServiceConnectorServletInterface.class" />
 			</fileset>
 		</jar>
 
@@ -592,13 +574,11 @@
 			<fileset dir="${lib.extensions}/directoryresource" />
 		</copy>
 		<jar destfile="${plugins.directoryresource}/directoryresource-shared.jar" basedir="${classes}">
-			<include name="com/mirth/connect/plugins/directoryresource/DirectoryResourceProperties.class" />
-			<include name="com/mirth/connect/plugins/directoryresource/DirectoryResourceServletInterface.class" />
+			<include name="com/mirth/connect/plugins/directoryresource/**" />
+			<exclude name="com/mirth/connect/plugins/directoryresource/DirectoryResourcePlugin.class" />
 		</jar>
 		<jar destfile="${plugins.directoryresource}/directoryresource-server.jar" basedir="${classes}">
-			<include name="com/mirth/connect/plugins/directoryresource/**" />
-			<exclude name="com/mirth/connect/plugins/directoryresource/DirectoryResourceProperties.class" />
-			<exclude name="com/mirth/connect/plugins/directoryresource/DirectoryResourceServletInterface.class" />
+			<include name="com/mirth/connect/plugins/directoryresource/DirectoryResourcePlugin.class" />
 		</jar>
 		
 		<!-- plugins.dashboardstatus -->
@@ -611,12 +591,8 @@
 		<copy todir="${plugins.dashboardstatus}/lib" failonerror="false">
 			<fileset dir="${lib.extensions}/dashboardstatus" />
 		</copy>
-		<jar destfile="${plugins.dashboardstatus}/dashboardstatus-shared.jar" basedir="${classes}">
-			<include name="com/mirth/connect/plugins/dashboardstatus/DashboardConnectorStatusServletInterface.class" />
-		</jar>
 		<jar destfile="${plugins.dashboardstatus}/dashboardstatus-server.jar" basedir="${classes}">
 			<include name="com/mirth/connect/plugins/dashboardstatus/**" />
-			<exclude name="com/mirth/connect/plugins/dashboardstatus/DashboardConnectorStatusServletInterface.class" />
 		</jar>
 
 		<!-- plugins.dicomviewer -->
@@ -640,53 +616,8 @@
 		<copy todir="${plugins.globalmapviewer}/lib" failonerror="false">
 			<fileset dir="${lib.extensions}/globalmapviewer" />
 		</copy>
-		<jar destfile="${plugins.globalmapviewer}/globalmapviewer-shared.jar" basedir="${classes}">
-			<include name="com/mirth/connect/plugins/globalmapviewer/GlobalMapServletInterface.class" />
-		</jar>
 		<jar destfile="${plugins.globalmapviewer}/globalmapviewer-server.jar" basedir="${classes}">
 			<include name="com/mirth/connect/plugins/globalmapviewer/**" />
-			<exclude name="com/mirth/connect/plugins/globalmapviewer/GlobalMapServletInterface.class" />
-		</jar>
-		
-		<!-- plugins.httpauth -->
-		<mkdir dir="${plugins.httpauth}" />
-		<copy todir="${plugins.httpauth}">
-			<fileset dir="${src}/com/mirth/connect/plugins/httpauth">
-				<include name="*.xml" />
-			</fileset>
-		</copy>
-		<copy todir="${plugins.httpauth}/lib" failonerror="false">
-			<fileset dir="${lib.extensions}/httpauth" />
-		</copy>
-		<jar destfile="${plugins.httpauth}/httpauth-shared.jar" basedir="${classes}">
-			<include name="com/mirth/connect/plugins/httpauth/HttpAuthConnectorPluginProperties.class" />
-			<include name="com/mirth/connect/plugins/httpauth/HttpAuthConnectorPluginProperties$AuthType.class" />
-			<include name="com/mirth/connect/plugins/httpauth/NoneHttpAuthProperties.class" />
-			<include name="com/mirth/connect/plugins/httpauth/basic/BasicHttpAuthProperties.class" />
-			<include name="com/mirth/connect/plugins/httpauth/digest/DigestHttpAuthProperties.class" />
-			<include name="com/mirth/connect/plugins/httpauth/digest/DigestHttpAuthProperties$Algorithm.class" />
-			<include name="com/mirth/connect/plugins/httpauth/digest/DigestHttpAuthProperties$QOPMode.class" />				
-			<include name="com/mirth/connect/plugins/httpauth/custom/CustomHttpAuthProperties.class" />
-			<include name="com/mirth/connect/plugins/httpauth/javascript/JavaScriptHttpAuthProperties.class" />
-			<include name="com/mirth/connect/plugins/httpauth/oauth2/OAuth2HttpAuthProperties.class" />
-			<include name="com/mirth/connect/plugins/httpauth/oauth2/OAuth2HttpAuthProperties$TokenLocation.class" />
-		</jar>
-		<jar destfile="${plugins.httpauth}/httpauth-server.jar" basedir="${classes}">
-			<include name="com/mirth/connect/plugins/httpauth/**" />
-			<exclude name="com/mirth/connect/plugins/httpauth/HttpAuthConnectorPluginProperties.class" />
-			<exclude name="com/mirth/connect/plugins/httpauth/HttpAuthConnectorPluginProperties$AuthType.class" />
-			<exclude name="com/mirth/connect/plugins/httpauth/NoneHttpAuthProperties.class" />
-			<exclude name="com/mirth/connect/plugins/httpauth/basic/BasicHttpAuthProperties.class" />
-			<exclude name="com/mirth/connect/plugins/httpauth/digest/DigestHttpAuthProperties.class" />
-			<exclude name="com/mirth/connect/plugins/httpauth/digest/DigestHttpAuthProperties$Algorithm.class" />
-			<exclude name="com/mirth/connect/plugins/httpauth/digest/DigestHttpAuthProperties$QOPMode.class" />
-			<exclude name="com/mirth/connect/plugins/httpauth/custom/CustomHttpAuthProperties.class" />
-			<exclude name="com/mirth/connect/plugins/httpauth/javascript/JavaScriptHttpAuthProperties.class" />
-			<exclude name="com/mirth/connect/plugins/httpauth/oauth2/OAuth2HttpAuthProperties.class" />
-			<exclude name="com/mirth/connect/plugins/httpauth/oauth2/OAuth2HttpAuthProperties$TokenLocation.class" />
-		</jar>
-		<jar destfile="${plugins.httpauth}/src/httpauth-userutil-sources.jar" basedir="${src}">
-			<include name="com/mirth/connect/plugins/httpauth/userutil/**" />
 		</jar>
 
 		<!-- plugins.imageviewer -->
@@ -754,12 +685,8 @@
 		<copy todir="${plugins.datapruner}/lib" failonerror="false">
 			<fileset dir="${lib.extensions}/datapruner" />
 		</copy>
-		<jar destfile="${plugins.datapruner}/datapruner-shared.jar" basedir="${classes}">
-			<include name="com/mirth/connect/plugins/datapruner/DataPrunerServletInterface.class" />
-		</jar>
 		<jar destfile="${plugins.datapruner}/datapruner-server.jar" basedir="${classes}">
 			<include name="com/mirth/connect/plugins/datapruner/**" />
-			<exclude name="com/mirth/connect/plugins/datapruner/DataPrunerServletInterface.class" />
 		</jar>
 
 		<!-- plugins.mllpmode -->
@@ -823,12 +750,8 @@
 		<copy todir="${plugins.serverlog}/lib" failonerror="false">
 			<fileset dir="${lib.extensions}/serverlog" />
 		</copy>
-		<jar destfile="${plugins.serverlog}/serverlog-shared.jar" basedir="${classes}">
-			<include name="com/mirth/connect/plugins/serverlog/ServerLogServletInterface.class" />
-		</jar>
 		<jar destfile="${plugins.serverlog}/serverlog-server.jar" basedir="${classes}">
 			<include name="com/mirth/connect/plugins/serverlog/**" />
-			<exclude name="com/mirth/connect/plugins/serverlog/ServerLogServletInterface.class" />
 		</jar>
 
 		<!-- plugins.scriptfilerule -->
@@ -878,7 +801,6 @@
 		<mkdir dir="${setup.conf}" />
 		<mkdir dir="${setup.extensions}" />
 		<mkdir dir="${setup.public_html}" />
-		<mkdir dir="${setup.public_api_html}" />
 		<mkdir dir="${setup.server.lib}" />
 		<mkdir dir="${setup.client.lib}" />
 		<mkdir dir="${setup.manager.lib}" />
@@ -905,17 +827,10 @@
 				<exclude name="Thumbs.db" />
 			</fileset>
 		</copy>
-		
+
 		<replace dir="${setup.public_html}" token="@mirthversion" value="${version}">
 			<include name="*.html" />
 		</replace>
-		
-		<!-- copy Swagger UI files -->
-		<copy todir="${setup.public_api_html}">
-			<fileset dir="${public_api_html}">
-				<exclude name="Thumbs.db" />
-			</fileset>
-		</copy>
 
 		<!-- copy extensions files -->
 		<copy todir="${setup.extensions}">
@@ -1054,7 +969,6 @@
 		<zip destfile="${dist.extensions}/dicomviewer-${version}.zip" basedir="${extensions}" includes="dicomviewer/**/*" />
 		<zip destfile="${dist.extensions}/pdfviewer-${version}.zip" basedir="${extensions}" includes="pdfviewer/**/*" />
 		<zip destfile="${dist.extensions}/textviewer-${version}.zip" basedir="${extensions}" includes="textviewer/**/*" />
-		<zip destfile="${dist.extensions}/httpauth-${version}.zip" basedir="${extensions}" includes="httpauth/**/*" />
 		<zip destfile="${dist.extensions}/imageviewer-${version}.zip" basedir="${extensions}" includes="imageviewer/**/*" />
 		<zip destfile="${dist.extensions}/globalmapviewer-${version}.zip" basedir="${extensions}" includes="globalmapviewer/**/*" />
 	</target>
@@ -1066,7 +980,7 @@
 	<target name="create-javadocs" depends="init">
 		<mkdir dir="${docs.javadocs}" />
 		
-		<javadoc sourcepath="${src}" destdir="${docs.javadocs.userapi}" packagenames="com.mirth.connect.server.userutil,com.mirth.connect.userutil,com.mirth.connect.plugins.httpauth.userutil">
+		<javadoc sourcepath="${src}" destdir="${docs.javadocs.userapi}" packagenames="com.mirth.connect.server.userutil,com.mirth.connect.userutil">
 			<classpath refid="classpath" />
 		</javadoc>
 	</target>

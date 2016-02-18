@@ -18,6 +18,7 @@ import java.util.Map.Entry;
 import java.util.prefs.Preferences;
 
 import javax.swing.JButton;
+import javax.swing.SwingWorker;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.DefaultTableModel;
@@ -25,7 +26,6 @@ import javax.swing.table.DefaultTableModel;
 import org.jdesktop.swingx.decorator.Highlighter;
 import org.jdesktop.swingx.decorator.HighlighterFactory;
 
-import com.mirth.connect.client.core.ClientException;
 import com.mirth.connect.client.ui.Frame;
 import com.mirth.connect.client.ui.Mirth;
 import com.mirth.connect.client.ui.PlatformUI;
@@ -33,7 +33,6 @@ import com.mirth.connect.client.ui.TextFieldCellEditor;
 import com.mirth.connect.client.ui.UIConstants;
 import com.mirth.connect.client.ui.components.MirthTable;
 import com.mirth.connect.client.ui.panels.connectors.ConnectorSettingsPanel;
-import com.mirth.connect.client.ui.panels.connectors.ResponseHandler;
 import com.mirth.connect.donkey.model.channel.ConnectorProperties;
 import com.mirth.connect.util.ConnectionTestResponse;
 
@@ -189,7 +188,7 @@ public class SmtpSender extends ConnectorSettingsPanel {
 
             errors.append("\"SMTP Port\" is required\n");
         }
-
+        
         if (props.isOverrideLocalBinding()) {
             if (props.getLocalAddress().length() <= 3) {
                 valid = false;
@@ -519,7 +518,6 @@ public class SmtpSender extends ConnectorSettingsPanel {
         return "";
     }
 
-    // @formatter:off
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -970,7 +968,6 @@ public class SmtpSender extends ConnectorSettingsPanel {
                 .addContainerGap())
         );
     }// </editor-fold>//GEN-END:initComponents
-    // @formatter:on
 
     private void newAttachmentButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_newAttachmentButtonActionPerformed
         ((DefaultTableModel) attachmentsTable.getModel()).addRow(new Object[] {
@@ -1019,25 +1016,36 @@ public class SmtpSender extends ConnectorSettingsPanel {
             return;
         }
 
-        ResponseHandler handler = new ResponseHandler() {
-            @Override
-            public void handle(Object response) {
-                ConnectionTestResponse connectionTestResponse = (ConnectionTestResponse) response;
-                if (connectionTestResponse == null) {
-                    parent.alertError(parent, "Failed to send email.");
-                } else if (connectionTestResponse.getType().equals(ConnectionTestResponse.Type.SUCCESS)) {
-                    parent.alertInformation(parent, connectionTestResponse.getMessage());
-                } else {
-                    parent.alertWarning(parent, connectionTestResponse.getMessage());
+        final String workingId = parent.startWorking("Sending test email...");
+
+        SwingWorker worker = new SwingWorker<Void, Void>() {
+
+            public Void doInBackground() {
+
+                try {
+                    ConnectionTestResponse response = (ConnectionTestResponse) parent.mirthClient.invokeConnectorService(parent.channelEditPanel.currentChannel.getId(), parent.channelEditPanel.currentChannel.getName(), getConnectorName(), "sendTestEmail", getProperties());
+
+                    if (response == null) {
+                        parent.alertError(parent, "Failed to send email.");
+                    } else if (response.getType().equals(ConnectionTestResponse.Type.SUCCESS)) {
+                        parent.alertInformation(parent, response.getMessage());
+                    } else {
+                        parent.alertWarning(parent, response.getMessage());
+                    }
+
+                    return null;
+                } catch (Exception e) {
+                    parent.alertThrowable(parent, e);
+                    return null;
                 }
+            }
+
+            public void done() {
+                parent.stopWorking(workingId);
             }
         };
 
-        try {
-            getServlet(SmtpConnectorServletInterface.class, "Sending test email...", "Failed to send email.\n\n", handler).sendTestEmail(getChannelId(), getChannelName(), (SmtpDispatcherProperties) getFilledProperties());
-        } catch (ClientException e) {
-            // Should not happen
-        }
+        worker.execute();
     }//GEN-LAST:event_sendTestEmailButtonActionPerformed
 
     private void newHeaderButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_newHeaderButtonActionPerformed
