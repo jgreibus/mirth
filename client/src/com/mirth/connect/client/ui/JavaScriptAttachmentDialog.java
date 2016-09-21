@@ -7,7 +7,7 @@
  * been included with this distribution in the LICENSE.txt file.
  */
 
-package com.mirth.connect.client.ui.attachments;
+package com.mirth.connect.client.ui;
 
 import java.awt.Dimension;
 import java.awt.Point;
@@ -19,12 +19,8 @@ import javax.swing.JDialog;
 import org.mozilla.javascript.Context;
 import org.mozilla.javascript.EvaluatorException;
 
-import com.mirth.connect.client.ui.Frame;
-import com.mirth.connect.client.ui.MirthDialog;
-import com.mirth.connect.client.ui.PlatformUI;
 import com.mirth.connect.donkey.model.message.attachment.AttachmentHandlerProperties;
 import com.mirth.connect.model.ContextType;
-import com.mirth.connect.util.JavaScriptContextUtil;
 
 public class JavaScriptAttachmentDialog extends MirthDialog {
 
@@ -174,7 +170,7 @@ public class JavaScriptAttachmentDialog extends MirthDialog {
 
     private void validateScriptButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_validateScriptButtonActionPerformed
         StringBuilder sb = new StringBuilder();
-        Context context = JavaScriptContextUtil.getGlobalContextForValidation();
+        Context context = Context.enter();
         try {
             context.compileString("function rhinoWrapper() {" + scriptContent.getText() + "\n}", PlatformUI.MIRTH_FRAME.mirthClient.getGuid(), 1, null);
             sb.append("JavaScript was successfully validated.");

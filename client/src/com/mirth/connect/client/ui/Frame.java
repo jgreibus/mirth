@@ -2621,7 +2621,7 @@ public class Frame extends JXFrame {
             return;
         }
 
-        if (!channelStatus.getChannel().getExportData().getMetadata().isEnabled()) {
+        if (!channelStatus.getChannel().isEnabled()) {
             alertWarning(this, "The channel is disabled and will not be deployed.");
             return;
         }
@@ -4309,7 +4309,7 @@ public class Frame extends JXFrame {
         } else {
             channelTagInfo = this.channelTagInfo;
             for (ChannelStatus channelStatus : channelPanel.getCachedChannelStatuses().values()) {
-                tags.addAll(channelStatus.getChannel().getExportData().getMetadata().getTags());
+                tags.addAll(channelStatus.getChannel().getProperties().getTags());
             }
         }
 
@@ -4359,10 +4359,6 @@ public class Frame extends JXFrame {
      * Removes items from the list that are not of the expected class.
      */
     public void removeInvalidItems(List<?> list, Class<?> expectedClass) {
-        if (list == null) {
-            return;
-        }
-
         int originalSize = list.size();
 
         for (int i = 0; i < list.size(); i++) {

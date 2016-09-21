@@ -474,9 +474,7 @@ public class TreePanel extends javax.swing.JPanel {
                     break;
 
                 case RAW:
-                    MirthTreeNode top = new MirthTreeNode("Raw Data.");
-                    createTree(top);
-                    filter();
+                    setRawMessage();
                     break;
             }
         } else {
@@ -744,6 +742,13 @@ public class TreePanel extends javax.swing.JPanel {
 
     public void setInvalidMessage(String messageType) {
         MirthTreeNode top = new MirthTreeNode("Template is not valid " + messageType + ".");
+        MirthTree tree = new MirthTree(top, _dropPrefix, _dropSuffix);
+        treePane.setViewportView(tree);
+        revalidate();
+    }
+
+    public void setRawMessage() {
+        MirthTreeNode top = new MirthTreeNode("Template tree not available for raw data.");
         MirthTree tree = new MirthTree(top, _dropPrefix, _dropSuffix);
         treePane.setViewportView(tree);
         revalidate();

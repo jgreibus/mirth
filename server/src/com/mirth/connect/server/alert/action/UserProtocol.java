@@ -10,15 +10,14 @@
 package com.mirth.connect.server.alert.action;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.log4j.Logger;
 
 import com.mirth.connect.client.core.ControllerException;
@@ -53,31 +52,24 @@ public class UserProtocol implements Protocol {
     @Override
     public List<String> getEmailAddressesForDispatch(List<String> recipients) {
         try {
-            Set<String> emailAddresses = new LinkedHashSet<String>();
-            List<User> users = userController.getAllUsers();
-            Set<Integer> userIds = new HashSet<Integer>();
-            Set<String> usernames = new HashSet<String>();
+            List<User> users = null;
 
-            Map<Integer, String> userMap = new HashMap<Integer, String>();
-            for (User user : users) {
-                userMap.put(user.getId(), user.getUsername());
+            if (recipients.size() == 1) {
+                users = Collections.singletonList(userController.getUser(Integer.parseInt(recipients.get(0)), null));
+            } else {
+                users = userController.getAllUsers();
             }
 
-            for (String recipient : recipients) {
-                if (NumberUtils.isNumber(recipient) && userMap.containsKey(NumberUtils.toInt(recipient))) {
-                    userIds.add(NumberUtils.toInt(recipient));
-                } else if (userMap.containsValue(recipient)) {
-                    usernames.add(recipient);
-                }
-            }
+            List<String> emailAddresses = new ArrayList<>();
+            Set<String> userIds = new HashSet<>(recipients);
 
             for (User user : users) {
-                if ((userIds.contains(user.getId()) || usernames.contains(user.getUsername())) && StringUtils.isNotBlank(user.getEmail())) {
+                if (userIds.contains(user.getId().toString()) && StringUtils.isNotBlank(user.getEmail())) {
                     emailAddresses.add(user.getEmail());
                 }
             }
 
-            return new ArrayList<String>(emailAddresses);
+            return emailAddresses;
         } catch (Exception e) {
             logger.error("An error occurred while attempting to look up email addresses for users.", e);
             return null;

@@ -10,6 +10,7 @@
 package com.mirth.connect.server.util.test;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 import org.junit.Test;
@@ -56,6 +57,7 @@ public class TestServer {
         Channel channel = new Channel();
         channel.setId("testchannel");
         channel.setName("testchannel");
+        channel.setLastModified(Calendar.getInstance());
         channel.setRevision(0);
         channel.setSourceConnector(sourceConnector);
         channel.setDescription("Test Channel");

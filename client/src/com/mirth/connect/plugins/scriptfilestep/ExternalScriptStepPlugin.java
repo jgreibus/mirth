@@ -53,7 +53,7 @@ public class ExternalScriptStepPlugin extends TransformerStepPlugin {
             parent.setInvalidVar(true);
             String msg = "The script path field cannot be blank.\nPlease enter a new script path.\n";
             parent.setRowSelectionInterval(row, row);
-            alertWarning(msg);
+            parent.getParentFrame().alertWarning(parent.parent, msg);
         } else {
             parent.setInvalidVar(false);
         }

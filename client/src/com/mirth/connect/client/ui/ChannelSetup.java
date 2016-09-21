@@ -52,10 +52,6 @@ import org.jdesktop.swingx.decorator.HighlighterFactory;
 import org.mozilla.javascript.Context;
 
 import com.mirth.connect.client.core.ClientException;
-import com.mirth.connect.client.ui.attachments.CustomAttachmentDialog;
-import com.mirth.connect.client.ui.attachments.IdentityAttachmentDialog;
-import com.mirth.connect.client.ui.attachments.JavaScriptAttachmentDialog;
-import com.mirth.connect.client.ui.attachments.RegexAttachmentDialog;
 import com.mirth.connect.client.ui.components.MirthComboBoxTableCellEditor;
 import com.mirth.connect.client.ui.components.MirthComboBoxTableCellRenderer;
 import com.mirth.connect.client.ui.components.MirthFieldConstraints;
@@ -75,7 +71,6 @@ import com.mirth.connect.donkey.model.channel.SourceConnectorProperties;
 import com.mirth.connect.donkey.model.channel.SourceConnectorPropertiesInterface;
 import com.mirth.connect.donkey.model.message.attachment.AttachmentHandlerProperties;
 import com.mirth.connect.model.Channel;
-import com.mirth.connect.model.ChannelMetadata;
 import com.mirth.connect.model.ChannelProperties;
 import com.mirth.connect.model.Connector;
 import com.mirth.connect.model.Connector.Mode;
@@ -198,19 +193,19 @@ public class ChannelSetup extends javax.swing.JPanel {
         DefaultTableModel model = (DefaultTableModel) tagTable.getModel();
         model.setRowCount(0);
 
-        for (String tag : currentChannel.getExportData().getMetadata().getTags()) {
+        for (String tag : currentChannel.getProperties().getTags()) {
             model.addRow(new Object[] { tag });
         }
     }
 
     private void saveChannelTags() {
-        currentChannel.getExportData().getMetadata().getTags().clear();
+        currentChannel.getProperties().getTags().clear();
 
         DefaultTableModel model = (DefaultTableModel) tagTable.getModel();
         int rowCount = model.getRowCount();
 
         for (int i = 0; i < rowCount; i++) {
-            currentChannel.getExportData().getMetadata().getTags().add((String) model.getValueAt(i, 0));
+            currentChannel.getProperties().getTags().add((String) model.getValueAt(i, 0));
         }
     }
 
@@ -764,7 +759,7 @@ public class ChannelSetup extends javax.swing.JPanel {
     }
 
     private void setLastModified() {
-        currentChannel.getExportData().getMetadata().setLastModified(Calendar.getInstance());
+        currentChannel.setLastModified(Calendar.getInstance());
     }
 
     private void updateChannelId() {
@@ -776,14 +771,13 @@ public class ChannelSetup extends javax.swing.JPanel {
     }
 
     private void updateLastModified() {
-        lastModified.setText("Last Modified: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(currentChannel.getExportData().getMetadata().getLastModified().getTime()));
+        lastModified.setText("Last Modified: " + new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(currentChannel.getLastModified().getTime()));
     }
 
     /** Load all of the saved channel information into the channel editor */
     private void loadChannelInfo() {
         boolean enabled = parent.isSaveEnabled();
         ChannelProperties properties = currentChannel.getProperties();
-        ChannelMetadata metadata = currentChannel.getExportData().getMetadata();
         parent.setPanelName("Edit Channel - " + currentChannel.getName());
         summaryNameField.setText(currentChannel.getName());
         summaryDescriptionText.setText(currentChannel.getDescription());
@@ -791,7 +785,7 @@ public class ChannelSetup extends javax.swing.JPanel {
         updateRevision();
         updateLastModified();
 
-        if (currentChannel.getExportData().getMetadata().isEnabled()) {
+        if (currentChannel.isEnabled()) {
             summaryEnabledCheckbox.setSelected(true);
         } else {
             summaryEnabledCheckbox.setSelected(false);
@@ -844,8 +838,8 @@ public class ChannelSetup extends javax.swing.JPanel {
         updateStorageMode();
 
         // load pruning settings
-        Integer pruneMetaDataDays = metadata.getPruningSettings().getPruneMetaDataDays();
-        Integer pruneContentDays = metadata.getPruningSettings().getPruneContentDays();
+        Integer pruneMetaDataDays = properties.getPruneMetaDataDays();
+        Integer pruneContentDays = properties.getPruneContentDays();
 
         if (pruneMetaDataDays == null) {
             metadataPruningDaysTextField.setText("");
@@ -867,7 +861,7 @@ public class ChannelSetup extends javax.swing.JPanel {
             contentPruningDaysRadioActionPerformed(null);
         }
 
-        archiveCheckBox.setSelected(metadata.getPruningSettings().isArchiveEnabled());
+        archiveCheckBox.setSelected(properties.isArchiveEnabled());
 
         sourceSourceDropdown.setSelectedItem(currentChannel.getSourceConnector().getTransportName());
 
@@ -1299,7 +1293,7 @@ public class ChannelSetup extends javax.swing.JPanel {
         }
 
         // Set the channel to enabled or disabled after it has been validated
-        currentChannel.getExportData().getMetadata().setEnabled(enabled);
+        currentChannel.setEnabled(enabled);
 
         saveChannelTags();
         saveMetaDataColumns();
@@ -1369,21 +1363,21 @@ public class ChannelSetup extends javax.swing.JPanel {
     }
 
     private void saveMessagePruning() {
-        ChannelMetadata metadata = currentChannel.getExportData().getMetadata();
+        ChannelProperties properties = currentChannel.getProperties();
 
         if (metadataPruningOffRadio.isSelected()) {
-            metadata.getPruningSettings().setPruneMetaDataDays(null);
+            properties.setPruneMetaDataDays(null);
         } else {
-            metadata.getPruningSettings().setPruneMetaDataDays(Integer.parseInt(metadataPruningDaysTextField.getText()));
+            properties.setPruneMetaDataDays(Integer.parseInt(metadataPruningDaysTextField.getText()));
         }
 
         if (contentPruningMetadataRadio.isSelected()) {
-            metadata.getPruningSettings().setPruneContentDays(null);
+            properties.setPruneContentDays(null);
         } else {
-            metadata.getPruningSettings().setPruneContentDays(Integer.parseInt(contentPruningDaysTextField.getText()));
+            properties.setPruneContentDays(Integer.parseInt(contentPruningDaysTextField.getText()));
         }
 
-        metadata.getPruningSettings().setArchiveEnabled(archiveCheckBox.isSelected());
+        properties.setArchiveEnabled(archiveCheckBox.isSelected());
     }
 
     /**
@@ -1781,9 +1775,7 @@ public class ChannelSetup extends javax.swing.JPanel {
 
     public void showAttachmentPropertiesDialog(AttachmentHandlerType type) {
         AttachmentHandlerProperties attachmentHandlerProperties = currentChannel.getProperties().getAttachmentProperties();
-        if (type.equals(AttachmentHandlerType.IDENTITY)) {
-            new IdentityAttachmentDialog(attachmentHandlerProperties);
-        } else if (type.equals(AttachmentHandlerType.REGEX)) {
+        if (type.equals(AttachmentHandlerType.REGEX)) {
             new RegexAttachmentDialog(attachmentHandlerProperties);
         } else if (type.equals(AttachmentHandlerType.DICOM)) {
 

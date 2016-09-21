@@ -84,7 +84,6 @@ import com.mirth.connect.model.Channel;
 import com.mirth.connect.model.ChannelDependency;
 import com.mirth.connect.model.ChannelGroup;
 import com.mirth.connect.model.ChannelHeader;
-import com.mirth.connect.model.ChannelMetadata;
 import com.mirth.connect.model.ChannelStatistics;
 import com.mirth.connect.model.ChannelSummary;
 import com.mirth.connect.model.CodeTemplate;
@@ -118,7 +117,6 @@ import com.mirth.connect.model.filters.MessageFilter;
 import com.mirth.connect.util.ConfigurationProperty;
 import com.mirth.connect.util.ConnectionTestResponse;
 import com.mirth.connect.util.MirthSSLUtil;
-import com.mirth.connect.util.messagewriter.EncryptionType;
 import com.mirth.connect.util.messagewriter.MessageWriterOptions;
 
 public class Client implements UserServletInterface, ConfigurationServletInterface, ChannelServletInterface, ChannelGroupServletInterface, ChannelStatusServletInterface, ChannelStatisticsServletInterface, EngineServletInterface, MessageServletInterface, EventServletInterface, AlertServletInterface, CodeTemplateServletInterface, DatabaseTaskServletInterface, UsageServletInterface, ExtensionServletInterface {
@@ -228,50 +226,49 @@ public class Client implements UserServletInterface, ConfigurationServletInterfa
 
     @SuppressWarnings("unchecked")
     public <T> T getServlet(final Class<T> servletInterface, final ExecuteType executeType) {
-        return (T) Proxy.newProxyInstance(AccessController.doPrivileged(ReflectionHelper.getClassLoaderPA(servletInterface)), new Class[] {
-                servletInterface }, new InvocationHandler() {
-                    @Override
-                    public Object invoke(Object proxy, Method method, Object[] args) throws ClientException {
-                        try {
-                            WebTarget target = client.target(api);
+        return (T) Proxy.newProxyInstance(AccessController.doPrivileged(ReflectionHelper.getClassLoaderPA(servletInterface)), new Class[] { servletInterface }, new InvocationHandler() {
+            @Override
+            public Object invoke(Object proxy, Method method, Object[] args) throws ClientException {
+                try {
+                    WebTarget target = client.target(api);
 
-                            Operation operation = OperationUtil.getOperation(servletInterface, method);
-                            if (operation != null) {
-                                target.property(ServerConnection.OPERATION_PROPERTY, operation);
-                            }
-
-                            if (executeType != null) {
-                                target.property(ServerConnection.EXECUTE_TYPE_PROPERTY, executeType);
-                            }
-
-                            if (args == null && method.getName().equals("toString")) {
-                                return target.toString();
-                            }
-
-                            T resource = WebResourceFactory.newResource(servletInterface, target);
-                            Object result = method.invoke(resource, args);
-
-                            // Make sure to return the right type
-                            if (result == null && method.getReturnType().isPrimitive()) {
-                                return method.getReturnType() == boolean.class ? false : (byte) 0x00;
-                            }
-                            return result;
-                        } catch (Throwable t) {
-                            Throwable cause = t;
-                            if (cause instanceof InvocationTargetException && cause.getCause() != null) {
-                                cause = cause.getCause();
-                            }
-                            if (cause instanceof ProcessingException && cause.getCause() != null) {
-                                cause = cause.getCause();
-                            }
-                            if (cause instanceof ClientException) {
-                                throw (ClientException) cause;
-                            } else {
-                                throw new ClientException(cause);
-                            }
-                        }
+                    Operation operation = OperationUtil.getOperation(servletInterface, method);
+                    if (operation != null) {
+                        target.property(ServerConnection.OPERATION_PROPERTY, operation);
                     }
-                });
+
+                    if (executeType != null) {
+                        target.property(ServerConnection.EXECUTE_TYPE_PROPERTY, executeType);
+                    }
+
+                    if (args == null && method.getName().equals("toString")) {
+                        return target.toString();
+                    }
+
+                    T resource = WebResourceFactory.newResource(servletInterface, target);
+                    Object result = method.invoke(resource, args);
+
+                    // Make sure to return the right type
+                    if (result == null && method.getReturnType().isPrimitive()) {
+                        return method.getReturnType() == boolean.class ? false : (byte) 0x00;
+                    }
+                    return result;
+                } catch (Throwable t) {
+                    Throwable cause = t;
+                    if (cause instanceof InvocationTargetException && cause.getCause() != null) {
+                        cause = cause.getCause();
+                    }
+                    if (cause instanceof ProcessingException && cause.getCause() != null) {
+                        cause = cause.getCause();
+                    }
+                    if (cause instanceof ClientException) {
+                        throw (ClientException) cause;
+                    } else {
+                        throw new ClientException(cause);
+                    }
+                }
+            }
+        });
     }
 
     public ServerConnection getServerConnection() {
@@ -795,26 +792,6 @@ public class Client implements UserServletInterface, ConfigurationServletInterfa
     @Override
     public void setChannelDependencies(Set<ChannelDependency> dependencies) throws ClientException {
         getServlet(ConfigurationServletInterface.class).setChannelDependencies(dependencies);
-    }
-
-    /**
-     * Returns all channel metadata for the server.
-     * 
-     * @see ConfigurationServletInterface#getChannelMetadata
-     */
-    @Override
-    public Map<String, ChannelMetadata> getChannelMetadata() throws ClientException {
-        return getServlet(ConfigurationServletInterface.class).getChannelMetadata();
-    }
-
-    /**
-     * Updates all channel metadata for the server.
-     * 
-     * @see ConfigurationServletInterface#setChannelMetadata
-     */
-    @Override
-    public void setChannelMetadata(Map<String, ChannelMetadata> metadata) throws ClientException {
-        getServlet(ConfigurationServletInterface.class).setChannelMetadata(metadata);
     }
 
     /**
@@ -1795,8 +1772,8 @@ public class Client implements UserServletInterface, ConfigurationServletInterfa
      * @see MessageServletInterface#exportMessagesServer
      */
     @Override
-    public int exportMessagesServer(String channelId, Long minMessageId, Long maxMessageId, Long minOriginalId, Long maxOriginalId, Long minImportId, Long maxImportId, Calendar startDate, Calendar endDate, String textSearch, Boolean textSearchRegex, Set<Status> statuses, Set<Integer> includedMetaDataIds, Set<Integer> excludedMetaDataIds, String serverId, Set<String> rawContentSearches, Set<String> processedRawContentSearches, Set<String> transformedContentSearches, Set<String> encodedContentSearches, Set<String> sentContentSearches, Set<String> responseContentSearches, Set<String> responseTransformedContentSearches, Set<String> processedResponseContentSearches, Set<String> connectorMapContentSearches, Set<String> channelMapContentSearches, Set<String> sourceMapContentSearches, Set<String> responseMapContentSearches, Set<String> processingErrorContentSearches, Set<String> postprocessorErrorContentSearches, Set<String> responseErrorContentSearches, Set<MetaDataSearch> metaDataSearches, Set<MetaDataSearch> metaDataCaseInsensitiveSearches, Set<String> textSearchMetaDataColumns, Integer minSendAttempts, Integer maxSendAttempts, Boolean attachment, Boolean error, int pageSize, ContentType contentType, boolean destinationContent, boolean encrypt, boolean includeAttachments, String baseFolder, String rootFolder, String filePattern, String archiveFileName, String archiveFormat, String compressFormat, String password, EncryptionType encryptionType) throws ClientException {
-        return getServlet(MessageServletInterface.class).exportMessagesServer(channelId, minMessageId, maxMessageId, minOriginalId, maxOriginalId, minImportId, maxImportId, startDate, endDate, textSearch, textSearchRegex, statuses, includedMetaDataIds, excludedMetaDataIds, serverId, rawContentSearches, processedRawContentSearches, transformedContentSearches, encodedContentSearches, sentContentSearches, responseContentSearches, responseTransformedContentSearches, processedResponseContentSearches, connectorMapContentSearches, channelMapContentSearches, sourceMapContentSearches, responseMapContentSearches, processingErrorContentSearches, postprocessorErrorContentSearches, responseErrorContentSearches, metaDataSearches, metaDataCaseInsensitiveSearches, textSearchMetaDataColumns, minSendAttempts, maxSendAttempts, attachment, error, pageSize, contentType, destinationContent, encrypt, includeAttachments, baseFolder, rootFolder, filePattern, archiveFileName, archiveFormat, compressFormat, password, encryptionType);
+    public int exportMessagesServer(String channelId, Long minMessageId, Long maxMessageId, Long minOriginalId, Long maxOriginalId, Long minImportId, Long maxImportId, Calendar startDate, Calendar endDate, String textSearch, Boolean textSearchRegex, Set<Status> statuses, Set<Integer> includedMetaDataIds, Set<Integer> excludedMetaDataIds, String serverId, Set<String> rawContentSearches, Set<String> processedRawContentSearches, Set<String> transformedContentSearches, Set<String> encodedContentSearches, Set<String> sentContentSearches, Set<String> responseContentSearches, Set<String> responseTransformedContentSearches, Set<String> processedResponseContentSearches, Set<String> connectorMapContentSearches, Set<String> channelMapContentSearches, Set<String> sourceMapContentSearches, Set<String> responseMapContentSearches, Set<String> processingErrorContentSearches, Set<String> postprocessorErrorContentSearches, Set<String> responseErrorContentSearches, Set<MetaDataSearch> metaDataSearches, Set<MetaDataSearch> metaDataCaseInsensitiveSearches, Set<String> textSearchMetaDataColumns, Integer minSendAttempts, Integer maxSendAttempts, Boolean attachment, Boolean error, int pageSize, ContentType contentType, boolean destinationContent, boolean encrypt, boolean includeAttachments, String baseFolder, String rootFolder, String filePattern, String archiveFileName, String archiveFormat, String compressFormat) throws ClientException {
+        return getServlet(MessageServletInterface.class).exportMessagesServer(channelId, minMessageId, maxMessageId, minOriginalId, maxOriginalId, minImportId, maxImportId, startDate, endDate, textSearch, textSearchRegex, statuses, includedMetaDataIds, excludedMetaDataIds, serverId, rawContentSearches, processedRawContentSearches, transformedContentSearches, encodedContentSearches, sentContentSearches, responseContentSearches, responseTransformedContentSearches, processedResponseContentSearches, connectorMapContentSearches, channelMapContentSearches, sourceMapContentSearches, responseMapContentSearches, processingErrorContentSearches, postprocessorErrorContentSearches, responseErrorContentSearches, metaDataSearches, metaDataCaseInsensitiveSearches, textSearchMetaDataColumns, minSendAttempts, maxSendAttempts, attachment, error, pageSize, contentType, destinationContent, encrypt, includeAttachments, baseFolder, rootFolder, filePattern, archiveFileName, archiveFormat, compressFormat);
     }
 
     /**
@@ -2083,7 +2060,7 @@ public class Client implements UserServletInterface, ConfigurationServletInterfa
      * @see CodeTemplateServletInterface#updateCodeTemplateLibraries
      */
     @Override
-    public synchronized boolean updateCodeTemplateLibraries(List<CodeTemplateLibrary> libraries, boolean override) throws ClientException {
+    public synchronized boolean updateCodeTemplateLibraries(Set<CodeTemplateLibrary> libraries, boolean override) throws ClientException {
         return getServlet(CodeTemplateServletInterface.class).updateCodeTemplateLibraries(libraries, override);
     }
 
@@ -2162,7 +2139,7 @@ public class Client implements UserServletInterface, ConfigurationServletInterfa
      * @see CodeTemplateServletInterface#updateLibrariesAndTemplates
      */
     @Override
-    public synchronized CodeTemplateLibrarySaveResult updateLibrariesAndTemplates(List<CodeTemplateLibrary> libraries, Set<String> removedLibraryIds, List<CodeTemplate> updatedCodeTemplates, Set<String> removedCodeTemplateIds, boolean override) throws ClientException {
+    public synchronized CodeTemplateLibrarySaveResult updateLibrariesAndTemplates(Set<CodeTemplateLibrary> libraries, Set<String> removedLibraryIds, Set<CodeTemplate> updatedCodeTemplates, Set<String> removedCodeTemplateIds, boolean override) throws ClientException {
         return getServlet(CodeTemplateServletInterface.class).updateLibrariesAndTemplates(libraries, removedLibraryIds, updatedCodeTemplates, removedCodeTemplateIds, override);
     }
 

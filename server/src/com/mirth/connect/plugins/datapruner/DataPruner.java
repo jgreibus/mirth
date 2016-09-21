@@ -42,7 +42,6 @@ import com.mirth.connect.donkey.server.data.DonkeyDao;
 import com.mirth.connect.donkey.server.data.DonkeyDaoFactory;
 import com.mirth.connect.donkey.util.ThreadUtils;
 import com.mirth.connect.model.Channel;
-import com.mirth.connect.model.ChannelMetadata;
 import com.mirth.connect.model.ChannelProperties;
 import com.mirth.connect.model.InvalidChannel;
 import com.mirth.connect.model.ServerEvent;
@@ -77,7 +76,6 @@ public class DataPruner implements Runnable {
     private boolean pruneEvents;
     private Integer maxEventAge;
     private EventController eventController = ControllerFactory.getFactory().createEventController();
-    private ConfigurationController configurationController = ControllerFactory.getFactory().createConfigurationController();
     private String serverId = ControllerFactory.getFactory().createConfigurationController().getServerId();
     private DonkeyDaoFactory daoFactory;
     private AtomicBoolean running = new AtomicBoolean(false);
@@ -239,23 +237,18 @@ public class DataPruner implements Runnable {
 
     private Queue<PrunerTask> buildTaskQueue() throws Exception {
         List<Channel> channels = com.mirth.connect.server.controllers.ChannelController.getInstance().getChannels(null);
-        Map<String, ChannelMetadata> metadataMap = configurationController.getChannelMetadata();
 
         Queue<PrunerTask> queue = new LinkedList<PrunerTask>();
 
         for (Channel channel : channels) {
             if (!(channel instanceof InvalidChannel)) {
                 ChannelProperties properties = channel.getProperties();
-                ChannelMetadata metadata = metadataMap.get(channel.getId());
-                if (metadata == null) {
-                    metadata = new ChannelMetadata();
-                }
-                Integer pruneMetaDataDays = metadata.getPruningSettings().getPruneMetaDataDays();
-                Integer pruneContentDays = metadata.getPruningSettings().getPruneContentDays();
+                Integer pruneMetaDataDays = properties.getPruneMetaDataDays();
+                Integer pruneContentDays = properties.getPruneContentDays();
                 Calendar contentDateThreshold = null;
                 Calendar messageDateThreshold = null;
 
-                switch (properties.getMessageStorageMode()) {
+                switch (channel.getProperties().getMessageStorageMode()) {
                     case DEVELOPMENT:
                     case PRODUCTION:
                     case RAW:
@@ -271,7 +264,7 @@ public class DataPruner implements Runnable {
                         }
 
                         if (messageDateThreshold != null || contentDateThreshold != null) {
-                            queue.add(new PrunerTask(channel.getId(), channel.getName(), messageDateThreshold, contentDateThreshold, metadata.getPruningSettings().isArchiveEnabled()));
+                            queue.add(new PrunerTask(channel.getId(), channel.getName(), messageDateThreshold, contentDateThreshold, channel.getProperties().isArchiveEnabled()));
                             status.getPendingChannelIds().add(channel.getId());
                         }
                         break;
@@ -670,7 +663,7 @@ public class DataPruner implements Runnable {
             if (DatabaseUtil.statementExists("Message.pruneAttachments")) {
                 runDelete("Message.pruneAttachments", params);
             }
-
+            
             result.numContentPruned += runDelete("Message.pruneMessageContent", params);
         } else {
             if (DatabaseUtil.statementExists("Message.pruneAttachments")) {

@@ -40,7 +40,6 @@ import org.jdesktop.swingx.decorator.HighlighterFactory;
 import com.mirth.connect.client.core.ClientException;
 import com.mirth.connect.client.core.TaskConstants;
 import com.mirth.connect.client.ui.components.MirthButton;
-import com.mirth.connect.client.ui.components.MirthDialogTableCellEditor;
 import com.mirth.connect.client.ui.components.MirthTable;
 import com.mirth.connect.util.ConfigurationProperty;
 
@@ -278,8 +277,6 @@ public class SettingsPanelMap extends AbstractSettingsPanel {
                 removeButton.setEnabled(selectedRow != -1);
             }
         });
-
-        configurationMapTable.getColumnExt("Value").setCellEditor(new MirthDialogTableCellEditor(configurationMapTable));
 
         if (Preferences.userNodeForPackage(Mirth.class).getBoolean("highlightRows", true)) {
             configurationMapTable.setHighlighters(HighlighterFactory.createAlternateStriping(UIConstants.HIGHLIGHTER_COLOR, UIConstants.BACKGROUND_COLOR));

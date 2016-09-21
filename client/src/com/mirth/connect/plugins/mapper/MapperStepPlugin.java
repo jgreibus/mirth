@@ -74,7 +74,8 @@ public class MapperStepPlugin extends TransformerStepPlugin {
                 msg = "'" + data.get("Variable") + "'" + " is not unique.";
             }
             msg += "\nPlease enter a new variable name.\n";
-            alertWarning(msg);
+
+            parent.getParentFrame().alertWarning(parent.parent, msg);
         } else {
             parent.setInvalidVar(false);
         }

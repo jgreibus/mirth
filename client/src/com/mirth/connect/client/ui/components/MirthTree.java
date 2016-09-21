@@ -325,10 +325,6 @@ public class MirthTree extends JXTree implements DropTargetListener {
         StringBuilder sb = new StringBuilder();
         sb.insert(0, prefix);
 
-        if (parent == null) {
-            return sb.append(suffix);
-        }
-
         MirthTreeNode node = (MirthTreeNode) parent;
         SerializationType serializationType = node.getSerializationType();
 
@@ -483,10 +479,6 @@ public class MirthTree extends JXTree implements DropTargetListener {
      */
     public static String constructVariable(TreeNode parent) {
         String variable = "";
-
-        if (parent == null) {
-            return MessageTreePanel.MAPPER_PREFIX;
-        }
 
         MirthTreeNode node = (MirthTreeNode) parent;
         SerializationType serializationType = node.getSerializationType();

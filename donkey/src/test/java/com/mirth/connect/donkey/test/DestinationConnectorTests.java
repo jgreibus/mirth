@@ -86,6 +86,7 @@ public class DestinationConnectorTests {
 
         channel.setChannelId(channelId);
         channel.setServerId(serverId);
+        channel.setEnabled(true);
 
         channel.setPreProcessor(new TestPreProcessor());
         channel.setPostProcessor(new TestPostProcessor());
@@ -154,6 +155,7 @@ public class DestinationConnectorTests {
 
         channel.setChannelId(channelId);
         channel.setServerId(serverId);
+        channel.setEnabled(true);
 
         channel.setPreProcessor(new TestPreProcessor());
         channel.setPostProcessor(new TestPostProcessor());
@@ -267,6 +269,7 @@ public class DestinationConnectorTests {
 
         channel.setChannelId(channelId);
         channel.setServerId(serverId);
+        channel.setEnabled(true);
 
         channel.setPreProcessor(new TestPreProcessor());
         channel.setPostProcessor(new TestPostProcessor());
@@ -380,6 +383,7 @@ public class DestinationConnectorTests {
 
         channel.setChannelId(channelId);
         channel.setServerId(serverId);
+        channel.setEnabled(true);
 
         channel.setPreProcessor(new TestPreProcessor());
         channel.setPostProcessor(new TestPostProcessor());

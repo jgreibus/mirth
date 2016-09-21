@@ -90,7 +90,6 @@ import com.mirth.connect.donkey.util.DonkeyElement;
 import com.mirth.connect.model.Channel;
 import com.mirth.connect.model.ChannelDependency;
 import com.mirth.connect.model.ChannelGroup;
-import com.mirth.connect.model.ChannelMetadata;
 import com.mirth.connect.model.CodeTemplate;
 import com.mirth.connect.model.CodeTemplateLibrary;
 import com.mirth.connect.model.DatabaseSettings;
@@ -108,8 +107,6 @@ import com.mirth.connect.model.UpdateSettings;
 import com.mirth.connect.model.alert.AlertModel;
 import com.mirth.connect.model.converters.DocumentSerializer;
 import com.mirth.connect.model.converters.ObjectXMLSerializer;
-import com.mirth.connect.plugins.MergePropertiesInterface;
-import com.mirth.connect.plugins.ServicePlugin;
 import com.mirth.connect.plugins.directoryresource.DirectoryResourceProperties;
 import com.mirth.connect.server.ExtensionLoader;
 import com.mirth.connect.server.mybatis.KeyValuePair;
@@ -133,7 +130,6 @@ public class DefaultConfigurationController extends ConfigurationController {
     public static final String PROPERTIES_CORE = "core";
     public static final String PROPERTIES_RESOURCES = "resources";
     public static final String PROPERTIES_DEPENDENCIES = "channelDependencies";
-    public static final String PROPERTIES_CHANNEL_METADATA = "channelMetadata";
     public static final String SECRET_KEY_ALIAS = "encryption";
 
     private Logger logger = Logger.getLogger(this.getClass());
@@ -645,7 +641,7 @@ public class DefaultConfigurationController extends ConfigurationController {
             }
 
             if (serverConfiguration.getCodeTemplateLibraries() != null) {
-                List<CodeTemplateLibrary> clonedLibraries = new ArrayList<CodeTemplateLibrary>();
+                Set<CodeTemplateLibrary> clonedLibraries = new HashSet<CodeTemplateLibrary>();
                 for (CodeTemplateLibrary library : serverConfiguration.getCodeTemplateLibraries()) {
                     clonedLibraries.add(new CodeTemplateLibrary(library));
                 }
@@ -705,20 +701,7 @@ public class DefaultConfigurationController extends ConfigurationController {
                 ExtensionController extensionController = ControllerFactory.getFactory().createExtensionController();
 
                 for (Entry<String, Properties> pluginEntry : serverConfiguration.getPluginProperties().entrySet()) {
-                    String pluginName = pluginEntry.getKey();
-                    Properties properties = pluginEntry.getValue();
-
-                    try {
-                        // Allow the plugin to modify the properties first if it needs to
-                        ServicePlugin servicePlugin = extensionController.getServicePlugins().get(pluginName);
-                        if (servicePlugin != null && servicePlugin instanceof MergePropertiesInterface) {
-                            ((MergePropertiesInterface) servicePlugin).modifyPropertiesOnRestore(properties);
-                        }
-
-                        extensionController.setPluginProperties(pluginName, properties);
-                    } catch (Exception e) {
-                        logger.error("Error restoring " + pluginName + " properties.", e);
-                    }
+                    extensionController.setPluginProperties(pluginEntry.getKey(), pluginEntry.getValue());
                 }
             }
 
@@ -965,26 +948,6 @@ public class DefaultConfigurationController extends ConfigurationController {
         }
 
         saveProperty(PROPERTIES_CORE, PROPERTIES_DEPENDENCIES, ObjectXMLSerializer.getInstance().serialize(dependencies));
-    }
-
-    @Override
-    public Map<String, ChannelMetadata> getChannelMetadata() {
-        String channelMetadataXml = getProperty(PROPERTIES_CORE, PROPERTIES_CHANNEL_METADATA);
-        Map<String, ChannelMetadata> channelMetadata;
-
-        if (StringUtils.isNotBlank(channelMetadataXml)) {
-            channelMetadata = ObjectXMLSerializer.getInstance().deserialize(channelMetadataXml, Map.class);
-        } else {
-            channelMetadata = new HashMap<String, ChannelMetadata>();
-            setChannelMetadata(channelMetadata);
-        }
-
-        return channelMetadata;
-    }
-
-    @Override
-    public void setChannelMetadata(Map<String, ChannelMetadata> channelMetadata) {
-        saveProperty(PROPERTIES_CORE, PROPERTIES_CHANNEL_METADATA, ObjectXMLSerializer.getInstance().serialize(channelMetadata));
     }
 
     @Override
@@ -1241,8 +1204,7 @@ public class DefaultConfigurationController extends ConfigurationController {
             logger.debug("generated new certificate with serial number: " + ((X509Certificate) sslCert).getSerialNumber());
 
             // add the generated SSL cert to the keystore using the key password
-            keyStore.setKeyEntry(certificateAlias, sslKeyPair.getPrivate(), keyPassword, new Certificate[] {
-                    sslCert });
+            keyStore.setKeyEntry(certificateAlias, sslKeyPair.getPrivate(), keyPassword, new Certificate[] { sslCert });
         } else {
             logger.debug("found certificate in keystore");
         }

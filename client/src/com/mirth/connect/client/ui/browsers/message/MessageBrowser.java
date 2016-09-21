@@ -85,7 +85,6 @@ import com.mirth.connect.client.ui.PlatformUI;
 import com.mirth.connect.client.ui.RefreshTableModel;
 import com.mirth.connect.client.ui.UIConstants;
 import com.mirth.connect.client.ui.ViewContentDialog;
-import com.mirth.connect.client.ui.attachments.AttachmentTypeDialog;
 import com.mirth.connect.client.ui.components.MirthDatePicker;
 import com.mirth.connect.client.ui.components.MirthFieldConstraints;
 import com.mirth.connect.client.ui.components.MirthSyntaxTextArea;
@@ -1603,42 +1602,26 @@ public class MessageBrowser extends javax.swing.JPanel {
         try {
             final String attachmentId = getSelectedAttachmentId();
             final Long messageId = getSelectedMessageId();
-            final String contentType = (String) attachmentTable.getModel().getValueAt(attachmentTable.convertRowIndexToModel(attachmentTable.getSelectedRow()), 1);
+            final String attachType = (String) attachmentTable.getModel().getValueAt(attachmentTable.convertRowIndexToModel(attachmentTable.getSelectedRow()), 1);
+            final AttachmentViewer attachmentViewer = getAttachmentViewer(attachType);
+            if (attachmentViewer != null) {
 
-            if (LoadedExtensions.getInstance().getAttachmentViewerPlugins().size() > 0) {
-                AttachmentViewer attachmentViewer;
+                final String workingId = parent.startWorking("Loading " + attachType + " viewer...");
 
-                if (Preferences.userNodeForPackage(Mirth.class).getBoolean("messageBrowserShowAttachmentTypeDialog", true)) {
-                    AttachmentTypeDialog dialog = new AttachmentTypeDialog(contentType);
-                    attachmentViewer = dialog.getAttachmentViewer();
-                } else {
-                    attachmentViewer = getAttachmentViewer(contentType);
-                    if (attachmentViewer == null) {
-                        AttachmentTypeDialog dialog = new AttachmentTypeDialog(contentType);
-                        attachmentViewer = dialog.getAttachmentViewer();
+                SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+
+                    public Void doInBackground() {
+                        attachmentViewer.viewAttachments(channelId, messageId, attachmentId);
+                        return null;
                     }
-                }
 
-                if (attachmentViewer != null) {
-                    final String workingId = parent.startWorking("Loading " + attachmentViewer.getPluginName() + "...");
-                    final AttachmentViewer finalAttachmentViewer = attachmentViewer;
-
-                    SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
-                        @Override
-                        public Void doInBackground() {
-                            finalAttachmentViewer.viewAttachments(channelId, messageId, attachmentId);
-                            return null;
-                        }
-
-                        @Override
-                        public void done() {
-                            parent.stopWorking(workingId);
-                        }
-                    };
-                    worker.execute();
-                }
+                    public void done() {
+                        parent.stopWorking(workingId);
+                    }
+                };
+                worker.execute();
             } else {
-                parent.alertWarning(this, "No Attachment Viewer plugins installed.");
+                parent.alertInformation(this, "No Attachment Viewer plugin installed for type: " + attachType);
             }
         } catch (Exception e) {
         }

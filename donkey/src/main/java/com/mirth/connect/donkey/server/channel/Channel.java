@@ -36,7 +36,6 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.log4j.Logger;
 
 import com.mirth.connect.donkey.model.DonkeyException;
@@ -97,6 +96,7 @@ public class Channel implements Runnable {
     private Set<String> resourceIds;
     private String contextFactoryId;
 
+    private boolean enabled = false;
     private DeployedState initialState;
     private DeployedState currentState = DeployedState.STOPPED;
 
@@ -199,6 +199,14 @@ public class Channel implements Runnable {
 
     public void setContextFactoryId(String contextFactoryId) {
         this.contextFactoryId = contextFactoryId;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
     }
 
     public DeployedState getInitialState() {
@@ -1166,7 +1174,6 @@ public class Channel implements Runnable {
             DonkeyDao dao = null;
             Message processedMessage = null;
             Response response = null;
-            String responseErrorMessage = null;
             DispatchResult dispatchResult = null;
 
             try {
@@ -1202,11 +1209,7 @@ public class Channel implements Runnable {
                 }
 
                 if (responseSelector.canRespond()) {
-                    try {
-                        response = responseSelector.getResponse(sourceMessage, processedMessage);
-                    } catch (Exception e) {
-                        responseErrorMessage = ExceptionUtils.getStackTrace(e);
-                    }
+                    response = responseSelector.getResponse(sourceMessage, processedMessage);
                 }
             } catch (RuntimeException e) {
                 // TODO determine behavior if this occurs.
@@ -1226,10 +1229,6 @@ public class Channel implements Runnable {
                 // Create the DispatchResult at the very end because lockAcquired might have changed
                 if (persistedMessageId != null) {
                     dispatchResult = new DispatchResult(persistedMessageId, processedMessage, response, sourceConnector.isRespondAfterProcessing(), lockAcquired);
-
-                    if (StringUtils.isNotBlank(responseErrorMessage)) {
-                        dispatchResult.setResponseError(responseErrorMessage);
-                    }
                 }
             }
 

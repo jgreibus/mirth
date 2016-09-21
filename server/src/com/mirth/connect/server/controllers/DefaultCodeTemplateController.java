@@ -134,7 +134,7 @@ public class DefaultCodeTemplateController extends CodeTemplateController {
     }
 
     @Override
-    public synchronized boolean updateLibraries(List<CodeTemplateLibrary> libraries, ServerEventContext context, boolean override) throws ControllerException {
+    public synchronized boolean updateLibraries(Set<CodeTemplateLibrary> libraries, ServerEventContext context, boolean override) throws ControllerException {
         Map<String, CodeTemplateLibrary> libraryMap = libraryCache.getAllItems();
         List<CodeTemplateLibrary> librariesToRemove = new ArrayList<CodeTemplateLibrary>(libraryMap.values());
         Map<String, String> codeTemplateMap = new HashMap<String, String>();
@@ -471,7 +471,7 @@ public class DefaultCodeTemplateController extends CodeTemplateController {
         }
 
         // Update any libraries that were using the code template
-        List<CodeTemplateLibrary> libraries = new ArrayList<CodeTemplateLibrary>(libraryCache.getAllItems().values());
+        Set<CodeTemplateLibrary> libraries = new HashSet<CodeTemplateLibrary>(libraryCache.getAllItems().values());
         boolean changed = false;
 
         for (CodeTemplateLibrary library : libraries) {
@@ -489,7 +489,7 @@ public class DefaultCodeTemplateController extends CodeTemplateController {
     }
 
     @Override
-    public synchronized CodeTemplateLibrarySaveResult updateLibrariesAndTemplates(List<CodeTemplateLibrary> libraries, Set<String> removedLibraryIds, List<CodeTemplate> updatedCodeTemplates, Set<String> removedCodeTemplateIds, ServerEventContext context, boolean override) {
+    public synchronized CodeTemplateLibrarySaveResult updateLibrariesAndTemplates(Set<CodeTemplateLibrary> libraries, Set<String> removedLibraryIds, Set<CodeTemplate> updatedCodeTemplates, Set<String> removedCodeTemplateIds, ServerEventContext context, boolean override) {
         // If override is disabled, first check all libraries and templates to make sure they haven't been modified already
         if (!override) {
             Map<String, CodeTemplateLibrary> libraryMap = libraryCache.getAllItems();
